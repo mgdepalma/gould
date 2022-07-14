@@ -1,0 +1,19 @@
+#!/bin/sh -f
+##
+# spreadsheet - spreadsheet convenience script
+#
+# 2020-08-28 Generations Linux <bugs@softcraft.org>
+#
+OPTIONS="$*"
+PROGRAM=$(type -p soffice)
+
+if [ -n "$PROGRAM" ]; then
+  PROGRAM="$PROGRAM --calc"
+else
+  PROGRAM=$(type -p gnumeric)
+fi
+if [ -z "$PROGRAM" ]; then
+  zenity --warning --text="Sorry, cannot find an installed spreadsheet program"
+  exit 1
+fi
+exec $PROGRAM $OPTIONS

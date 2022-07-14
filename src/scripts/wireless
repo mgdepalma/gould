@@ -1,0 +1,8 @@
+#!/bin/sh -f
+# WPA Graphical User Interface (wpa_gui) wrapper
+# 2014-10-28 Generations Linux <bugs@softcraft.org>
+
+PATH="/bin:/sbin:/usr/bin:/usr/sbin"
+RUNNING=$(pidof wpa_gui)
+
+[ -n "$RUNNING" ] || exec wpa_gui "$*"

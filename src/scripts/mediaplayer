@@ -1,0 +1,40 @@
+#!/bin/sh -f
+##
+# mediaplayer - media player convenience script
+#
+# 2020-08-28 Generations Linux <bugs@softcraft.org>
+#
+PROGRAM=$(basename $0)
+VERSION="1.0.9"
+file=$*
+
+# exit on error condition
+abend()
+{
+  echo "$PROGRAM: $file"
+  exit 1
+}
+
+##
+# main program method
+STEM=${file: - 4}
+if [ "$STEM" = ".mp3" ] || [ "$STEM" = ".m4a" ]; then
+  PLAYER=audacious
+else
+  for star in celluloid gmplayer vlc; do
+    if [ `type -p $star` ]; then
+      PLAYER=$star
+      break
+    fi
+  done
+  [ -n "$PLAYER" ] || abend "no suitable player installed."
+
+  if [ "$PLAYER" = "vlc" ]; then
+    QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/qt5/plugins
+    export QT_QPA_PLATFORM_PLUGIN_PATH
+    PLAYER=vlc-wrapper
+  fi
+fi
+
+killall $(basename $PLAYER) >/dev/null 2>&1
+exec $PLAYER "$@"

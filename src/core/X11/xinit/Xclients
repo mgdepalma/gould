@@ -1,0 +1,21 @@
+#!/bin/sh
+#$Id: Xclients,v 1.0.18 2013/12/11 softcraft Exp $
+###
+##
+# Xclients sets the environment and starts initial X clients.
+#
+# 2002-02-02 Generations Linux <info@softcraft.org>
+##
+###
+
+ONE=$(xrandr|grep ' connected' | head -1 | awk '{print $1}')
+TWO=$(xrandr|grep ' connected' | tail -1 | awk '{print $1}')
+
+# use xrandr for dual display only when a second monitor connected
+if [ "$ONE" != "$TWO" ]; then
+  xrandr --output $ONE --auto --output $TWO --auto
+  xrandr --output $TWO --right-of $ONE --primary
+fi
+
+[ -r $HOME/.Xclients ] && . $HOME/.Xclients
+#xset s 600 0

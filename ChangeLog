@@ -1,0 +1,39 @@
+
+2008-12-28 release 1.2.3 [alpha 1]
+
+ * get_window_class(libgould) XGetClassHint - check status, prevent SEGV
+ * src/system/ genesis (aka gpackage) making good progress
+
+2008-12-17 release 1.2.2
+
+ * GREEN_TASKBAR code complete, no WNCK dependency
+
+2008-10-15 release 1.2.1
+
+ * gpanel 1.1 release - manage systemtray
+
+2008-04-07 release 1.2
+
+ * gpanel 1.0 release - feature complete
+
+2007-10-01 release 1.1 
+
+ * Last release before project name change to GOULD
+
+2007-09-29 release 1.0.1
+
+ * Introduction of gpanel (0.9.2) not feature complete
+ * gdisplay: refresh every 20 seconds file listing
+
+2007-07-15 release 1.0
+
+ * Create IconBox object using GtkIconView class
+ * Create FileChooser using IconBox
+ * Re-implement print for simplicity
+ * Solved the problem with the gtk_widget_hide() on screen capture
+ * Addition of user controllable widget hide
+ * Addition of the gdisplay program
+
+2006-06-02 second alpha release
+2006-05-27 initial alpha release
+

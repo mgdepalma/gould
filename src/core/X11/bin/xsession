@@ -1,0 +1,32 @@
+#!/bin/sh
+##
+# xsession - X Window session startup script for GOULD.
+#
+# 2014-10-04 Generations Linux <info@softcraft.org>
+
+# source desktop resource configurations (system and user)
+[ -r /etc/sysconfig/desktop ] && . /etc/sysconfig/desktop
+[ -r $HOME/.config/desktop ] && . $HOME/.config/desktop
+
+# consult CGonf repository for background properties
+[ -n "$BACKGROUND" -a -r $BACKGROUND ] && {\
+ [ `type -p xsetbg` ] && xsetbg $BACKGROUND
+ gconftool -t string -s /desktop/gnome/background/picture_filename $BACKGROUND
+}
+#[ -e $HOME/.config/nitrogen ] && nitrogen --restore
+
+# export {LAUNCHER} i.e. launch bar (used by gsession)
+[ -n "$LAUNCHER" ] && export LAUNCHER=$LAUNCHER
+
+# export {TASKBAR} desktop environment (used by gsession)
+/sbin/pidof gpanel >/dev/null && killall -9 gpanel
+export TASKBAR=${TASKBAR:-"gpanel"}
+
+# export {WINDOWMANAGER} desktop environment (used by gsession)
+export WINDOWMANAGER=${WINDOWMANAGER:-"openbox"}
+
+# fallback to starting {WINDOWMANAGER} if gsession is not available
+[ `type -p gsession` ] || SESSION=$WINDOWMANAGER
+
+# Since gvfs exports dbus services, gvfsd should be actually started by dbus.
+exec dbus-launch --exit-with-session --sh-syntax ${SESSION:-"gsession"}

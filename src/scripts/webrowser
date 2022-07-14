@@ -1,0 +1,46 @@
+#!/bin/sh -f
+##
+# webrowser - web browser convenience script
+#
+# 2020-08-28 Generations Linux <bugs@softcraft.org>
+#
+OPTIONS="$*"
+
+# source desktop resource configurations (system and user)
+[ -r /etc/sysconfig/deskop ] && . /etc/sysconfig/deskop
+[ -r $HOME/.config/desktop ] && . $HOME/.config/desktop
+
+if [ -n "$WEBROWSER" ]; then
+  BROWSER=$WEBROWSER
+elif [ -e /opt/mozilla/firefox -o -e /opt/firefox ]; then
+  BROWSER=firefox
+elif [ -d /usr/lib/midori ]; then
+  BROWSER=midori
+elif [ -d /usr/lib/opera ]; then
+  BROWSER=opera
+fi
+
+# make sure the ${BROWSER} is installed..
+COMMAND=$(type -p $BROWSER)
+
+[ -n "$COMMAND" ] || {\
+  zenity --warning --text="Sorry, no web browser detected, contact site administrator."
+  exit 1
+}
+
+if [ -z "$OPTIONS" ]; then
+  if [ x"$BROWSER" = x"firefox" ]; then
+    OPTIONS="about:"
+    PREFS=$(find $HOME/.mozilla/firefox -name prefs.js 2>/dev/null)
+
+    if [ -n "$PREFS" ]; then
+      HOMEPAGE=$(grep homepage\" $PREFS | cut -d, -f2 | \
+                 sed -e 's,");,,' -e 's,",,' 2>/dev/null)
+
+      [ -n "$HOMEPAGE" ] || HOMEPAGE="http://www.google.com/firefox/"
+      OPTIONS="-new-window $HOMEPAGE"
+    fi
+  fi
+fi
+exec $BROWSER $OPTIONS
+##

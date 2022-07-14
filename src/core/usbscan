@@ -1,0 +1,82 @@
+#!/bin/sh
+##
+# usbscan - scan USB bus for kernel modules to add
+#
+# 2014-11-20 Generations Linux <bugs@softcraft.org>
+#
+
+PROGRAM=${0##*/}
+VERSION="0.11.20"
+LICENSE="GNU Public License (GPL) version 3"
+
+# print message and exit
+abend()
+{
+  echo "${PROGRAM}: $*"
+  exit 1
+}
+
+# show program usage
+usage()
+{
+  cat << EOF
+
+usage: $PROGRAM [-v] [-h] [-c <DIR>]
+
+ options
+  -v       show program version and exit
+  -h       show usage and exit; what you reading
+  -c <DIR> use DIR instead of $SYSCONFIG/
+
+ ${PROGRAM} is provided under the terms and conditions of the
+ ${LICENSE}.
+
+EOF
+}
+
+# show program version
+version()
+{
+cat << EOF
+
+ $PROGRAM version $VERSION [$LICENSE]
+
+EOF
+}
+
+##
+# main program logic
+SYSCONFIG=${SYSCONFIG:-/etc/sysconfig}
+
+# process command line options
+OPTERR=0
+
+while getopts "hvc:" flag
+do
+  case $flag in
+    h) usage; exit 0 ;;
+    v) version; exit 0 ;;
+    c) SYSCONFIG=$OPTARG ;;
+    *) abend "unrecognized option (use: -h for help)" ;;
+  esac
+done
+
+[ -d $SYSCONFIG ] || abend "$SYSCONFIG: No such file or directory"
+
+MODALIAS=/lib/modules/`uname -r`/modules.alias
+MODULES=$SYSCONFIG/modules
+
+lsusb | while read line; do
+  slot=$(echo "$line" | awk '{print $6}')
+
+  vendor=$(echo $slot | cut -d: -f1)
+  product=$(echo $slot | cut -d: -f2)
+  driver=$(grep -i $vendor $MODALIAS | grep -i $product | awk '{print $3}')
+
+  if [ -n "$driver" ]; then
+    grep -q $driver $MODULES || {\
+      echo $driver >> $MODULES
+      modprobe $driver
+    }
+  fi
+done

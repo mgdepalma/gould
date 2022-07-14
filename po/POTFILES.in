@@ -1,0 +1,23 @@
+# GOULD project
+src/common/dialog.c
+src/common/docklet.c
+src/common/print.c
+src/common/xmlconfig.c
+
+src/programs/desktop.c
+src/programs/gcontrol.c
+src/programs/gdisplay.c
+src/programs/gpanel.c
+src/programs/grdesktop.c
+src/programs/gsnapshot.c
+src/programs/menu.c
+src/programs/setting.c
+src/programs/systray.c
+src/programs/taskbar.c
+src/programs/xlock.c
+
+src/modules/battery.c
+src/modules/clock.c
+src/modules/mixer.c
+src/modules/showdesktop.c
+src/modules/splash.c

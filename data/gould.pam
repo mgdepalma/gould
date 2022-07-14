@@ -1,0 +1,8 @@
+#%PAM-1.0
+#
+# The PAM configuration file for the `gdm' service
+#
+auth       required   pam_unix.so shadow md5
+password   required   pam_unix.so shadow md5 use_authtok
+account    required   pam_unix.so
+session    required   pam_unix.so

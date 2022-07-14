@@ -1,0 +1,377 @@
+# Translation of GOULD to Spanish (Espanol)
+# Generations Linux <bugs@softcraft.org>
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: GOULD\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2008-08-08 08:08+0100\n"
+"PO-Revision-Date: 2008-08-08 08:08+0100\n"
+"Last-Translator: Mauro DePalma <mauro@softcraft.org>\n"
+"Language-Team: Spanish <info@softcraft.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# ../src/common/dialog.c
+msgid "File Type"
+msgstr "Tipo de file"
+
+msgid "Already exists"
+msgstr "Existe ya"
+
+msgid "BMP image format"
+msgstr "BMP Formato de la imagen "
+
+msgid "JPEG image format"
+msgstr "JPEG Formato de la imagen"
+
+msgid "PNG image format"
+msgstr "PNG Formato de la imagen"
+
+msgid "Print"
+msgstr "Impresión"
+
+msgid "Print to file"
+msgstr "Impresión a file"
+
+msgid "Write Over"
+msgstr "Escriba Encima"
+
+msgid "Cancel"
+msgstr "Cancelación"
+
+msgid "Save"
+msgstr "Excepto"
+
+msgid "Sorry, not implemented"
+msgstr "Apesadumbrado, no ejecutado"
+
+# ../src/common/print.c
+msgid "Default"
+msgstr "Defecto"
+
+# ../src/common/xmlconfig.c
+msgid "cannot see end tag of node inserted"
+msgstr "no puede ver la etiqueta del extremo del nodo insertada"
+
+msgid "invalid xmlReaderTypes"
+msgstr "xmlReaderTypes inválidos"
+
+msgid "invalid or corrupted XML schema"
+msgstr "esquema inválido o corrompido de XML"
+
+# ../src/programs/desktop.c
+msgid "Press the apply button to delete."
+msgstr "Presione el botón de la aplicación a la cancelación."
+
+msgid "Click on the icon to change it."
+msgstr "Chasque encendido el icono para cambiarlo."
+
+msgid "Apply"
+msgstr "Apliqúese"
+
+msgid "Name:"
+msgstr "Nombre:"
+
+msgid "Program:"
+msgstr "Programa:"
+
+# ../src/programs/gcontrol.c
+msgid "Close"
+msgstr "Cierre"
+
+msgid "File"
+msgstr "File"
+
+msgid "System"
+msgstr "Systema"
+
+# ../src/programs/gdisplay.c
+msgid "Set as background"
+msgstr "Fije como fondo"
+
+# ../src/programs/gpanel.c
+msgid "Start Menu"
+msgstr "Comienzo Menú"
+
+msgid "cannot find configuration file"
+msgstr "no puede encontrar el archivo de configuración"
+
+msgid "internal program error"
+msgstr "error interno del programa"
+
+# ../src/programs/grdesktop.c
+msgid "Please specify where to Log on to."
+msgstr "Especifique por favor donde abrir una sesión a."
+
+msgid "Domain"
+msgstr "Dominio"
+
+msgid "Resolution"
+msgstr "Resolución"
+
+msgid "Fullscreen"
+msgstr "De plena pantalla"
+
+msgid "Log on to"
+msgstr "Conexión a"
+
+msgid "User name"
+msgstr "Nombre de usuario"
+
+msgid "Connect"
+msgstr "Conecte"
+
+# ../src/programs/gsnapshot.c
+msgid "Invalid print command"
+msgstr "Comando de impresión inválido"
+
+msgid "Job sent to the printer"
+msgstr "Trabajo enviado a la impresora"
+
+msgid "New Snapshot"
+msgstr "Nueva foto"
+
+msgid "Snapshot delay"
+msgstr "Retardo de la foto"
+
+msgid "Include window decorations"
+msgstr "Incluya las decoraciones de la ventana"
+
+msgid "Hide application window"
+msgstr "Ventana del uso de la piel"
+
+msgid "Capture mode"
+msgstr "Modo de la captura"
+
+msgid "Entire Screen"
+msgstr "Pantalla entera"
+
+msgid "Window under cursor"
+msgstr "Ventana debajo del cursor"
+
+msgid "Region"
+msgstr "Región"
+
+msgid "Save As"
+msgstr "Excepto Como"
+
+# ../src/programs/menu.c
+msgid "Sorry, cannot get window manager process ID"
+msgstr ""
+
+msgid "What do you want the computer to do?"
+msgstr ""
+
+msgid "Logout"
+msgstr ""
+
+msgid "Shutdown"
+msgstr ""
+
+msgid "Restart"
+msgstr ""
+
+msgid "command not found"
+msgstr ""
+
+msgid "unimplemented method"
+msgstr ""
+
+# ../src/programs/setting.c
+msgid "About"
+msgstr ""
+
+msgid "General"
+msgstr "l"
+
+msgid "Panel"
+msgstr ""
+
+msgid "Position"
+msgstr ""
+
+msgid "Bottom"
+msgstr ""
+
+msgid "Left"
+msgstr ""
+
+msgid "Right"
+msgstr ""
+
+msgid "Top"
+msgstr ""
+
+msgid "Thickness"
+msgstr ""
+
+msgid "height or width"
+msgstr ""
+
+msgid "Margin"
+msgstr ""
+
+msgid "berth at start and end"
+msgstr ""
+
+msgid "Indentation"
+msgstr ""
+
+msgid "lead at start and end"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Wallpaper"
+msgstr ""
+
+msgid "NAME"
+msgstr ""
+
+msgid "DESCRIPTION"
+msgstr ""
+
+msgid "RELEASE"
+msgstr ""
+
+msgid "Configuration"
+msgstr ""
+
+msgid "Screen"
+msgstr ""
+
+msgid "Taskbar"
+msgstr ""
+
+msgid "Cut"
+msgstr ""
+
+msgid "Insert"
+msgstr ""
+
+msgid "Paste"
+msgstr ""
+
+msgid "Remove"
+msgstr ""
+
+msgid "Type:"
+msgstr ""
+
+msgid "menu item"
+msgstr ""
+
+msgid "separator"
+msgstr ""
+
+msgid "submenu"
+msgstr ""
+
+msgid "Internal program method"
+msgstr ""
+
+msgid "Restore default menu."
+msgstr ""
+
+msgid "configuration pages not implemented"
+msgstr ""
+
+# ../src/programs/systray.c
+msgid "Another systemtray already running."
+msgstr ""
+
+# ../src/programs/taskbar.c
+msgid "Number of workspaces"
+msgstr ""
+
+msgid "Number of pager rows"
+msgstr ""
+
+msgid "Pager allows you to see and switch workspaces called virtual desktops."
+msgstr ""
+
+# ../src/programs/xlock.c
+msgid "Activate screen saver after"
+msgstr ""
+
+msgid "Activate screen lock after"
+msgstr ""
+
+msgid "Screen saver preview"
+msgstr ""
+
+msgid "Screen Lock"
+msgstr ""
+
+msgid "Screen saver and lock module."
+msgstr ""
+
+# ../src/modules/battery.c
+msgid "Critical threshold"
+msgstr ""
+
+msgid "Warning threshold"
+msgstr ""
+
+msgid "Monitor interval"
+msgstr ""
+
+msgid "battery level critical"
+msgstr ""
+
+msgid "battery level low"
+msgstr ""
+
+msgid "charge left"
+msgstr ""
+
+msgid "percent charge"
+msgstr ""
+
+msgid "minutes"
+msgstr ""
+
+msgid "Shows the charged battery level and warns when levels reach save thresholds."
+msgstr ""
+
+# ../src/modules/clock.c
+msgid "Display 24 hour instead of 12 hour time"
+msgstr ""
+
+msgid "Show seconds"
+msgstr ""
+
+msgid "Displays a clock and calendar."
+msgstr ""
+
+# ../src/modules/mixer.c
+msgid "Audio Device"
+msgstr ""
+
+msgid "Initial volume setting"
+msgstr ""
+
+msgid "Allows volume control of the audio device."
+msgstr ""
+
+# ../src/modules/showdesktop.c
+msgid "Hide Desktop"
+msgstr ""
+
+msgid "Show Desktop"
+msgstr ""
+
+msgid "Showdesktop hides and shows the windows on the desktop."
+msgstr ""
+
+# ../src/modules/splash.c
+msgid ".. click to preview"
+msgstr ""
+
+msgid "Splash screen displayed upon startup."
+msgstr ""
+
+

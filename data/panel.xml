@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<panel version="1.1">
+
+ <!-- Automatically generated ~/.config/panel, please DO NOT edit. Manual
+   changes made will be lost when the program using this file exits.  -->
+
+ <place>TOP</place>
+ <thickness>32</thickness>
+ <margin>6</margin>
+ <indent>0</indent>
+
+ <icons>
+  <path>$HOME/.icons</path>
+  <path>$HOME/.config/pixmaps</path>
+  <path>/usr/share/gould/pixmaps</path>
+  <path>/usr/share/pixmaps</path>
+  <size>22</size>
+ </icons>
+
+ <menu name="" icon="applications.png" iconsize="22">
+  <header name="%r" />
+  <separator />
+  <submenu name="Programs" icon="panels.png">
+   <submenu name="Accessories" icon="accessories.png">
+    <item name="Calculator" icon="calculator.png">
+     <exec>xcalc</exec>
+    </item>
+    <item name="Console Window" icon="terminal.png">
+     <exec>xterm</exec>
+    </item>
+    <item name="Network Browser" icon="gftp.png">
+     <exec>gftp</exec>
+    </item>
+    <item name="Remote Desktop" icon="rdesktop.png">
+     <exec>grdesktop</exec>
+    </item>
+    <item name="Text Editor" icon="editor.png">
+     <exec>gedit</exec>
+    </item>
+   </submenu>
+   <submenu name="Database" icon="database.png" check="ODBCConfig">
+    <item name="ODBC Browser" icon="network.png">
+     <exec>ODBCBrowser</exec>
+    </item>
+    <item name="ODBC Administrator" icon="unixODBC.png">
+     <exec>ODBCConfig</exec>
+    </item>
+    <item name="Open System Architect" icon="star.png" check="OpenSystemArchitect">
+     <exec>OpenSystemArchitect</exec>
+    </item>
+   </submenu>
+   <submenu name="Games" icon="games.png" check="/usr/games">
+    <item name="Breakout" icon="breakout.png" check="/usr/games/lbreakout2">
+     <exec>/usr/games/lbreakout2</exec>
+    </item>
+    <item name="Chess" icon="chess.png" check="/usr/games/chess">
+     <exec>/usr/games/chess</exec>
+    </item>
+    <item name="Doom" icon="doom.png" check="/usr/games/doom">
+     <exec>/usr/games/doom</exec>
+    </item>
+    <item name="Mahjongg" icon="mahjongg.png" check="/usr/games/xmahjongg">
+     <exec>/usr/games/xmahjongg</exec>
+    </item>
+   </submenu>
+   <submenu name="Graphics" icon="graphics.png">
+    <item name="Display Images" icon="image.png">
+     <exec>gdisplay</exec>
+    </item>
+    <item name="Camera and Cam" icon="camera.png" check="cheese">
+     <exec>cheese</exec>
+    </item>
+    <item name="Graphics Editor" icon="designer.png" check="inkscape">
+     <exec>inkscape</exec>
+    </item>
+    <item name="Scanner Frontend" icon="scanner.png" check="xsane">
+     <exec>xsane</exec>
+    </item>
+    <item name="Screen Capture" icon="snapshot.png">
+     <exec>gsnapshot</exec>
+    </item>
+   </submenu>
+   <submenu name="Internet" icon="internet.png">
+    <item name="Web Browser" icon="web.png">
+     <exec>webrowser</exec>
+    </item>
+    <item name="Electronic Mail" icon="email.png">
+     <exec>email</exec>
+    </item>
+    <item name="Instant Messaging" icon="pidgin.png" check="/opt/pidgin">
+     <exec>pidgin -n</exec>
+    </item>
+    <item name="Skype (VoIP)" icon="skype.png" check="/usr/share/skype">
+     <exec>skype</exec>
+    </item>
+   </submenu>
+   <submenu name="Multimedia" icon="multimedia.png">
+    <item name="Media Player" icon="mediaplayer.png">
+     <exec>mediaplayer</exec>
+    </item>
+    <item name="Media Writer" icon="graveman.png">
+     <exec>graveman</exec>
+    </item>
+    <item name="Video Transcoder" icon="handbrake.png" check="/usr/bin/ghb">
+     <exec>ghb</exec>
+    </item>
+    <item name="iPod Manager" icon="tunes.png" check="gtkpod">
+     <exec>gtkpod</exec>
+    </item>
+   </submenu>
+   <submenu name="Office" icon="openoffice.png">
+    <item name="Document Writer" icon="writer.png">
+     <exec>writer</exec>
+    </item>
+    <item name="Spreadsheet" icon="gnumeric.png">
+     <exec>spreadsheet</exec>
+    </item>
+    <item name="Presentations" icon="staroffice.png" check="/usr/bin/soffice">
+     <exec>soffice --impress</exec>
+    </item>
+    <item name="Drawings" icon="libreoffice-draw.png" check="/usr/bin/soffice">
+     <exec>soffice --draw</exec>
+    </item>
+    <item name="Finance Manager" icon="financial.png" check="/usr/bin/mmex">
+     <exec>mmex</exec>
+    </item>
+   </submenu>
+   <submenu name="System" icon="system.png">
+    <item name="Hardware Information" icon="hardinfo.png">
+     <exec>hardinfo</exec>
+    </item>
+    <item name="Software Packages" icon="gpackage.png">
+     <exec>gpackage</exec>
+    </item>
+    <item name="Kill Window" icon="xkill.png">
+     <exec>xkill</exec>
+    </item>
+   </submenu>
+  </submenu>
+  <submenu name="Settings" icon="advanced.png">
+   <item name="Control Panel" icon="preferences.png">
+    <exec type="method">settings</exec>
+   </item>
+   <item name="Change Password" icon="password.png">
+    <exec>gpassword</exec>
+   </item>
+   <item name="Printer Settings" icon="printer.png">
+    <exec>gtklp</exec>
+   </item>
+   <item name="Wi-Fi Devices" icon="wireless.png">
+    <exec>wireless</exec>
+   </item>
+  </submenu>
+  <item name="Search" icon="search.png">
+   <exec>gtkfind</exec>
+  </item>
+  <item name="Run.." icon="exec.png">
+   <exec>grun</exec>
+  </item>
+ </menu>
+
+ <modules>
+  <path>$HOME/.config/plugins</path>
+  <path>/usr/lib/modules/gould</path>
+  <applet name="splash" icon="welcome.png">
+   <settings expire="10" font="Sans Bold 20" fg="blue" />
+  </applet>
+  <applet name="pager" icon="workspace.png" place="END">
+   <settings workspaces="2" rows="1" />
+  </applet>
+  <applet name="tasklist" icon="tasklist.png">
+   <settings allspaces="0" grouping="0" />
+  </applet>
+  <applet name="mountd" icon="mountd.png">
+   <settings automount="no" interval="2" />
+  </applet>
+  <applet name="mixer" icon="mixer.png">
+   <settings volume="30" />
+  </applet>
+  <applet name="battery" icon="battery.png">
+   <settings critical="10" interval="60" />
+  </applet>
+  <applet name="clock" icon="clock.png">
+   <settings format="%H:%M" />
+  </applet>
+  <applet name="xlock" icon="exit.png">
+   <settings mode="blank" time="20" />
+  </applet>
+ </modules>
+
+ <quicklaunch>
+  <item name="Web Browser" icon="web.png">
+   <exec>webrowser</exec>
+  </item>
+  <item name="Mail" icon="mail.png">
+   <exec>email</exec>
+  </item>
+  <item name="Terminal" icon="terminal.png">
+   <exec>xterm</exec>
+  </item>
+ </quicklaunch>
+
+ <desktop iconsize="48" font="Times 9">
+  <menu name="desktop-item-edit" iconsize="22">
+   <item name="Open" icon="launch.png">
+    <exec type="method">shortcut:open</exec>
+   </item>
+   <item name="Customize" icon="editicon.png">
+    <exec type="method">shortcut:edit</exec>
+   </item>
+   <item name="Remove" icon="editcut.png">
+    <exec type="method">shortcut:delete</exec>
+   </item>
+  </menu>
+ </desktop>
+</panel>

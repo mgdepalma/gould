@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!-- Created by softcraft on 2013-10-31 -->
+
+<jnlp
+ spec="1.0+"
+ codebase="http://www.softcraft.org/wiki/"
+ href="genesis.jnlp">
+ <information>
+  <title>Generations Linux USB creator</title>
+  <vendor>Generations Linux</vendor>
+  <homepage href="http://www.softcraft.org"/>
+  <description>USB creator</description>
+ </information>
+ <offline-allowed/>
+ <resources>
+  <j2se version="1.3+" href="http://java.sun.com/products/autodl/j2se"/>
+  <j2se version="1.3+" />
+  <jar href="genesis.jar"/>
+ </resources>
+ <application-desc main-class="Genesis" />
+</jnlp>

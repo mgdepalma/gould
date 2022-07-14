@@ -1,0 +1,11 @@
+#!/bin/sh -f
+##
+# email - electronic mail client wrapper
+#
+# 2020-08-28 Generations Linux <bugs@softcraft.org>
+#
+BROWSER=sylpheed
+[ -e /opt/mozilla/thunderbird -o -e /opt/thunderbird ] && BROWSER=thunderbird
+[ `type -p $BROWSER` ] || exit 1
+
+exec $BROWSER "$*"

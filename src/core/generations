@@ -1,0 +1,175 @@
+#!/bin/sh
+##
+# generations save or restore running session data
+#
+# 2014-12-14 Generations Linux <bugs@softcraft.org>
+#
+LICENSE="GNU Public License (GPL) version 3"
+
+PROGRAM=${0##*/}
+VERSION="1.1"
+
+# Source system initialization params and /proc/cmdline library
+. ${INITDIR:-/etc/init.d}/cmdline
+
+# print message and exit
+abend()
+{
+  echo "${PROGRAM}: $*"
+  exit 1
+}
+
+# show program usage
+usage()
+{
+  cat << EOF
+
+usage: $PROGRAM [-v] [-h] <save | restore | list>
+
+ options
+  -v       show program version and exit
+  -h       show usage and exit; what you reading
+
+ ${PROGRAM} is provided under the terms and conditions of the
+ ${LICENSE}.
+
+EOF
+}
+
+# show program version
+version()
+{
+cat << EOF
+
+ $PROGRAM version $VERSION [$LICENSE]
+
+EOF
+}
+
+
+##
+# Look for recovery backup archive (restore=<device>)
+# $ARCHIVE is an aescrypt gzip tar file <device>:$SerialNo
+check()
+{
+  status=1
+
+  [ -e $OVERLAY ] || status=2
+  [ -n "$DEVICE" ] || status=6
+  [ -n "$SerialNo" ] || status=3
+
+  [ $status -eq 1 ] || exit $status
+
+  if [ "$DEVICE" = "usb" ]; then
+    DEVICE=$(grep $MOUNTPOINT /proc/mounts | awk '{print $1}')
+
+    if [ -z "$DEVICE" ]; then
+      MOUNTPOINT=/media/usb
+      DEVICE=$(grep $MOUNTPOINT /proc/mounts | awk '{print $1}')
+    fi
+
+    [ -n "$DEVICE" ] || DEVICE=$(grep $MOUNTPOINT /etc/fstab | awk '{print $1}')
+    [ -n "$DEVICE" ] || return 1
+  fi
+
+  MEDIA=$(grep $DEVICE /proc/mounts | awk '{print $2}')
+  [ -z "$MEDIA" ] && mount $DEVICE $MOUNTPOINT 2>/dev/null && MOUNTED=yes
+
+  if grep -q $DEVICE /proc/mounts; then
+    ARCHIVE="$MOUNTPOINT/updates/$SerialNo"
+
+    if [ "$mode" != "save" ]; then
+      [ -r $ARCHIVE ] && status=0
+    else
+      status=0
+    fi
+  fi
+  return $status
+}
+
+##
+# restore to root (/) filesystem $ARCHIVE 
+restore()
+{
+  cd / && cat $ARCHIVE | aescrypt -d -p `machine-sha1` - |\
+    tar -zxf - 2>/dev/null && status=0
+
+  return $status
+}
+
+# savesession - save session data
+savesession()
+{
+  mkdir -p $MOUNTPOINT/updates
+  [ -z "$MOUNTED" ] && mount -o remount,rw $DEVICE $MOUNTPOINT
+
+  cd $OVERLAY && tar --exclude=etc/mtab -zcf - * |\
+    aescrypt -e -p `machine-sha1` - > $ARCHIVE 2>/dev/null && status=0
+
+  return $status
+}
+
+# list contents of saved session file
+listing()
+{
+  cat $ARCHIVE | aescrypt -d -p `machine-sha1` - |\
+    tar -ztf - 2>/dev/null && status=0
+
+  return $status
+}
+
+##
+# main program logic
+SerialNo=$(machine-id)
+SYSCONFIG=${SYSCONFIG:-/etc/sysconfig}
+
+# process command line options
+OPTERR=0
+
+while getopts "hv" flag
+do
+  case $flag in
+    h) usage; exit 0 ;;
+    v) version; exit 0 ;;
+    *) abend "unrecognized option (use: -h for help)" ;;
+  esac
+done
+
+shift $((OPTIND-1)); OPTIND=1
+mode=$@
+
+# fallback defaults
+DEVICE=$(getbootparam restore)
+MOUNTPOINT=/media/device
+OVERLAY=/shadow
+
+# source site specific configuration, if available
+[ -e $SYSCONFIG/generations ] && . $SYSCONFIG/generations 
+
+# check validity for usage (see, /etc/init.d/rc)
+check || exit $status
+
+# see how we were called
+case "$mode" in
+  check)
+    # we have done that already
+    ;;
+  save)
+    savesession
+    ;;
+  restore)
+    restore
+    ;;
+  list)
+    listing
+    ;;
+  *)
+    echo "usage: $PROGRAM {check|save|restore|list}"
+    exit 3
+esac
+
+# unmount media device when applicable
+[ -n "$MOUNTED" ] && umount $DEVICE 2>/dev/null
+
+exit $status
+#

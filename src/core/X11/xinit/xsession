@@ -1,0 +1,88 @@
+#!/bin/sh
+##
+# X Window System session initialization file.
+#
+# 2014-04-04 Generations Linux <info@softcraft.org>
+#
+GNOME=/opt/gnome
+KDE=/opt/kde
+X11=/usr/X11
+
+PATH=/bin:/usr/bin:$X11/bin:/usr/local/bin
+[ $(id -u) -eq 0 ] && PATH="/sbin:/usr/sbin:$PATH"
+
+if [ -d $GNOME/bin ]; then
+  PATH="$PATH:$GNOME/bin"
+  LD_LIBRARY_PATH=$GNOME/lib
+  export LD_LIBRARY_PATH
+fi
+[ -d $KDE/bin ] && PATH="$PATH:$KDE/bin"
+
+##
+# initialize resource database with system-wide resources file
+[ -f /etc/X11/Xresources ] && xrdb -load /etc/X11/Xresources
+[ -f $HOME/.Xresources ] && xrdb -merge $HOME/.Xresources
+
+##
+# from Stephen Lee's Mini-HowTo on deletekey configuration
+xmodmap -e "keycode 22 = BackSpace"
+xmodmap -e "keycode 107 = Delete"
+
+# map F12 to Kanji key if cannaserver is running
+if [ -e /var/lock/canna/.CANNALOCK ]; then
+  xmodmap -e 'keycode 96 = Kanji'
+  kinput2 &
+fi
+
+##
+# i18n preferences
+[ -f /etc/sysconfig/i18n ] && . /etc/sysconfig/i18n
+[ -f $HOME/.config/i18n ] && . $HOME/.config/i18n
+
+[ -n "$LANG" ] && export LANG
+[ -n "$LANGUAGE" ] && export LANGUAGE
+[ -n "$LC_ALL" ] && export LC_ALL
+
+##
+# source system wide and user desktop preferences
+[ -f /etc/sysconfig/desktop ] && . /etc/sysconfig/desktop
+[ -f $HOME/.config/desktop ] && . $HOME/.config/desktop
+
+# see if we have $HOME/.dmrc from running KDE
+if [ -d $KDE/bin -a -e $HOME/.dmrc ]; then
+  prefer=$(grep Session $HOME/.dmrc | awk -F= '{print $2}')
+  [ "$prefer" = "default" -o "$prefer" = "kde" ] && DESKTOP="kde"
+fi
+
+# ${DESKTOP} may be passed as the first argument
+[ -n "$1" ] && DESKTOP=$1
+
+case $DESKTOP in
+  GNOME*|Gnome*|gnome*)
+    if [ -x $GNOME/bin/gnome-session ]; then
+      SESSION=gnome-session
+    fi
+    ;;
+
+  KDE*|kde*|startkde)
+    if [ -x $KDE/bin/startkde ]; then
+      export LD_LIBRARY_PATH;LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$KDE/lib
+      SESSION=startkde
+    fi
+    ;;
+
+  *xsession|gould)
+    SESSION=xsession
+    ;;
+
+  failsafe)
+    xsetroot -cursor_name left_ptr -grey
+    exec xterm -geometry 80x24+5+5
+ esac
+
+# initial clients (environment) to start
+[ -f /etc/X11/xinit/Xclients ] && . /etc/X11/xinit/Xclients
+
+# if nothing else start X session manager
+exec ${SESSION:-xsession} > $HOME/.xsession-errors 2>&1
+

@@ -1,0 +1,57 @@
+style "back"
+{
+	engine "pixmap"
+	{
+		image
+		{
+			function = FLAT_BOX
+			shadow=NONE
+			state = NORMAL
+			file="greeter.jpg"
+			stretch=TRUE
+			detail = "base"
+		}
+	}
+}
+
+style "clock"
+{
+	fg[NORMAL]="#ffffff"
+	font_name="Sans 12"
+}
+
+style "header"
+{
+	fg[NORMAL]="#000000"
+	font_name="Sans Bold 20"
+}
+
+style "prompt"
+{
+	fg[NORMAL]="#9999CC"
+	font_name="Sans Bold 14"
+}
+
+# Normally this won't paint an invisible event box, but we did some hacks in greeter.c.
+style "controls"
+{
+	font_name="Sans 12"
+	fg[NORMAL] = "#9E9D9B"
+	engine "pixmap"
+	{
+		image
+		{
+			function = FLAT_BOX
+			file="shade.png"
+			stretch=TRUE
+			detail="eventbox"
+		}
+	}
+}
+
+widget "gould" style "back"
+widget "gould.*.clock" style "clock"
+widget "gould.*.header" style "header"
+widget "gould.*.prompt" style "prompt"
+widget "gould.*.controls" style "controls"
+widget_class "GtkWindow.*.GtkEventBox.*.<GtkLabel>" style "controls"

@@ -1,0 +1,81 @@
+!!!
+!!
+! This is the global resources file that is loaded when
+! all users log in, as well as for the login screen
+!!
+!!!
+Scrollbar.JumpCursor:	    True
+!
+! Good Xaw3d Defaults - Bruce Cheng <chengb@craft.camp.clarkson.edu>
+!
+!*Command.background:               #c0c0c0
+!*TransientShell*Dialog.background: #c0c0c0
+!*Form.background:                  #c0c0c0
+!*Menubutton.background:            #c0c0c0
+!*ScrollbarBackground:              #c0c0c0
+!*Scrollbar*background:             #c0c0c0
+!*Scrollbar*width:                  15
+!*Scrollbar*height:                 15
+!*Scrollbar*shadowWidth:            2
+!*Scrollbar*pushThumb:              false
+*Scrollbar*cursorName:             top_left_arrow
+!*beNiceToColormap:                 false
+!*bottomShadowContrast:             55
+!*topShadowContrast:                20
+!*SmeBSB*shadowWidth:               2
+!*shadowWidth:                      2
+!*shapeStyle:                       Rectangle
+!*highlightThickness:               0
+!
+! Motif Window Manager resources
+!
+Mwm*xterm*iconImage:	    /usr/include/X11/bitmaps/terminal
+Mwm*xterm*useClientIcon:    True
+Mwm*buttonBindings:	    DefaultButtonBindings
+Mwm*fontList:	            variable
+Mwm*keyboardFocusPolicy:    pointer
+Mwm*windowMenu:             DefaultWindowMenu
+!
+! Kanji XTerm resources
+!
+kterm*Cursors:	            on
+kterm*CursorShape:	    arrow
+kterm*ScrollBar:	    on
+!
+! XTerm resources
+!
+XTerm*DeiconifyWarp:	    off
+XTerm*BitmapIcon:	    off
+XTerm*Font:		    8x13bold
+XTerm*SaveLines:	    512
+XTerm*MenuBorder:           1
+XTerm*TextUnderIcon:	    off
+XTerm*Cursors:	            on
+!XTerm*iconPixmap:	    /usr/include/X11/bitmaps/terminal
+XTerm*MenuFont:	            timrom10b
+XTerm*CursorShape:	    arrow
+XTerm*TitleFont:	    timrom10b
+XTerm*BorderWidth:	    2
+XTerm*ScrollBar:	    on
+XTerm*ActiveIcon:	    off
+XTerm*AllowIconInput:	    off
+XTerm*Logging:	            off
+*VT100.translations: #override \
+  <Key>Next: scroll-forw(1,page) \n\
+  <Key>Prior: scroll-back(1,page)
+!
+! Fix the Xft dpi to 96; this prevents tiny fonts
+! or HUGE fonts depending on the screen size.
+Xft.dpi: 96
+!
+! hintstyle: medium means that (for Postscript fonts) we
+! position the stems for maximum constrast and consistency
+! but do not force the stems to integral widths. hintnone,
+! hintslight, and hintfull are the other possibilities.
+Xft.hintstyle: hintmedium
+Xft.hinting: true
+!
+! Brute force includes..
+!
+#include "/usr/share/X11/app-defaults/XCalc-color"
+!</Xresources>
