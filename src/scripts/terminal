@@ -1,0 +1,4 @@
+#!/bin/sh -f
+[ -f /etc/sysconfig/terminal ] && . /etc/sysconfig/terminal
+[ -n "$FONTNAME" ] && exec xterm -fn $FONTNAME "$@"
+exec xterm -fa "$FONTSTYLE" -fs $FONTSIZE "$@"
