@@ -1,0 +1,33 @@
+#!/bin/sh -f
+##
+# 2022-10-31 Generations Linux <bugs@softcraft.org>
+PROGRAM="$0"
+
+[ -f /etc/sysconfig/updates ] && . /etc/sysconfig/updates
+MOUNTPOINT=${MOUNTPOINT:-/master/updates}
+[ -d "${MOUNTPOINT}" ] || exit 0
+
+#mount ${DEVICE} ${MOUNTPOINT} || exit 1
+
+#count the number of updates, do nothing unless > 0
+COUNT=$(ls -1 $MOUNTPOINT | wc -l)
+[ "$COUNT" -gt "0" ] || exit 0
+
+. /etc/os-release
+# advice that updates is starting
+echo "`date +'%F %X'` ${NAME} starting updates"
+
+# process one-by-one the updates
+cd $MOUNTPOINT
+UPDATES=`ls $MOUNTPOINT`
+COUNT=1
+
+for PKG in $UPDATES; do
+  echo -n "[$COUNT] "
+  COUNT=` expr $COUNT + 1`
+  echo $PKG
+  rpm -Uv $PKG
+done
+
+echo "`date +'%F %X'` ${NAME} updates done"
+#umount ${DEVICE}
