@@ -1,7 +1,24 @@
 #!/bin/sh -f
 ##
-# 2022-10-31 Generations Linux <bugs@softcraft.org>
+# 2022-11-02 Generations Linux <bugs@softcraft.org>
 PROGRAM="$0"
+
+INITDIR=${INITDIR:-/etc/init.d}
+# source library functions and initialization params
+. $INITDIR/common
+
+# attempt to remove {file}
+remove()
+{
+  rm -f "$@" &> /dev/null
+}
+
+# show and log activity
+showlogging()
+{
+  emit "$@"
+  initlog -s "$@"
+}
 
 [ -f /etc/sysconfig/updates ] && . /etc/sysconfig/updates
 MOUNTPOINT=${MOUNTPOINT:-/master/updates}
@@ -15,19 +32,27 @@ COUNT=$(ls -1 $MOUNTPOINT | wc -l)
 
 . /etc/os-release
 # advice that updates is starting
-echo "`date +'%F %X'` ${NAME} starting updates"
+showlogging "`date +'%F %X'` ${NAME} starting updates"
 
 # process one-by-one the updates
-cd $MOUNTPOINT
 UPDATES=`ls $MOUNTPOINT`
 COUNT=1
 
-for PKG in $UPDATES; do
-  echo -n "[$COUNT] "
+for FILE in $UPDATES; do
+  GENRE=$(echo "$FILE" | rev)
+  GENRE=$(echo "$GENRE" | cut -d'.' -f1)
+  GENRE=$(echo "$GENRE" | rev)
+
+  # use {patch -d /} on diff patch files, {rpm -Uv} on packages, ignore other
+  if [ "$GENRE" = "diff" -o "$GENRE" = "patch" ]; then
+    showlogging "[$COUNT] patch -p0 -i $MOUNTPOINT/$FILE"
+    patch -d / -p0 -i $MOUNTPOINT/$FILE && remove $MOUNTPOINT/$FILE
+  elif [ "$GENRE" = "rpm" ]; then
+    showlogging "[$COUNT] rpm -Uv $MOUNTPOINT/$FILE"
+    rpm -Uv $MOUNTPOINT/$FILE && remove $MOUNTPOINT/$FILE
+  fi
   COUNT=` expr $COUNT + 1`
-  echo $PKG
-  rpm -Uv $PKG
 done
 
-echo "`date +'%F %X'` ${NAME} updates done"
+showlogging "`date +'%F %X'` ${NAME} updates done"
 #umount ${DEVICE}
