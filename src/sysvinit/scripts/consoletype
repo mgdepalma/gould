@@ -1,0 +1,17 @@
+#!/bin/sh
+# 2012-12-05 Generations Linux <bugs@softcraft.org>
+
+STUB=$(tty | cut -d/ -f3 | cut -c1-3)
+
+if [ "$STUB" = "tty" ]; then
+    echo "vt"
+    exit 0
+else
+  if [ "$STUB" = "pts" ]; then
+    echo "pty"
+    exit 2
+  else
+    echo "serial"
+    exit 1
+  fi
+fi
