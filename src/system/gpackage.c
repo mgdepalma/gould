@@ -31,6 +31,7 @@ enum
   MARK_COLUMN,
   NAME_COLUMN,
   VERS_COLUMN,
+  ARCH_COLUMN,
   DESC_COLUMN,
   DATA_COLUMN,
   N_COLUMNS
@@ -63,13 +64,13 @@ const char *Terms =
 const char *Usage =
 "License: GPL %s\n"
 "\n"
-"usage: %s [-h | -V | -v[n] <root>]\n"
+"usage: %s [-d[n] | -h | -v <root>]\n"
 "\n"
+"\t-d debug level [n (default => 1)]\n"
 "\t-h print help usage (what you are reading)\n"
-"\t-V print version information and exit\n"
-"\t-v [n] verbosity level [n]\n"
+"\t-v print version information and exit\n"
 "\n"
-"<root> is the installation path, default /\n"
+"<root> is the installation path, default / {i am root}\n"
 "\n";
 
 GlobalData *global_;		/* global program data singleton */
@@ -145,20 +146,22 @@ depot_layout (GlobalDepot *depot)
 
   /* [packages]Left side of layout. */
   store = depot->store = gtk_tree_store_new (N_COLUMNS,
-                                               G_TYPE_STRING,
-                                               G_TYPE_STRING,
-                                               G_TYPE_STRING,
-                                               G_TYPE_STRING,
-                                               G_TYPE_POINTER);
+                                             G_TYPE_STRING,
+                                             G_TYPE_STRING,
+                                             G_TYPE_STRING,
+                                             G_TYPE_STRING,
+                                             G_TYPE_STRING,
+                                             G_TYPE_POINTER);
 
   view = depot->viewer = gtk_tree_view_new_with_model (GTK_TREE_MODEL(store));
   gtk_container_add (GTK_CONTAINER(scrolled), view);
   gtk_widget_show (view);
 
   /* Add column headers. */
-  depot_column_header (view, "",           MARK_COLUMN);
-  depot_column_header (view, _("Package"), NAME_COLUMN);
-  depot_column_header (view, _("Version"), VERS_COLUMN);
+  depot_column_header (view, "", MARK_COLUMN);
+  depot_column_header (view, _("Group | Package"), NAME_COLUMN);
+  depot_column_header (view, _("Version-Release"), VERS_COLUMN);
+  depot_column_header (view, _("Architecture"), ARCH_COLUMN);
   depot_column_header (view, _("Summary"), DESC_COLUMN);
 
   /* [depots]Right side of layout. */
@@ -221,23 +224,22 @@ depot_selection (GtkTreeModel *model, GtkTreePath *path,
   gtk_tree_model_get (model, iter,
                       DATA_COLUMN, &package,
                       -1);
-
   if (package) {
     GPtrArray *details;
-    const gchar *text;
     gint len;
 
     if ((details = pkg_query_info (package, QueryInformation))) {
-      text = g_ptr_array_index (details, 0);
-      len  = strlen(text);
+      char *text[MAX_PATHNAME * details->len];
+      len = pkg_query_details (details, text);
 
+      //if (debug > 2) printf("%s text => %s\n", __func__, text);
       gtk_text_buffer_set_text (depot->describe, text, len);
       g_ptr_array_free (details, TRUE);
     }
 
     if ((details = pkg_query_info (package, QueryListing))) {
-      text = g_ptr_array_index (details, 0);
-      len  = strlen(text);
+      char *text[MAX_PATHNAME * details->len];
+      len = pkg_query_details (details, text);
 
       gtk_text_buffer_set_text (depot->filelist, text, len);
       g_ptr_array_free (details, TRUE);
@@ -264,9 +266,13 @@ depot_selection_handler (GtkTreeSelection *selection, GlobalDepot *depot)
     GtkTreeIter  iter;
     GtkTreePath *path = list->data;
 
+    if (debug > 2) {
+      gchar *s_path = gtk_tree_path_to_string(path);
+      printf("%s path => %s\n", __func__, s_path);
+      g_free(s_path);
+    }
     gtk_tree_model_get_iter (model, &iter, path);
     depot_selection (model, path, &iter, depot);
-
     global_->selection = selection;
   }
 } /* </depot_selection_handler> */
@@ -276,10 +282,12 @@ depot_add_package (Package *package, GtkTreeStore *store, GtkTreeIter *node)
 {
   char pkgname[strlen(package->name) + 1];
   char version[strlen(package->version) + strlen(package->release) + 2];
+  char architecture[strlen(package->arch) + 1];
   char summary[strlen(package->summary) + 1];
 
   strcpy(pkgname, package->name);
   sprintf(version, "%s-%s", package->version, package->release);
+  strcpy(architecture, package->arch);
   strcpy(summary, package->summary);
 
   if (strlen(pkgname) > MAX_PKGNAME_LENGTH) {
@@ -298,6 +306,7 @@ depot_add_package (Package *package, GtkTreeStore *store, GtkTreeIter *node)
                       MARK_COLUMN, "",
                       NAME_COLUMN, pkgname,
                       VERS_COLUMN, version,
+                      ARCH_COLUMN, architecture,
                       DESC_COLUMN, summary,
                       DATA_COLUMN, package,
                       -1);
@@ -426,7 +435,6 @@ gpackage_page (GtkWidget *widget, gpointer data)
       g_free ((gchar *)global_->path[page]);
       global_->path[page] = g_strdup (path);
     }
-
     g_free (dbpath);
   }
 } /* </gpackage_page> */
@@ -460,7 +468,6 @@ gpackage_installed (const char *root)
 
   g_signal_connect (G_OBJECT(selection), "changed",
                     G_CALLBACK(depot_selection_handler), depot);
-
   return layout;
 } /* </gpackage_installed> */
 
@@ -561,7 +568,6 @@ gpackage_navigate (const char *root, const char *path)
 
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(navigation_page), GINT_TO_POINTER(ABOUT_PAGE));
-
   return layer;
 } /* </gpackage_navigate> */
 
@@ -619,7 +625,6 @@ gpackage_about (void)
 
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(navigation_page), GINT_TO_POINTER(DEPOT_PAGE));
-
   return layout;
 } /* </gpackage_about> */
 
@@ -707,7 +712,6 @@ gpackage_layout (const char *root, const char *path)
 
   g_signal_connect (G_OBJECT(button), "clicked",
                       G_CALLBACK(finis), NULL);
-
   return layout;
 } /* </gpackage_layout> */
 
@@ -766,29 +770,29 @@ main (int argc, char *argv[])
   gint yres;
 
   Program = basename(argv[0]);	/* strip leading path for Progname */
-  Release = "0.6.0";
+  Release = "0.9.1";
 
   /* Change the process name using Program variable. */
   strncpy(argv[0], Program, strlen(argv[0]));
   setprogname (Program = argv[0]);
   opterr = 0;			/* disable invalid option messages */
 
-  while ((flag = getopt (argc, argv, "hVv:")) != -1)
+  while ((flag = getopt (argc, argv, "d:hv")) != -1)
     switch (flag) {
+      case 'v':
+        printf("%s version %s %s\n", Program, Release, License);
+        exit(0);
+
       case 'h':
         printf(Usage, License, Program);
         exit(0);
 
-      case 'V':
-        printf("%s version %s %s\n", Program, Release, License);
-        exit(0);
-
-      case 'v':
+      case 'd':
         debug = atoi(optarg);
         break;
 
       default:
-        if (optopt == 'v')
+        if (optopt == 'd')
           debug = 1;
         else {
           printf("%s: invalid option, use -h for help usage.\n", Program);

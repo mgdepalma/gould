@@ -17,7 +17,7 @@ dnl along with this program; if not, write to the Free Software Foundation,
 dnl Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 dnl
 
-AC_INIT(gould, 1.2.3, http://softcraft.org/projects/gould/)
+AC_INIT(gould, 1.3.1, http://softcraft.org/projects/gould/)
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE
 
@@ -75,10 +75,16 @@ test x$no_x = "xyes" && AC_MSG_ERROR([gould requires the X Window System librari
 test x$x_includes = "x" && x_includes="/usr/include"
 test x$x_libraries = "x" && x_libraries="/usr/lib"
 
+ARCH=$(uname -m)
 CFLAGS="$CFLAGS $X_CFLAGS"
 CXXFLAGS="$CXXFLAGS $X_CFLAGS"
 LIBS="$LIBS $X_LIBS"
+
+if [ "$ARCH" = "x86_64" ]; then
+LDFLAGS="-L/usr/lib64 $LDFLAGS $LIBS"
+else
 LDFLAGS="$LDFLAGS $LIBS"
+fi
 
 dnl Determine the return type of signal handlers.
 AC_TYPE_SIGNAL

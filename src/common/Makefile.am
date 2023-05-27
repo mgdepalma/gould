@@ -4,7 +4,7 @@
 #
 MAINTAINERCLEANFILES = Makefile.in
 
-PKG_CFLAGS = -D_GNU_SOURCE -Wall -g -O -pipe
+PKG_CFLAGS = -D_GNU_SOURCE -Wall -Wno-deprecated-declarations -g -O -pipe
 AM_CFLAGS  = $(PKG_CFLAGS) `pkg-config --cflags gtk+-2.0 libxml-2.0`
 AM_LDFLAGS = -Wl,-export-dynamic `pkg-config --libs x11 libxml-2.0`
 
@@ -57,3 +57,9 @@ libgould_la_LDFLAGS = \
 	-version-info $(LIBGOULD_CURRENT):$(LIBGOULD_REVISION):$(LIBGOULD_AGE) \
 	-no-undefined
 
+# static libgould.a
+libgould_OBJECTS = .libs/module.o .libs/dialog.o .libs/docklet.o .libs/print.o .libs/window.o .libs/grabber.o .libs/iconbox.o .libs/filechooser.o .libs/xmlconfig.o .libs/xpmglyphs.o .libs/greenwindow.o .libs/green.o .libs/pager.o .libs/tasklist.o .libs/systray.o .libs/xutil.o .libs/util.o
+
+libgould.a: $(libgould_OBJECTS)
+	ar -crs libgould.a $(libgould_OBJECTS)
+#/

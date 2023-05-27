@@ -16,7 +16,6 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
-
 #include "util.h"
 #include "package.h"
 
@@ -26,8 +25,14 @@
 #include <rpm/rpmdb.h>
 #include <rpm/rpmts.h>
 
-/* Set up a table of options. (rpm-4.11.1/rpmqv.c) */
-static int quiet;
+extern unsigned debug;	/* transcendentalism */
+
+const char *Bugger =
+"Sorry, you have experienced an internal program inconsistecy.\n"
+"gpackage will abend! Please note the following and contact\n"
+"the author at: bugs@softcraft.org\n";
+
+static int quiet; /* Set up a table of options. (rpm-4.11.1/rpmqv.c) */
 static struct poptOption _poptOptionsTable[] = {
   { NULL, '\0', POPT_ARG_INCLUDE_TABLE, rpmQVSourcePoptTable, 0,
     "Query/Verify package selection options:",
@@ -63,7 +68,50 @@ static GPtrArray  *_output;
 
 static const char  _delimit = '\x1f';
 static const char *_packageHeaderQuery =
-"%{NAME}\n%{VERSION}\n%{RELEASE}\n%{SUMMARY}\n%{GROUP}\n%{SIZE}";
+"%{NAME}\n%{VERSION}\n%{RELEASE}\n%{SUMMARY}\n%{GROUP}\n%{SIZE}\n%{ARCH}";
+
+/*
+* convert_argv_into_command
+*/
+static inline
+char *convert_argv_into_command(int argc, char** argv)
+{
+  static char command[MAX_PATHNAME];
+  int count = 0, mark = 0;
+
+  for (int idx = 0; idx < argc; idx++) {
+    sprintf(&command[mark], "%s ", argv[idx]);
+    count = strlen(argv[idx]) + 1;
+    mark += count;
+  }
+  command[mark] = (char)0;
+
+  return command;
+} /* </convert_argv_into_command> */
+
+/*
+* pkg_popen_call
+*/
+static inline
+GPtrArray *pkg_popen_call(int argc, char **argv)
+{
+  GPtrArray *result = NULL;
+  char *command = convert_argv_into_command(argc, argv);
+  FILE *pipe = popen(command, "r");
+
+  if (pipe != NULL) {
+    char line[MAX_PATHNAME];
+    result = g_ptr_array_new ();  /* create a new GPtrArray */
+
+    while (!feof(pipe)) {
+      if (fgets(line, MAX_PATHNAME, pipe) == NULL) break;
+      line[strlen(line) - 1] = (char)0;  /* clobber newline */
+      g_ptr_array_add (result, strdup(line));
+    }
+    pclose(pipe);
+  }
+  return result;
+} /* pkg_popen_call */
 
 /*
 * queryHeader (rpm-4.4.2.3/lib/query.c)
@@ -84,16 +132,16 @@ queryHeader (Header h, const char *qfmt)
 /*
 * captive_query_output (rpm-4.4.2.3/lib/query.c:showQueryPackage())
 */
-int
-captive_query_output (QVA_t qva, rpmts ts, Header h)
+int captive_query_output (QVA_t qva, rpmts ts, Header h)
 {
   if (qva->qva_queryFormat != NULL) {
     const char *str = queryHeader(h, qva->qva_queryFormat);
+    vdebug(5, "%s queryHeader() => %s\n", __func__, str);
 
     if (str) {
       char *scan = strchr(str, _delimit);
 
-      if (scan) *scan = '\0';		/* truncate at _delimit */
+      if (scan) *scan = '\0';	/* truncate at _delimit */
       g_ptr_array_add (_output, strdup(str));
       if (scan) *scan = _delimit;
       free((void *)str);
@@ -130,28 +178,59 @@ pkg_cli_init (int argc, char **argv, struct poptOption *optionsTable)
 } /* </pkg_cli_init> */
 
 /*
-* pkg_cli_call
+* pkg_query_details
+*/
+gint pkg_query_details(GPtrArray *details, char *buffer)
+{
+  strcpy(buffer, g_ptr_array_index (details, 0));
+  strcat(buffer, "\n");
+
+  for (int idx = 1; idx < details->len; idx++) {
+    strcat(buffer, g_ptr_array_index (details, idx));
+    strcat(buffer, "\n");
+  }
+  return strlen(buffer);
+} /* pkg_query_details */
+
+/*
+* pkg_cli_call - make a call to rpmcliQuery(3)
 */
 GPtrArray *
 pkg_cli_call (int argc, char **argv)
 {
-  poptContext context;
-  GPtrArray *result = NULL;
-
   QVA_t qva = &rpmQVKArgs;
-  memset(qva, 0, sizeof(struct rpmQVKArguments_s));
+  GPtrArray *result = NULL;
+  char *command = convert_argv_into_command(argc, argv);
+  poptContext context;
 
-  if ((context = pkg_cli_init (argc, argv, _poptOptionsTable))) {
-    rpmts ts = rpmtsCreate();
+  if (argc < 5) {	/* maybe only for the never */
+    puts(Bugger);
+    puts(command);
+    _exit(1);
+  }
+  vdebug(3, "%s argc => %d, argv => %s\n", __func__, argc, command);
 
-    _output = g_ptr_array_new ();
-    qva->qva_showPackage = captive_query_output;
+  if (argc > 6) {   /* given changes in the RPM API rely on popen(3) */
+    result = pkg_popen_call(argc, argv);
+    //char *details = pkg_query_details(result);
+  }
+  else {
+    memset(qva, 0, sizeof(struct rpmQVKArguments_s));
 
-    rpmcliQuery(ts, qva, (ARGV_const_t)poptGetArgs(context));
-    result = _output;
+    if ((context = pkg_cli_init (argc, argv, _poptOptionsTable))) {
+      rpmts ts = rpmtsCreate();
 
-    context = rpmcliFini(context);
-    ts = rpmtsFree(ts);
+      _output = g_ptr_array_new ();
+      qva->qva_showPackage = captive_query_output;
+
+      int rc = rpmcliQuery(ts, qva, (ARGV_const_t)poptGetArgs(context));
+      vdebug (4, "%s rpmcliQuery(ts, qva, ..) => %d\n", __func__, rc);
+
+      context = rpmcliFini(context);
+      ts = rpmtsFree(ts);
+
+      result = _output;
+    }
   }
   return result;
 } /* </pkg_cli_call> */
@@ -162,10 +241,11 @@ pkg_cli_call (int argc, char **argv)
 GPtrArray *
 pkg_cli_query (Package *package, const char *query, const char *source)
 {
-  gchar *formula = g_strdup_printf ("%s%c", query, _delimit);
   gchar *dbpath  = g_strdup_printf ("%s%s", package->root, RPM_DEFAULT_DBPATH);
+  gchar *formula = g_strdup_printf ("%s%c", query, _delimit);
 
-  char *argv_file[6] = {
+  char *argv_file[6] =
+  {
     RPMPROGRAM
    ,"-qp"
    ,"--qf"
@@ -174,7 +254,8 @@ pkg_cli_query (Package *package, const char *query, const char *source)
    ,"\0"
   };
 
-  char *argv_db[8] = {
+  char *argv_db[8] =
+  {
     RPMPROGRAM
    ,"--dbpath"
    ,dbpath
@@ -188,7 +269,6 @@ pkg_cli_query (Package *package, const char *query, const char *source)
   int argc = (package->file) ? 5 : 7;
   char **argv = (package->file) ? argv_file : argv_db;
   GPtrArray *result = pkg_cli_call (argc, argv);
-
   g_free (formula);
   g_free (dbpath);
 
@@ -201,38 +281,41 @@ pkg_cli_query (Package *package, const char *query, const char *source)
 GPtrArray *
 pkg_cli_query_info (Package *package, QueryMode mode)
 {
-  gchar *formula = g_strdup_printf ("[%%{FILENAMES}\n]%c", _delimit);
   gchar *dbpath = g_strdup_printf ("%s%s", package->root, RPM_DEFAULT_DBPATH);
   gchar *source = (package->file)
-                  ? g_strdup_printf ("%s/%s", package->root, package->file)
-                  : g_strdup_printf ("%s-%s", package->name, package->version);
+                   ? g_strdup_printf ("%s/%s", package->root, package->file)
+                   : g_strdup_printf ("%s-%s-%s.%s", package->name,
+						     package->version,
+						     package->release,
+						     package->arch);
 
-  char *argv_file[6] = {
-    RPMPROGRAM
-   ,(mode == QueryInformation) ? "-q" : "-qp"
-   ,(mode == QueryInformation) ? "-i" : "--qf"
-   ,(mode == QueryInformation) ? "-p" : formula
+  vdebug(3, "%s mode => %d, source => %s\n", __func__, mode, source);
+
+  char *argv_file[6] =
+  {
+   RPMPROGRAM
+   ,"-q"
+   ,(mode == QueryInformation) ? "--qf %{DESCRIPTION}" : "-l"
+   ,"-p"
    ,source
    ,"\0"
   };
 
-  char *argv_db[8] = {
-    RPMPROGRAM
+  char *argv_db[7] =
+  {
+   RPMPROGRAM
    ,"--dbpath"
    ,dbpath
    ,"-q"
-   ,(mode == QueryInformation) ? "-i" : "--qf"
-   ,(mode == QueryInformation) ? "-v" : formula
+   ,(mode == QueryInformation) ? "--qf %{DESCRIPTION}" : "-l"
    ,source
    ,"\0"
   };
 
-  int argc = (package->file) ? 5 : 7;
+  int argc = (package->file) ? 6 : 7;
   char **argv = (package->file) ? argv_file : argv_db;
   GPtrArray *result = pkg_cli_call (argc, argv);
-
   g_free (dbpath);
-  g_free (formula);
   g_free (source);
 
   return result;
@@ -246,17 +329,19 @@ pkg_query_info (Package *package, QueryMode mode)
 {
   GPtrArray *result;
 
-   if (!(package->file && package->magic == PGP_MAGIC))
-     result = pkg_cli_query_info (package, mode);
-   else {
-     result = g_ptr_array_new ();
+  vdebug(3, "%s mode => %d, pkgname => %s-%s-%s.%s\n", __func__, mode,
+    package->name, package->version, package->release, package->arch);
 
-     if (mode == QueryInformation)
-       g_ptr_array_add (result, _("PGP armored data public key block"));
-     else
-       g_ptr_array_add (result, _("<no applicable list>"));
-   }
+  if (!(package->file && package->magic == PGP_MAGIC))
+    result = pkg_cli_query_info (package, mode);
+  else {
+    result = g_ptr_array_new ();
 
+    if (mode == QueryInformation)
+      g_ptr_array_add (result, _("PGP armored data public key block"));
+    else
+      g_ptr_array_add (result, _("<no applicable list>"));
+  }
   return result;
 } /* </pkg_query_info> */
 
@@ -272,6 +357,7 @@ pkg_parse_header (Package *package, gchar *header)
   package->summary = strtok(NULL, "\n");
   package->group   = strtok(NULL, "\n");
   package->size    = strtok(NULL, "\n");
+  package->arch    = strtok(NULL, "\n");
 } /* </pkg_parse_header> */
 
 /*
@@ -282,7 +368,7 @@ pkg_dirent_list (const char *path)
 {
   struct dirent **names;
   int count = scandir(path, &names, NULL, alphasort);
-  char source[MAX_PATHNAME];
+  char source[MAX_PATHNAME + 5]; /* more is needed MAX_PATHNAME => 256 */
   GList *list = NULL;
 
   GPtrArray *result;
@@ -292,7 +378,7 @@ pkg_dirent_list (const char *path)
   int idx;
 
   /* Iterate directory path forming list of packages. */
-  vdebug (3, "pkg_dirent_list: path => %s\n", path);
+  vdebug (3, "pkg_dirent_list path => %s\n", path);
 
   for (idx = 0; idx < count; idx++) {
     gchar *header = NULL;	/* header data string newline delimited */
@@ -332,8 +418,8 @@ pkg_dirent_list (const char *path)
       pkg_parse_header (package, header);
       list = g_list_prepend (list, package);
 
-      vdebug (3, "\t%s-%s [%s] %.10s..\n", package->name, package->version,
-              package->group, package->summary);
+      vdebug (3, "\t%s-%s.%s [%s] %.10s..\n", package->name, package->version,
+				package->arch, package->group, package->summary);
     }
   }
 
@@ -349,8 +435,11 @@ pkg_query_list (const char *root)
   gchar *dbpath  = g_strdup_printf ("%s%s", root, RPM_DEFAULT_DBPATH);
   gchar *formula = g_strdup_printf ("%s%c", _packageHeaderQuery, _delimit);
 
+  vdebug (3, "%s dbpath => %s\n", __func__, dbpath);
   int argc = 6;
-  char *argv[7] = {
+
+  char *argv[7] =
+  {
     RPMPROGRAM
    ,"--dbpath"
    ,dbpath
@@ -362,8 +451,6 @@ pkg_query_list (const char *root)
 
   GPtrArray *result = pkg_cli_call (argc, argv);
   GList *list = NULL;
-
-  vdebug (3, "pgk_query_list: dbpath => %s\n", dbpath);
   g_free (formula);
   g_free (dbpath);
 
@@ -379,9 +466,6 @@ pkg_query_list (const char *root)
 
       pkg_parse_header (package, g_ptr_array_index (result, idx));
       list = g_list_prepend (list, package);
-
-      vdebug (3, "\t%s-%s [%s] %.10s..\n", package->name, package->version,
-              package->group, package->summary);
     }
     /* g_ptr_array_free (result, TRUE); */
   }

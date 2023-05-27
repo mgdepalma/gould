@@ -2,7 +2,8 @@
 # Generations Linux <bugs@softcraft.org>
 # Makefile.am for the GOULD project
 #
-SUBDIRS = src po data
+SUBDIRS = src data
+#SUBDIRS = src po data
 
 MAINTAINERCLEANFILES = \
 Makefile.in \
@@ -49,4 +50,4 @@ dist-hook:
 			cp -p $$specfile $(distdir); \
 		fi \
 	done
-
+#/

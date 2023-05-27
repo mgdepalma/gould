@@ -5,17 +5,16 @@
 SUBDIRS =
 MAINTAINERCLEANFILES = Makefile.in
 
-PKG_DEFINE = -D_GNU_SOURCE
-PKG_CFLAGS = $(PKG_DEFINE) -Wall -g -O -pipe
-PKG_LIBS = `pkg-config --libs gtk+-2.0 x11 dbus-1`
+ALL_CFLAGS = -D_GNU_SOURCE -Wno-deprecated-declarations
+PKG_CFLAGS = $(ALL_CFLAGS) -Wall -g -O -pipe
 
 GTK_CFLAGS = `pkg-config --cflags gtk+-2.0 libxml-2.0`
-
+PKG_LIBS   = `pkg-config --libs gtk+-2.0 x11 dbus-1`
 
 bin_PROGRAMS = gould greeter
 
 gould_CFLAGS = \
-	$(GTK_CFLAGS) \
+	$(ALL_CFLAGS) $(GTK_CFLAGS) \
 	-DGOULD_DATA_DIR=@datadir@/@PACKAGE@ \
 	-DCONFIG_FILE=\"@sysconfdir@/X11/@PACKAGE@.conf\" \
 	-DXSESSIONS_DIR=\"/usr/share/xsessions\" \
@@ -31,7 +30,7 @@ gould_SOURCES = \
 	$(NULL)
 
 greeter_CFLAGS = \
-	$(GTK_CFLAGS) \
+	$(ALL_CFLAGS) $(GTK_CFLAGS) \
 	-DGOULD_DATA_DIR=\"@datadir@/@PACKAGE@\" \
 	-DCONFIG_FILE=\"@sysconfdir@/X11/@PACKAGE@.conf\" \
 	-DXSESSIONS_DIR=\"/usr/share/xsessions\" \
@@ -49,3 +48,4 @@ greeter_SOURCES = \
 	gdm/locarchive.h \
 	util.c util.h \
 	$(NULL)
+#/

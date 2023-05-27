@@ -50,6 +50,7 @@ struct _Package
   const char *summary;
   const char *group;
   const char *size;
+  const char *arch;
 
   const char *file;	/* NULL if package is from the RPM database */
   const char *root;	/* directory of RPM file or database root */
@@ -64,15 +65,16 @@ enum _QueryMode
 };
 
 /* Methods exported in the implementation */
-GPtrArray *
-pkg_cli_query (Package *package, const char *query, const char *source);
 GPtrArray *pkg_query_info (Package *package, QueryMode mode);
+GPtrArray *pkg_cli_query (Package *package, const char *query,
+					   const char *source);
 
-GList *pkg_dirent_list (const char *path);
 GList *pkg_query_list (const char *root);
+GList *pkg_dirent_list (const char *path);
 
-gint alpha_name_sort (gconstpointer a, gconstpointer b);
 gint pkg_name_sort (gconstpointer a, gconstpointer b);
+gint alpha_name_sort (gconstpointer a, gconstpointer b);
+gint pkg_query_details(GPtrArray *details, char *buffer);
 
 void pkg_parse_header (Package *package, gchar *header);
 void pkg_init (void);

@@ -3,10 +3,13 @@
 # src/modules/Makefile.am for the GOULD project
 #
 MAINTAINERCLEANFILES = Makefile.in
-PKG_CFLAGS = `pkg-config --cflags gtk+-2.0 libxml-2.0`
-PKG_LIBS = `pkg-config --libs gtk+-2.0 libxml-2.0`
 
-AM_CFLAGS = $(PKG_CFLAGS) -I../common -I../programs -Wall -g -O -pipe
+PKG_DEPS   = "gtk+-2.0 libxml-2.0"
+PKG_CFLAGS = `pkg-config --cflags $(PKG_DEPS)`
+PKG_LIBS   = `pkg-config --libs $(PKG_DEPS)`
+
+ALL_CFLAGS = -I../common -I../programs -Wno-deprecated-declarations
+AM_CFLAGS  = $(PKG_CFLAGS) $(ALL_CFLAGS) -Wall -g -O -pipe
 AM_LDFLAGS = $(PKG_LIBS) -module -avoid-version 
 
 LIBS = -L../common -lgould
@@ -24,11 +27,12 @@ $(NULL)
 mixer_la_LIBADD = -lasound
 
 ##
-## Override the install-binPROGRAM target.
-##
+# Override the install-binPROGRAM target.
+#
 ModulesDir = $(libdir)/modules/@PACKAGE@
 
 install-binPROGRAMS: $(bin_PROGRAMS)
 	@echo "Installing plugin modules in $(ModulesDir)"
 	$(mkinstalldirs) $(DESTDIR)$(ModulesDir)
 	$(INSTALL_PROGRAM) $(bin_PROGRAMS) "$(DESTDIR)$(ModulesDir)"
+#/
