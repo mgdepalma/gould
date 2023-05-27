@@ -193,10 +193,10 @@ gint pkg_query_details(GPtrArray *details, char *buffer)
 } /* pkg_query_details */
 
 /*
-* pkg_cli_call - make a call to rpmcliQuery(3)
+* pkg_cli_call - make a call to popen(3) or rpmcliQuery(3)
 */
 GPtrArray *
-pkg_cli_call (int argc, char **argv)
+pkg_cli_call (int argc, char **argv, gboolean pipeline)
 {
   QVA_t qva = &rpmQVKArgs;
   GPtrArray *result = NULL;
@@ -210,10 +210,8 @@ pkg_cli_call (int argc, char **argv)
   }
   vdebug(3, "%s argc => %d, argv => %s\n", __func__, argc, command);
 
-  if (argc > 6) {   /* given changes in the RPM API rely on popen(3) */
+  if (pipeline)  /* instead on relying on the RPM API use popen(3) */
     result = pkg_popen_call(argc, argv);
-    //char *details = pkg_query_details(result);
-  }
   else {
     memset(qva, 0, sizeof(struct rpmQVKArguments_s));
 
@@ -268,7 +266,7 @@ pkg_cli_query (Package *package, const char *query, const char *source)
 
   int argc = (package->file) ? 5 : 7;
   char **argv = (package->file) ? argv_file : argv_db;
-  GPtrArray *result = pkg_cli_call (argc, argv);
+  GPtrArray *result = pkg_cli_call (argc, argv, FALSE);
   g_free (formula);
   g_free (dbpath);
 
@@ -291,11 +289,13 @@ pkg_cli_query_info (Package *package, QueryMode mode)
 
   vdebug(3, "%s mode => %d, source => %s\n", __func__, mode, source);
 
+  /* add extra dummy parameter to trigger using popen() */
   char *argv_file[6] =
   {
    RPMPROGRAM
    ,"-q"
-   ,(mode == QueryInformation) ? "--qf %{DESCRIPTION}" : "-l"
+/* ,(mode == QueryInformation) ? "--qf %{DESCRIPTION}" : "-l" */
+   ,(mode == QueryInformation) ? "-i " : "-l"
    ,"-p"
    ,source
    ,"\0"
@@ -307,14 +307,15 @@ pkg_cli_query_info (Package *package, QueryMode mode)
    ,"--dbpath"
    ,dbpath
    ,"-q"
-   ,(mode == QueryInformation) ? "--qf %{DESCRIPTION}" : "-l"
+/* ,(mode == QueryInformation) ? "--qf %{DESCRIPTION}" : "-l" */
+   ,(mode == QueryInformation) ? "-i " : "-l"
    ,source
    ,"\0"
   };
 
-  int argc = (package->file) ? 6 : 7;
+  int argc = (package->file) ? 5 : 6;
   char **argv = (package->file) ? argv_file : argv_db;
-  GPtrArray *result = pkg_cli_call (argc, argv);
+  GPtrArray *result = pkg_cli_call (argc, argv, TRUE);
   g_free (dbpath);
   g_free (source);
 
@@ -419,7 +420,7 @@ pkg_dirent_list (const char *path)
       list = g_list_prepend (list, package);
 
       vdebug (3, "\t%s-%s.%s [%s] %.10s..\n", package->name, package->version,
-				package->arch, package->group, package->summary);
+			package->arch, package->group, package->summary);
     }
   }
 
@@ -436,7 +437,6 @@ pkg_query_list (const char *root)
   gchar *formula = g_strdup_printf ("%s%c", _packageHeaderQuery, _delimit);
 
   vdebug (3, "%s dbpath => %s\n", __func__, dbpath);
-  int argc = 6;
 
   char *argv[7] =
   {
@@ -449,7 +449,8 @@ pkg_query_list (const char *root)
    ,"\0"
   };
 
-  GPtrArray *result = pkg_cli_call (argc, argv);
+  int argc = 6;
+  GPtrArray *result = pkg_cli_call (argc, argv, FALSE);
   GList *list = NULL;
   g_free (formula);
   g_free (dbpath);

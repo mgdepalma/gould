@@ -157,21 +157,21 @@ depot_layout (GlobalDepot *depot)
   gtk_container_add (GTK_CONTAINER(scrolled), view);
   gtk_widget_show (view);
 
-  /* Add column headers. */
+  /* add column headers. */
   depot_column_header (view, "", MARK_COLUMN);
   depot_column_header (view, _("Group | Package"), NAME_COLUMN);
   depot_column_header (view, _("Version-Release"), VERS_COLUMN);
   depot_column_header (view, _("Architecture"), ARCH_COLUMN);
   depot_column_header (view, _("Summary"), DESC_COLUMN);
 
-  /* [depots]Right side of layout. */
+  /* [depots]right side of layout. */
   notebook = gtk_notebook_new ();
   gtk_notebook_set_show_border (GTK_NOTEBOOK(notebook), FALSE);
   gtk_notebook_set_tab_pos (GTK_NOTEBOOK (notebook), GTK_POS_TOP);
 
-  /* Description tab. */
+  /* specification tab. */
   layer = gtk_vbox_new (FALSE, 1);
-  label = gtk_label_new (_("Description"));
+  label = gtk_label_new (_("Specification"));
   gtk_notebook_append_page (GTK_NOTEBOOK(notebook), layer, label);
   gtk_widget_show (layer);
 
@@ -186,7 +186,7 @@ depot_layout (GlobalDepot *depot)
   gtk_container_add (GTK_CONTAINER(scrolled), info);
   gtk_widget_show (info);
 
-  /* File list tab. */
+  /* file list tab. */
   layer = gtk_vbox_new (FALSE, 1);
   label = gtk_label_new (_("File list"));
   gtk_notebook_append_page (GTK_NOTEBOOK(notebook), layer, label);
