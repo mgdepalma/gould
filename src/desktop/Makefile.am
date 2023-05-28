@@ -14,12 +14,25 @@ AM_LDFLAGS = -Wl,-export-dynamic `pkg-config --libs gtk+-2.0 libxml-2.0`
 LIBS = -L../common -lgould -lX11
 
 bin_PROGRAMS = \
-gsnapshot \
-grdesktop \
-gdisplay
+gpanel
 
-grdesktop_SOURCES = grdesktop.h grdesktop.c
-gsnapshot_SOURCES = gsnapshot.h gsnapshot.c
-gdisplay_SOURCES  = gdisplay.h gdisplay.c
+noinst_PROGRAMS = \
+gcontrol \
+prova
+
+# additional LDFLAGS needed by gpanel
+gpanel_LDADD = -lgthread-2.0
+
+# program source dependencies
+gpanel_SOURCES = gpanel.h gpanel.c \
+                          menu.c \
+                          taskbar.c \
+                          desktop.c \
+                          setting.c \
+                          wallpaper.c \
+                          xlock.c \
+			  gsession.h
+
+gcontrol_SOURCES  = gcontrol.h gcontrol.c
 
 #/

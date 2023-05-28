@@ -118,6 +118,7 @@ AC_CONFIG_FILES([
   Makefile
   src/Makefile
   src/common/Makefile
+  src/desktop/Makefile
   src/modules/Makefile
   src/programs/Makefile
   src/system/Makefile
