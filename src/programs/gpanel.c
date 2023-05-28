@@ -24,13 +24,12 @@
 #include <X11/Xatom.h>
 #include <execinfo.h>
 
+
+const gchar *Authors = "Mauro Gianni DePalma";  /* <bugs@softcraft.org> */
 static GlobalPanel *global = NULL; /* (protected) encapsulated program data */
-unsigned short debug = 0;	   /* (protected) must be present */
 
-const gchar *Authors = "Mauro DePalma";
-
-const char *Program = "gpanel";	/* (public) published program name */
-const char *Release = "1.6.4";	/* (public) published program version */
+const char *Program = "gpanel";	   /* (public) published program name    */
+const char *Release = "1.6.6";	   /* (public) published program version */
 
 const char *Information =
 "is a gtk-based simple desktop panel.\n"
@@ -63,10 +62,11 @@ const char *ConfigurationHeader =
 
 const static unsigned short BACKTRACE_SIZE = 100;
 
-
+unsigned short debug = 0;	   /* (protected) must be present */
+
 /*
- * configuration_new creates new configuration data structure and file
- */
+* configuration_new creates new configuration data structure and file
+*/
 ConfigurationNode *
 configuration_new (const char *resource)
 {
@@ -97,8 +97,8 @@ configuration_new (const char *resource)
 } /* </configuration_new> */
 
 /*
- * check_configuration_version
- */
+* check_configuration_version
+*/
 static void
 check_configuration_version (GlobalPanel *panel, SchemaVersion *version)
 {
@@ -159,8 +159,8 @@ icon_path_finder (PanelIcons *icons, const char *name)
 } /* </icon_path_finder> */
 
 /*
- * (protected) start_menu_open
- */
+* (protected) start_menu_open
+*/
 static void
 start_menu_open (Modulus *applet)
 {
@@ -168,8 +168,8 @@ start_menu_open (Modulus *applet)
 } /* </start_menu_open> */
 
 /*
- * (private) applets_builtin - setup internal applets
- */
+* (private) applets_builtin - setup internal applets
+*/
 static GList *
 applets_builtin (GlobalPanel *panel)
 {
@@ -221,8 +221,8 @@ applets_builtin (GlobalPanel *panel)
 } /* </applets_builtin> */
 
 /*
- * panel_config_orientation
- */
+* panel_config_orientation
+*/
 void
 panel_config_orientation (GlobalPanel *panel)
 {
@@ -262,8 +262,8 @@ panel_config_orientation (GlobalPanel *panel)
 } /* </panel_config_orientation> */
 
 /*
- * (private) panel_config_settings
- */
+* (private) panel_config_settings
+*/
 static void
 panel_config_settings (GlobalPanel *panel)
 {
@@ -373,9 +373,9 @@ panel_config_settings (GlobalPanel *panel)
 } /* </panel_config_settings> */
 
 /*
- * (private) panel_quicklaunch
- * (private) panel_quicklaunch_open
- */
+* (private) panel_quicklaunch
+* (private) panel_quicklaunch_open
+*/
 static void
 panel_quicklaunch (GtkWidget *widget, Modulus *applet)
 {
@@ -387,6 +387,7 @@ panel_quicklaunch (GtkWidget *widget, Modulus *applet)
   else
      notice_at(100, 100, ICON_WARNING, "[%s]%s: %s.",
                Program, applet->label, _("command not found"));
+
 } /* </panel_quicklaunch> */
 
 static void
@@ -418,8 +419,8 @@ panel_quicklaunch_open (Modulus *applet)
 } /* </panel_quicklaunch_open> */
 
 /*
- * (private) panel_config_moduli
- */
+* (private) panel_config_moduli
+*/
 static void
 panel_config_moduli (GlobalPanel *panel, GList *builtin, GList *plugins)
 {
@@ -494,14 +495,14 @@ panel_config_moduli (GlobalPanel *panel, GList *builtin, GList *plugins)
 } /* </panel_config_moduli> */
 
 /*
- * (protected) panel_update_pack_position
- *
- * This is an interim implementaion approach to account for the position
- * of each applet so that applets which display protruding gadgets, such
- * a volume control slider, etc. can display the gadget positioned near
- * the applet->widget window. A better approach would be to obtaint the
- * the screen coordinates of the applet->widget window.
- */
+* (protected) panel_update_pack_position
+*
+* This is an interim implementaion approach to account for the position
+* of each applet so that applets which display protruding gadgets, such
+* a volume control slider, etc. can display the gadget positioned near
+* the applet->widget window. A better approach would be to obtaint the
+* the screen coordinates of the applet->widget window.
+*/
 void
 panel_update_pack_position (GlobalPanel *panel, Modulus *applet)
 {
@@ -520,8 +521,8 @@ panel_update_pack_position (GlobalPanel *panel, Modulus *applet)
 } /* </panel_update_pack_position> */
 
 /*
- * (private) applets_loadable
- */
+* (private) applets_loadable
+*/
 static GList *
 applets_loadable (GlobalPanel *panel, guint space)
 {
@@ -584,8 +585,8 @@ applets_loadable (GlobalPanel *panel, guint space)
 } /* </applets_loadable> */
 
 /*
- * settings_initialize post modules load initialization
- */
+* settings_initialize post modules load initialization
+*/
 static void
 settings_initialize (GlobalPanel *panel)
 {
@@ -615,8 +616,8 @@ settings_initialize (GlobalPanel *panel)
 } /* </settings_initialize> */
 
 /*
- * interface - construct user interface
- */
+* interface - construct user interface
+*/
 GtkWidget *
 interface (GlobalPanel *panel)
 {
@@ -655,8 +656,8 @@ interface (GlobalPanel *panel)
 } /* </interface> */
 
 /*
- * selfexclude - WindowFilter to exclude self from GREEN window lists
- */
+* selfexclude - WindowFilter to exclude self from GREEN window lists
+*/
 static gboolean
 selfexclude (Window xid, int desktop)
 {
@@ -664,7 +665,7 @@ selfexclude (Window xid, int desktop)
   return (wname) ? strcmp(wname, (char *)Program) == 0 : TRUE;
 } /* </selfexclude> */
 
-/**
+/*
 * open session stream socket
 */
 static inline int session_open(const char *pathway)
@@ -688,7 +689,7 @@ static inline int session_open(const char *pathway)
   return stream;
 } /* session_open */
 
-/**
+/*
 * initialize
 */
 void
@@ -749,8 +750,8 @@ initialize (GlobalPanel *panel)
 } /* </initialize> */
 
 /*
- * application constructor
- */
+* application constructor
+*/
 void
 constructor (GlobalPanel *panel)
 {
@@ -787,8 +788,8 @@ constructor (GlobalPanel *panel)
 } /* </constructor> */
 
 /*
- * reload data structures and reconstruct as needed
- */
+* reload data structures and reconstruct as needed
+*/
 int
 panel_loader (GlobalPanel *panel)
 {
@@ -812,8 +813,8 @@ panel_loader (GlobalPanel *panel)
 } /* </panel_loader> */
 
 /*
- * check running status
- */
+* check running status
+*/
 /* inline */ pid_t
 gpanel_getpid(const char *lockfile)
 {
@@ -841,8 +842,8 @@ gpanel_getpid(const char *lockfile)
 } /* </gpanel_getpid> */
 
 /*
- * application unique instance
- */
+* application unique instance
+*/
 pid_t
 gpanel_instance (GlobalPanel *panel)
 {
@@ -880,8 +881,8 @@ gpanel_instance (GlobalPanel *panel)
 } /* </gpanel_instance> */
 
 /*
- * responder - signal handler
- */
+* responder - signal handler
+*/
 void
 responder (int sig)
 {
@@ -911,18 +912,37 @@ responder (int sig)
       notice_at(50, 50, ICON_ERROR, "%s: %s.", Program,
 			   _("internal program error"));
       gtk_main_quit ();
-
-      if (debug == 0) {  /* do not restart if we are in debug mode */ 
-        dispatch (Program, global->session);
-      }
       exit (sig);
     }
   }
 } /* </responder> */
 
 /*
- * main - main program implementation
- */
+* apply_signal_responder
+*/
+static inline void
+apply_signal_responder()
+{
+  signal(SIGHUP,  responder);	/* reload */
+  signal(SIGTERM, responder);	/* logout */
+  signal(SIGCONT, responder);	/* cancel logout */
+  signal(SIGUSR1, responder);	/* show control panel */
+  signal(SIGUSR2, responder);	/* new desktop shortcut */
+  signal(SIGABRT, responder);   /* internal program error */
+  signal(SIGALRM, responder);   /* .. */
+  signal(SIGBUS,  responder);   /* .. */
+  signal(SIGILL,  responder);   /* .. */
+  signal(SIGINT,  responder);   /* .. */
+  signal(SIGIOT,  responder);   /* .. */
+  signal(SIGKILL, responder);   /* .. */
+  signal(SIGQUIT, responder);   /* .. */
+  signal(SIGSEGV, responder);	/* .. */
+  signal(SIGCHLD, SIG_IGN);	/* do not want to wait() for SIGCHLD */
+} /* apply_signal_responder */
+
+/*
+* main - gpanel program main
+*/
 int
 main(int argc, char *argv[])
 {
@@ -960,7 +980,6 @@ main(int argc, char *argv[])
 
       case 'l':
         sig = SIGTERM;
-        break;
 
       case 's':
         sig = SIGHUP;
@@ -995,23 +1014,7 @@ main(int argc, char *argv[])
     return status;
   }
 
-  signal(SIGHUP,  responder);	/* reload */
-  signal(SIGTERM, responder);	/* logout */
-  signal(SIGCONT, responder);	/* cancel logout */
-  signal(SIGUSR1, responder);	/* show control panel */
-  signal(SIGUSR2, responder);	/* new desktop shortcut */
-  signal(SIGABRT, responder);   /* internal program error */
-  signal(SIGALRM, responder);   /* .. */
-  signal(SIGBUS,  responder);   /* .. */
-  signal(SIGILL,  responder);   /* .. */
-  signal(SIGINT,  responder);   /* .. */
-  signal(SIGIOT,  responder);   /* .. */
-  signal(SIGKILL, responder);   /* .. */
-  signal(SIGQUIT, responder);   /* .. */
-  signal(SIGSEGV, responder);	/* .. */
-  signal(SIGCHLD, SIG_IGN);	/* do not want to wait() for SIGCHLD */
-
-  putenv( "LD_LIBRARY_PATH=/opt/gnome/lib:/usr/i586-linux/lib" );
+  apply_signal_responder();
   apply_gtk_theme (CONFIG_FILE);
   gtk_main ();			/* main event loop */
 

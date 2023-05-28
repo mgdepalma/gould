@@ -286,10 +286,13 @@ pkg_cli_query_info (Package *package, QueryMode mode)
 						     package->version,
 						     package->release,
 						     package->arch);
-
+  /* package->arch => (none) is a special case */
+  if (strcmp(package->arch, "(none)") == 0) {
+    int len = strlen(source);
+    source[len - 7] = '\0';
+  }
   vdebug(3, "%s mode => %d, source => %s\n", __func__, mode, source);
 
-  /* add extra dummy parameter to trigger using popen() */
   char *argv_file[6] =
   {
    RPMPROGRAM
