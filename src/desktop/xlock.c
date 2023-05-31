@@ -17,9 +17,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "util.h"
-#include "module.h"
+#include "gould.h"      /* common package declarations */
 #include "gpanel.h"
+#include "module.h"
+#include "util.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>

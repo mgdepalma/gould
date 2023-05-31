@@ -17,13 +17,14 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "gould.h"	/* common package declarations */
 #include "gpanel.h"
 #include "gsession.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <sys/prctl.h>
 #include <execinfo.h>
-
 
 const gchar *Authors = "Mauro Gianni DePalma";  /* <bugs@softcraft.org> */
 static GlobalPanel *global = NULL; /* (protected) encapsulated program data */
@@ -60,10 +61,12 @@ const char *ConfigurationHeader =
 "   changes made will be lost when the program using this file exits.  -->\n"
 "\n";
 
-const static unsigned short BACKTRACE_SIZE = 100;
+debug_t debug = 0;  /* debug verbosity (0 => none) {must be declared} */
+int _stream = -1;   /* stream socket descriptor */
 
-unsigned short debug = 0;	   /* (protected) must be present */
+const char *gpanelLock = "/tmp/gpanel.lock";
 
+
 /*
 * configuration_new creates new configuration data structure and file
 */
@@ -76,8 +79,6 @@ configuration_new (const char *resource)
   /* Locate the system-wide resource configuration file. */
   if (access("/usr/local/share/gould/panel", R_OK) == 0)
     reference = "/usr/local/share/gould/panel";
-  else if (access("/opt/gnome/share/gould/panel", R_OK) == 0)
-    reference = "/opt/gnome/share/gould/panel";
   else
     reference = "/usr/share/gould/panel";
 
@@ -276,39 +277,22 @@ panel_config_settings (GlobalPanel *panel)
 
   PanelIcons *icons = panel->icons = g_new0 (PanelIcons, 1);
 
-  gboolean gnome = FALSE;
-  gchar **path = g_strsplit (getenv("PATH"), ":", MAX_PATHNAME);
-  gchar *attrib;
-  int idx = 0;
+  gchar *attrib = g_strdup_printf ("%s:%s", Program, XLOCK);
+  /* gchar **path = g_strsplit (getenv("PATH"), ":", MAX_PATHNAME); */
 
-
-  /* Initialize panel->shared for interprocess communication. */
-  attrib = g_strdup_printf ("%s:%s", Program, XLOCK);
-
+  /* initialize panel->shared for interprocess communication */
   shared->display = display;
   shared->window  = DefaultRootWindow (display);
   shared->saver   = XInternAtom (display, attrib, False);
+  panel->shared   = shared;
 
   XSetSelectionOwner(display, shared->saver, shared->window, CurrentTime);
-  panel->shared = shared;
   g_free (attrib);
 
-
-  /*
-  * Configuration for general settings.
-  */
+  /* configuration for general settings  */
   panel->notice = NULL;		/* initialize alert notices */
   panel->path = NULL;		/* initialize exec search path */
-
-  for (idx = 0; path[idx] != NULL; idx++) {
-    if (strcmp(path[idx], "/opt/gnome/bin") == 0) gnome = TRUE;
-    panel->path = g_list_append (panel->path, g_strdup(path[idx]));
-  }
-
-  if (gnome == FALSE) {		/* add /opt/gnome/bin to panel->path */
-    panel->path = g_list_append (panel->path, g_strdup("/opt/gnome/bin"));
-  }
-  g_strfreev (path);
+  /* g_strfreev (path); */
 
   /* Configuration for the icons. */
   icons->path  = NULL;
@@ -690,6 +674,22 @@ static inline int session_open(const char *pathway)
 } /* session_open */
 
 /*
+* get_pid_from_lockfile
+*/
+pid_t
+get_pid_from_lockfile(const char *lockfile)
+{
+  pid_t pid = 0;
+  FILE *stream = fopen(lockfile, "r");
+
+  if (stream) {
+    fscanf (stream, "%d", &pid);
+    fclose(stream);
+  }
+  return pid;
+} /* </get_pid_from_lockfile> */
+
+/*
 * initialize
 */
 void
@@ -711,11 +711,14 @@ initialize (GlobalPanel *panel)
   panel->resource = g_strdup_printf("%s/.config/panel", home);
   panel->green    = green_filter_new (selfexclude, DefaultScreen(gdk_display));
 
-  if (systray_check_running_screen (green_get_gdk_screen (panel->green)))
-    g_printerr("%s: %s\n", Program, _("Another systemtray already running."));
-  else
-    panel->systray  = systray_new ();
+  if (systray_check_running_screen (green_get_gdk_screen (panel->green))) {
+    pid_t pid = get_pid_from_lockfile (gpanelLock);
+    g_printerr("%s: another instance is already running (pid => %d)\n",
+                    Program, pid);
+    _exit(RUNNING_);
+  }
 
+  panel->systray  = systray_new ();
   strcpy(dirname, panel->resource);	/* obtain parent directory path */
   scan = strrchr(dirname, '/');
 
@@ -847,35 +850,28 @@ gpanel_getpid(const char *lockfile)
 pid_t
 gpanel_instance (GlobalPanel *panel)
 {
-  char *lockfile = g_strdup_printf("/tmp/.%s-lock", Program);
-  /* pid_t instance = gpanel_getpid(lockfile); */
-  pid_t instance = pidof(Program, lockfile);
+  pid_t instance = 0;
+  memset(panel, 0, sizeof(GlobalPanel));
 
-  if (instance > 0) {
-    g_free (lockfile);
+  if (panel_loader(panel) == EX_OK) {
+    FILE *stream = fopen(gpanelLock, "w");
+
+    if (stream) {
+      instance = getpid();
+      fprintf(stream, "%d\n", instance);
+      panel->lockfile = (char *)gpanelLock;
+      fclose(stream);
+    }
+    global = panel;             /* save GlobalPanel data structure */
   }
-  else {
-    memset(panel, 0, sizeof(GlobalPanel));
-    panel->lockfile = lockfile;
+  else {                        /* configuration file disappeared */
+    if (global)
+      notice_at(50, 50, ICON_ERROR,"%s: %s.",
+                        Program, _("cannot find configuration file"));
+    else
+      printf("%s: %s.", Program, _("cannot find configuration file"));
 
-    if (panel_loader(panel) == EX_OK) {
-      FILE *stream = fopen(lockfile, "w");
-
-      if (stream) {
-        fprintf(stream, "%d\n", getpid());
-        fclose(stream);
-      }
-      global = panel;		/* save GlobalPanel data structure */
-    }
-    else {			/* configuration file disappeared */
-      if (global)
-        notice_at(50, 50, ICON_ERROR,"%s: %s.",
-			Program, _("cannot find configuration file"));
-      else
-        printf("%s: %s.", Program, _("cannot find configuration file"));
-
-      exit(EX_CONFIG);
-    }
+    _exit(EX_CONFIG);
   }
   return instance;
 } /* </gpanel_instance> */
@@ -886,6 +882,8 @@ gpanel_instance (GlobalPanel *panel)
 void
 responder (int sig)
 {
+  const static debug_t BACKTRACE_LINES = 69;
+
   switch (sig) {
     case SIGHUP:
     case SIGCONT:
@@ -902,18 +900,21 @@ responder (int sig)
       break;
 
     default:
-    {
-      void *trace[BACKTRACE_SIZE];
-      int nptrs = backtrace(trace, BACKTRACE_SIZE);
+      remove (gpanelLock);
 
-      printf("%s, exiting on signal: %d\n", Program, sig);
-      backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
+      if (sig |= SIGINT && sig != SIGKILL) {
+        void *trace[BACKTRACE_LINES];
+        int nptrs = backtrace(trace, BACKTRACE_LINES);
 
-      notice_at(50, 50, ICON_ERROR, "%s: %s.", Program,
-			   _("internal program error"));
+        printf("%s, exiting on signal: %d\n", Program, sig);
+        backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
+
+        notice_at(50, 50, ICON_ERROR, "%s: %s.", Program,
+                             _("internal program error"));
+      }
       gtk_main_quit ();
       exit (sig);
-    }
+      break;
   }
 } /* </responder> */
 
@@ -921,7 +922,7 @@ responder (int sig)
 * apply_signal_responder
 */
 static inline void
-apply_signal_responder()
+apply_signal_responder(void)
 {
   signal(SIGHUP,  responder);	/* reload */
   signal(SIGTERM, responder);	/* logout */
@@ -938,7 +939,62 @@ apply_signal_responder()
   signal(SIGQUIT, responder);   /* .. */
   signal(SIGSEGV, responder);	/* .. */
   signal(SIGCHLD, SIG_IGN);	/* do not want to wait() for SIGCHLD */
-} /* apply_signal_responder */
+} /* </apply_signal_responder> */
+
+/*
+* gpanel_lockfile_pid
+*/
+pid_t
+gpanel_lockfile_pid(const char *lockfile)
+{
+  FILE *stream;                           /* lockfile descriptor */
+  pid_t pid = 0;
+
+  if ((stream = fopen(lockfile, "r"))) {  /* open lockfile readonly */
+    const int bytes = sizeof(double);
+
+    char line[bytes];
+    fgets(line, bytes, stream);
+    fclose(stream);
+
+    if (strlen(line) > 0) {
+      line[strlen(line) - 1] = (char)0;   /* chomp newline */
+      pid = atoi(line);
+    }
+  }
+  return pid;
+} /* </gpanel_lockfile_pid> */
+
+/*
+* gpanel_lockfile_check
+*/
+int
+gpanel_lockfile_check(const char *lockfile)
+{
+  int status = MISSING_;
+
+  if (access(lockfile, F_OK) == 0) {
+    char procfile[MAX_STRING];
+    sprintf(procfile, "/proc/%d", gpanel_lockfile_pid(lockfile));
+
+    if (access(procfile, F_OK) == 0) {
+      FILE *stream;
+      strcat(procfile, "/cmdline");
+
+      if ( (stream = fopen(procfile, "r")) ) {
+        char command[MAX_LABEL], *match, *program;
+
+        fgets(command, MAX_LABEL, stream);
+        program = strrchr(command, '/');
+        match = (program != NULL) ? program : command;
+        status = (strcmp(match, Program) == 0) ? VALID_ : INVALID_;
+
+        fclose(stream);
+      }
+    }
+  }
+  return status;
+} /* </gpanel_lockfile_check> */
 
 /*
 * main - gpanel program main
@@ -952,10 +1008,6 @@ main(int argc, char *argv[])
   int sig = SIGUSR1;		/* show control panel */
   int status = EX_OK;
   int opt;
-
-  /* Change the process name using Program variable. */
-  strncpy(argv[0], Program, strlen(argv[0]));
-  setprogname (Program = argv[0]);
 
   /* disable invalid option messages */
   opterr = 0;
@@ -998,6 +1050,7 @@ main(int argc, char *argv[])
         }
     }
   }
+  apply_signal_responder();
 
 #ifdef GETTEXT_PACKAGE
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
@@ -1005,17 +1058,19 @@ main(int argc, char *argv[])
   textdomain (GETTEXT_PACKAGE);
   gtk_disable_setlocale();
 #endif
+  prctl(PR_SET_NAME, (unsigned long)gpanelProcess, 0, 0, 0);
 
-  gtk_init (&argc, &argv);	/* initialization of the GTK */
-  gtk_set_locale ();
-
-  if ((instance = gpanel_instance (&memory)) > 0) {
+  if (gpanel_lockfile_check (gpanelLock) != VALID_)
+    instance = gpanel_instance (&memory);  /* gpanel_instance() initialize */
+  else {
+    instance = gpanel_lockfile_pid (gpanelLock);
     status = kill(instance, sig);
     return status;
   }
 
-  apply_signal_responder();
+  gtk_init (&argc, &argv);	/* initialization of the GTK */
   apply_gtk_theme (CONFIG_FILE);
+  gtk_set_locale ();
   gtk_main ();			/* main event loop */
 
   return status;

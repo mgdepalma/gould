@@ -17,8 +17,8 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef GPANEL_H
-#define GPANEL_H
+#ifndef _GPANEL
+#define _GPANEL "/tmp/gpanel"
 
 #include "util.h"
 #include "green.h"
@@ -32,9 +32,10 @@
 #include <signal.h>
 #include <sysexits.h>
 
-#define SCHEMA_VERSION_CODE   SCHEMA_VERSION(1,0,0)
-#define SCHEMA_VERSION_STRING "1.0"
+#define SCHEMA_VERSION_CODE   SCHEMA_VERSION(1,2,0)
+#define SCHEMA_VERSION_STRING "1.2"
 
+#define gpanelProcess "desktop"       /* published process name */
 #define XLOCK "xlock"
 
 G_BEGIN_DECLS

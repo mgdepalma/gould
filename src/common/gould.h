@@ -17,20 +17,27 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef _GOULD
+#define _GOULD "/tmp/gould"
 
 #include <libintl.h>
 #include <string.h>
 
+#define GETTEXT_PACKAGE "gould"
 #define _(string) gettext(string)
 
 #define MAX_BUFFER_SIZE 512
 #define MAX_PATHNAME    256
+#define MAX_STRING      128
+#define MAX_LABEL       64
 
 #define MAXSTR(a,b) MAX(strlen(a),strlen(b))
 #define MINSTR(a,b) MIN(strlen(a),strlen(b))
 
-#define GETTEXT_PACKAGE "gould"
+typedef unsigned short debug_t;
 
-#endif /* </CONFIG_H> */
+#define RUNNING_ 1
+#define MISSING_ 2
+#define INVALID_ 3
+#define VALID_   0
+#endif
