@@ -17,8 +17,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "util.h"
+#include "gould.h"
 #include "gcontrol.h"
+#include "util.h"
 
 const char *Program;		/* (public) published program name */
 const char *Release;		/* (public) published program version */

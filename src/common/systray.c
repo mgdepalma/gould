@@ -17,6 +17,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "gould.h"
 #include "xutil.h"
 #include "systray.h"
 
@@ -26,7 +27,7 @@
 
 
 /*
- * Systray private data structures.
+* systray private data structures.
 */
 #define SYSTEM_TRAY_REQUEST_DOCK    0
 #define SYSTEM_TRAY_BEGIN_MESSAGE   1
@@ -185,7 +186,7 @@ systray_marshal_VOID__OBJECT_LONG (GClosure     *closure,
 } /* </systray_marshal_VOID__OBJECT_LONG> */
 
 /*
- * SYSTRAY implementation.
+* systray implementation.
 */
 G_DEFINE_TYPE (Systray, systray, G_TYPE_OBJECT)
 
@@ -211,9 +212,9 @@ systray_finalize (GObject *object)
 } /* </systray_finalize> */
 
 /*
- * systray_set_property
- * systray_get_property
- */
+* systray_set_property
+* systray_get_property
+*/
 static void
 systray_set_property (GObject      *object,
                       guint         prop_id,
@@ -333,7 +334,7 @@ systray_class_init (SystrayClass *klass)
 } /* </systray_class_init> */
 
 /*
- * Method implementation internals.
+* method implementation internals
 */
 static inline void
 pending_message_free (PendingMessage *message)
@@ -343,8 +344,8 @@ pending_message_free (PendingMessage *message)
 } /* </pending_message_free> */
 
 /*
- * systray_plug_removed
- */
+* systray_plug_removed
+*/
 static gboolean
 systray_plug_removed (GtkSocket *socket, Systray *manager)
 {
@@ -361,8 +362,8 @@ systray_plug_removed (GtkSocket *socket, Systray *manager)
 } /* </systray_plug_removed> */
 
 /*
- * systray_plug_added
- */
+* systray_plug_added
+*/
 static void
 systray_plug_added (Systray *manager, XClientMessageEvent *xevent)
 {
@@ -376,9 +377,9 @@ systray_plug_added (Systray *manager, XClientMessageEvent *xevent)
 
   socket = gtk_socket_new ();
 
-  /* We need to set the child window here so that the client can call
-   * _get functions in the signal handler
-   */
+  /* we need to set the child window here so that the client
+   * can call _get functions in the signal handler
+  */
   window = g_new (Window, 1);
   *window = xevent->data.l[2];
 
@@ -389,7 +390,7 @@ systray_plug_added (Systray *manager, XClientMessageEvent *xevent)
   g_signal_emit (manager, signals_[TRAY_ICON_ADDED], 0, socket);
   vdebug (5, "systray signal => ICON_ADDED\n");
 
-  /* Add the socket only if it's been attached */
+  /* add the socket only if it's been attached */
   if (GTK_IS_WINDOW (gtk_widget_get_toplevel (GTK_WIDGET (socket)))) {
     g_signal_connect (socket, "plug_removed",
                       G_CALLBACK (systray_plug_removed), manager);
@@ -397,7 +398,7 @@ systray_plug_added (Systray *manager, XClientMessageEvent *xevent)
     gtk_socket_add_id (GTK_SOCKET (socket), *window);
     g_hash_table_insert (hashtable, GINT_TO_POINTER(*window), socket);
 
-    /* Make sure the icons have a meaningfull size ... */
+    /* make sure the icons have a meaningfull size ... */
     req.width = req.height = 1;
     gtk_widget_size_request (socket, &req);
     gtk_widget_show (socket);
@@ -408,8 +409,8 @@ systray_plug_added (Systray *manager, XClientMessageEvent *xevent)
 } /* </systray_plug_added> */
 
 /*
- * systray_handle_message_data
- */
+* systray_handle_message_data
+*/
 static GdkFilterReturn
 systray_handle_message_data (Systray *manager, XClientMessageEvent *xevent)
 {
@@ -491,8 +492,8 @@ systray_handle_cancel_message (Systray *manager, XClientMessageEvent *xevent)
 } /* </systray_handle_cancel_message> */
 
 /*
- * systray_handle_event
- */
+* systray_handle_event
+*/
 static GdkFilterReturn
 systray_handle_event (Systray *manager, XClientMessageEvent *xevent)
 {
@@ -523,8 +524,8 @@ systray_handle_event (Systray *manager, XClientMessageEvent *xevent)
 } /* </systray_handle_event> */
 
 /*
- * systray_window_filter
- */
+* systray_window_filter
+*/
 static GdkFilterReturn
 systray_window_filter (GdkXEvent *xev, GdkEvent *event, gpointer data)
 {
@@ -550,9 +551,9 @@ systray_window_filter (GdkXEvent *xev, GdkEvent *event, gpointer data)
 } /* </systray_window_filter> */
 
 /*
- * systray_set_orientation
- * systray_set_orientation_property
- */
+* systray_set_orientation
+* systray_set_orientation_property
+*/
 static void
 systray_set_orientation (Systray *manager, GtkOrientation orientation)
 {
@@ -592,8 +593,8 @@ systray_set_orientation_property (Systray *manager)
 } /* </systray_set_orientation_property> */
 
 /*
- * systray_manage - manage system tray
- */
+* systray_manage - manage system tray
+*/
 static gboolean
 systray_manage (Systray *manager, GdkScreen *screen)
 {
@@ -666,8 +667,8 @@ systray_manage (Systray *manager, GdkScreen *screen)
 } /* </systray_manage> */
 
 /*
- * systray_unmanage - unmanage system tray.
- */
+* systray_unmanage - unmanage system tray.
+*/
 static void
 systray_unmanage (Systray *manager)
 {
@@ -701,8 +702,8 @@ systray_unmanage (Systray *manager)
 } /* </systray_unmanage> */
 
 /*
- * systray_icon_added - callback for adding "tray_icon_added" event.
- */
+* systray_icon_added - callback for adding "tray_icon_added" event.
+*/
 static void
 systray_icon_added (Systray *manager, GtkWidget *icon, GtkWidget *tray)
 {
@@ -713,8 +714,8 @@ systray_icon_added (Systray *manager, GtkWidget *icon, GtkWidget *tray)
 } /* </systray_icon_added> */
 
 /*
- * systray_icon_removed - callback for adding "tray_icon_removed" event.
- */
+* systray_icon_removed - callback for adding "tray_icon_removed" event.
+*/
 static void
 systray_icon_removed (Systray *manager, GtkWidget *icon, GtkWidget *tray)
 {
@@ -722,7 +723,7 @@ systray_icon_removed (Systray *manager, GtkWidget *icon, GtkWidget *tray)
 } /* </systray_icon_removed> */
 
 /*
- * Public methods.
+* public methods
 */
 Systray *
 systray_new (void)
@@ -731,18 +732,18 @@ systray_new (void)
 } /* </systray_new> */
 
 /*
- * systray_check_running_screen - see if another client has systemtray.
- */
+* systray_check_running_screen - see if another client has systemtray.
+*/
 gboolean
 systray_check_running_screen (GdkScreen *screen)
 {
   GdkDisplay *display = gdk_screen_get_display (screen);
-  char *name = g_strdup_printf ("_NET_SYSTEM_TRAY_S%d",
+  char *systemtray = g_strdup_printf ("_NET_SYSTEM_TRAY_S%d",
                                 gdk_screen_get_number (screen));
   int error, result;
 
-  Atom xatom = get_atom_property (name);
-  g_free (name);
+  Atom xatom = get_atom_property (systemtray);
+  g_free (systemtray);
 
   gdk_error_trap_push ();
   result = XGetSelectionOwner (GDK_DISPLAY_XDISPLAY (display), xatom);
@@ -752,10 +753,31 @@ systray_check_running_screen (GdkScreen *screen)
 } /* </systray_check_running_screen> */
 
 /*
- * systray_connect
- * systray_disconnect
- * systray_new
- */
+* systray_find_owner - return Window ID running systemtray
+*/
+Window
+systray_find_owner(GdkScreen *screen)
+{
+  GdkDisplay *display = gdk_screen_get_display (screen);
+  char *systemtray = g_strdup_printf ("_NET_SYSTEM_TRAY_S%d",
+                                gdk_screen_get_number (screen));
+
+  Atom xatom = get_atom_property (systemtray);
+  Window owner;
+  int error;
+
+  g_free (systemtray);
+  gdk_error_trap_push ();
+  owner = XGetSelectionOwner (GDK_DISPLAY_XDISPLAY (display), xatom);
+  error = _x_error_trap_pop (__func__);
+
+  return owner;
+} /* </systray_find_owner> */
+
+/*
+* systray_connect
+* systray_disconnect
+*/
 void
 systray_connect (Systray *manager, GdkScreen *screen, GtkWidget *tray)
 {

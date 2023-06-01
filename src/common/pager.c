@@ -18,6 +18,7 @@
  */
 
 #include "util.h"
+#include "gould.h"
 #include "window.h"
 #include "pager.h"
 

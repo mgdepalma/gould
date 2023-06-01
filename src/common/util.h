@@ -20,8 +20,6 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include "config.h"
-
 #include <glib.h>
 
 #define DEV_REMOVABLE 1

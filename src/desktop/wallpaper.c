@@ -17,8 +17,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "module.h"
+#include "gould.h"
 #include "gpanel.h"
+#include "module.h"
 
 #ifndef get_current_dir_name
 extern char *get_current_dir_name(void);

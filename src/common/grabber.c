@@ -20,6 +20,7 @@
 * Code portions adopted from xgrabsc 2.41
 */
 
+#include "gould.h"
 #include "grabber.h"
 
 /*

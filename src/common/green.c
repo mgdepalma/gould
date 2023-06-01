@@ -18,6 +18,7 @@
  */
 
 #include "util.h"
+#include "gould.h"
 #include "green.h"
 #include "greenwindow.h"
 

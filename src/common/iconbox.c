@@ -26,6 +26,7 @@
 #include <gdk/gdkkeysyms.h>
 #include <pango/pango.h>
 
+#include "gould.h"
 #include "iconbox.h"
 
 /* (private) variables */

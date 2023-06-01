@@ -18,6 +18,7 @@
  * Boston, MA 02111-1307, USA.
  */
 
+#include "gould.h"
 #include "filechooser.h"
 
 #ifndef get_current_dir_name

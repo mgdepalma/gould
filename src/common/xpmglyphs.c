@@ -91,6 +91,7 @@
 #include "icons/wallpaper.xpm"
 #include "icons/workspace.xpm"
 
+#include "gould.h"
 #include "xpmglyphs.h"
 
 static IconCatalog xpmglyph[] = {

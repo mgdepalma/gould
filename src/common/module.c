@@ -17,12 +17,11 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include "gould.h"
 #include "module.h"
 
 #include <signal.h>
 #include <unistd.h>
-
-extern unsigned short debug;	/* must be declared in main program */
 
 /*
 * Data structures used by implementation.
@@ -244,7 +243,6 @@ spawn (const char* cmdline)
 #else
   if ((pid = fork()) == 0) {                    /* child process */
     const char *shell = "/bin/sh";
-    if (debug) printf("[spawn]%s\n", cmdline);
 
     setsid();
     execlp(shell, shell, "-f", "-c", cmdline, NULL);

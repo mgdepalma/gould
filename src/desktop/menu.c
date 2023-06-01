@@ -17,11 +17,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "xutil.h"
+#include "gould.h"
 #include "gpanel.h"
 #include "gsession.h"
 #include "tasklist.h"
 #include "pager.h"
+#include "xutil.h"
 
 #include <X11/Xatom.h>
 

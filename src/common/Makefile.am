@@ -58,8 +58,8 @@ libgould_la_LDFLAGS = \
 	-no-undefined
 
 # static libgould.a
-libgould_OBJECTS = .libs/module.o .libs/dialog.o .libs/docklet.o .libs/print.o .libs/window.o .libs/grabber.o .libs/iconbox.o .libs/filechooser.o .libs/xmlconfig.o .libs/xpmglyphs.o .libs/greenwindow.o .libs/green.o .libs/pager.o .libs/tasklist.o .libs/systray.o .libs/xutil.o .libs/util.o
+#libgould_OBJECTS = .libs/module.o .libs/dialog.o .libs/docklet.o .libs/print.o .libs/window.o .libs/grabber.o .libs/iconbox.o .libs/filechooser.o .libs/xmlconfig.o .libs/xpmglyphs.o .libs/greenwindow.o .libs/green.o .libs/pager.o .libs/tasklist.o .libs/systray.o .libs/xutil.o .libs/util.o
 
-libgould.a: $(libgould_OBJECTS)
-	ar -crs libgould.a $(libgould_OBJECTS)
+#libgould.a: $(libgould_OBJECTS)
+#	ar -crs libgould.a $(libgould_OBJECTS)
 #/

@@ -18,6 +18,7 @@
  */
 
 #include "util.h"
+#include "gould.h"
 
 #include <pwd.h>
 #include <ctype.h>
@@ -33,7 +34,6 @@
 
 extern const char *__progname;
 extern unsigned short debug;	/* must be declared in main program */
-
 
 /*
  * Private data structures.
