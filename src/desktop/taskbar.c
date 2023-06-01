@@ -17,7 +17,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+<<<<<<< HEAD
 #include "gould.h"
+=======
+#include "gould.h"      /* common package declarations */
+>>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 #include "gpanel.h"
 #include "tasklist.h"
 #include "pager.h"

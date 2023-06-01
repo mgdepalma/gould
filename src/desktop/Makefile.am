@@ -14,8 +14,13 @@ AM_LDFLAGS = -Wl,-export-dynamic `pkg-config --libs gtk+-2.0 libxml-2.0`
 LIBS = -L../common -lgould -lX11
 
 bin_PROGRAMS = \
+<<<<<<< HEAD
 gpanel \
 gsession
+=======
+gsession \
+gpanel
+>>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 
 noinst_PROGRAMS = \
 gcontrol \

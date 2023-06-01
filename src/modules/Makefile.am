@@ -8,7 +8,7 @@ PKG_DEPS   = "gtk+-2.0 libxml-2.0"
 PKG_CFLAGS = `pkg-config --cflags $(PKG_DEPS)`
 PKG_LIBS   = `pkg-config --libs $(PKG_DEPS)`
 
-ALL_CFLAGS = -I../common -I../programs -Wno-deprecated-declarations
+ALL_CFLAGS = -I../common -I../desktop -Wno-deprecated-declarations
 AM_CFLAGS  = $(PKG_CFLAGS) $(ALL_CFLAGS) -Wall -g -O -pipe
 AM_LDFLAGS = $(PKG_LIBS) -module -avoid-version 
 
@@ -28,11 +28,10 @@ mixer_la_LIBADD = -lasound
 
 ##
 # Override the install-binPROGRAM target.
-#
-ModulesDir = $(libdir)/modules/@PACKAGE@
+pkglibdir = /usr/libexec/@PACKAGE@
 
 install-binPROGRAMS: $(bin_PROGRAMS)
-	@echo "Installing plugin modules in $(ModulesDir)"
-	$(mkinstalldirs) $(DESTDIR)$(ModulesDir)
-	$(INSTALL_PROGRAM) $(bin_PROGRAMS) "$(DESTDIR)$(ModulesDir)"
+	@echo "Installing plugin modules in $(pkglibdir)"
+	$(mkinstalldirs) $(DESTDIR)$(pkglibdir)
+	$(INSTALL_PROGRAM) $(bin_PROGRAMS) "$(DESTDIR)$(pkglibdir)"
 #/
