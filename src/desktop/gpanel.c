@@ -290,8 +290,11 @@ panel_config_settings (GlobalPanel *panel)
 
   /* configuration for general settings  */
   panel->notice = NULL;		/* initialize alert notices */
-  panel->path = NULL;		/* initialize exec search path */
-  /* g_strfreev (path); */
+  panel->path   = NULL;		/* initialize exec search path */
+  panel->path = g_list_append(panel->path, "/usr/bin");
+  panel->path = g_list_append(panel->path, "/usr/bin/X11");
+  //panel->path = g_list_append(panel->path, "/usr/local/bin");
+  panel->path = g_list_append(panel->path, "/usr/sbin");
 
   /* Configuration for the icons. */
   icons->path  = NULL;
@@ -363,10 +366,11 @@ static void
 panel_quicklaunch (GtkWidget *widget, Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
-  const gchar *program = path_finder(panel->path, applet->label);
+  const gchar *command = path_finder(panel->path, applet->label);
+  vdebug(2, "%s command => %s\n", __func__, command);
 
-  if (program)
-    dispatch (program, panel->session);
+  if (command)
+    dispatch (command, panel->session);
   else
      notice_at(100, 100, ICON_WARNING, "[%s]%s: %s.",
                Program, applet->label, _("command not found"));
@@ -499,7 +503,7 @@ panel_update_pack_position (GlobalPanel *panel, Modulus *applet)
   else
     panel->epos += requisition.width - 4;
 
-  vdebug (2, "panel spos => %d, epos => %d, applet => %s\n",
+  vdebug (3, "panel spos => %d, epos => %d, applet => %s\n",
               panel->spos, panel->epos, applet->name);
 } /* </panel_update_pack_position> */
 
