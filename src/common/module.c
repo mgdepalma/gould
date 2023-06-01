@@ -236,10 +236,8 @@ pid_t
 spawn (const char* cmdline)
 {
   pid_t pid ;
-
 #ifdef USE_GLIB_SPAWN
-  /* gboolean g_spawn_command_line_async() */
-  pid = g_spawn_command_line_async(cmdline, 0);
+  gboolean result = g_spawn_command_line_async(cmdline, 0);
 #else
   if ((pid = fork()) == 0) {                    /* child process */
     const char *shell = "/bin/sh";
@@ -248,7 +246,7 @@ spawn (const char* cmdline)
     execlp(shell, shell, "-f", "-c", cmdline, NULL);
     exit(0);
   }
-#endif
 
+#endif
   return pid;
 } /* </spawn> */

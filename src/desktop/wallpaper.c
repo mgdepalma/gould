@@ -17,13 +17,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-<<<<<<< HEAD
-#include "gould.h"
-=======
 #include "gould.h"      /* common package declarations */
-#include "module.h"
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 #include "gpanel.h"
+#include "filechooser.h"
 #include "module.h"
 
 #ifndef get_current_dir_name
@@ -61,8 +57,8 @@ setbg_refresh (GtkWidget *canvas, GdkEventExpose *ev, gpointer data);
 static DesktopPanel desktop_;	/* private global structure singleton */
 
 /*
- * (private) configsave
- */
+* (private) configsave
+*/
 static gboolean
 configsave(DesktopPanel *desktop)
 {
@@ -122,8 +118,8 @@ configsave(DesktopPanel *desktop)
 } /* </configsave> */
 
 /*
- * (private) set background callback
- */
+* (private) set background callback
+*/
 static void
 setbg (const gchar *pathname)
 {
@@ -132,10 +128,10 @@ setbg (const gchar *pathname)
 } /* </setbg> */
 
 /*
- * setbg_settings_apply
- * setbg_settings_cancel
- * setbg_settings_close
- */
+* setbg_settings_apply
+* setbg_settings_cancel
+* setbg_settings_close
+*/
 gboolean
 setbg_settings_apply (Modulus *applet)
 {
@@ -190,8 +186,8 @@ setbg_settings_close (Modulus *applet)
 } /* </setbg_settings_close> */
 
 /*
- * setbg_refresh view of the canvas area
- */
+* setbg_refresh view of the canvas area
+*/
 static void
 setbg_refresh (GtkWidget *canvas, GdkEventExpose *ev, gpointer data)
 {
@@ -227,8 +223,8 @@ setbg_refresh (GtkWidget *canvas, GdkEventExpose *ev, gpointer data)
 } /* </setbg_refresh> */
 
 /*
- * (private) setbg_selection callback function
- */
+* (private) setbg_selection callback function
+*/
 static gboolean
 setbg_selection (FileChooserDatum *datum)
 {
@@ -242,10 +238,10 @@ setbg_selection (FileChooserDatum *datum)
 } /* </setbg_selection> */
 
 /*
- * (private) prevfile
- * (private) nextfile
- * (private) origfile
- */
+* (private) prevfile
+* (private) nextfile
+* (private) origfile
+*/
 static gboolean
 prevfile(GtkWidget *button, FileChooser *chooser)
 {
@@ -283,8 +279,8 @@ origfile(GtkWidget *button, Modulus *applet)
 } /* </origfile> */
 
 /*
- * setbg_initialize
- */
+* setbg_initialize
+*/
 DesktopPanel *
 setbg_initialize (GlobalPanel *panel)
 {
@@ -366,8 +362,8 @@ setbg_initialize (GlobalPanel *panel)
 } /* </setbg_initialize> */
 
 /*
- * setbg_settings_new provides the configuration page
- */
+* setbg_settings_new provides the configuration page
+*/
 GtkWidget*
 setbg_settings_new (Modulus *applet, GlobalPanel *panel)
 {

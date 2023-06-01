@@ -17,11 +17,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-<<<<<<< HEAD
-#include "gould.h"
-=======
-#include "gould.h"      /* common package declarations */
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
+#include "gould.h"		/* common package declarations */
 #include "xutil.h"
 #include "window.h"
 
@@ -39,8 +35,8 @@ const char *Release;		/* (public) published program version */
 unsigned short debug = 0;	/* (protected) must be present */
 
 /*
- * clean application exit
- */
+* clean application exit
+*/
 static void
 finis(GtkWidget *instance, gpointer data)
 {
@@ -48,8 +44,8 @@ finis(GtkWidget *instance, gpointer data)
 } /* </finis> */
 
 /*
- * selfexclude - WindowFiler to exclude self from GREEN window list
- */
+* selfexclude - WindowFiler to exclude self from GREEN window list
+*/
 static gboolean
 selfexclude (Window xid, int desktop)
 {
@@ -58,8 +54,8 @@ selfexclude (Window xid, int desktop)
 } /* </selfexclude> */
 
 /*
- * dump_window_client_lists
- */
+* dump_window_client_lists
+*/
 static void
 dump_window_client_lists (Window xroot, int desktop)
 {
@@ -115,8 +111,8 @@ tasklist_relief (GtkComboBox *options, Tasklist *tasklist)
 } /* </tasklist_relief> */
 
 /*
- * interface - creates the graphical user interface
- */
+* interface - creates the graphical user interface
+*/
 GtkWidget *
 interface (void)
 {
@@ -202,8 +198,8 @@ interface (void)
 } /* </interface> */
 
 /*
- * main - main program implementation
- */
+* prova main program
+*/
 int
 main(int argc, char *argv[])
 {
@@ -275,4 +271,4 @@ main(int argc, char *argv[])
   gtk_main ();		/* main event loop */
 
   return 0;
-} /* </main> */
+} /* </prova> */

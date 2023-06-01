@@ -17,11 +17,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-<<<<<<< HEAD
-#include "gould.h"
-=======
 #include "gould.h"      /* common package declarations */
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 #include "gpanel.h"
 #include "tasklist.h"
 #include "pager.h"
@@ -72,8 +68,8 @@ struct _TaskbarPrivate
 static TaskbarPrivate local_;	/* private structure singleton */
 
 /*
- * taskbar_config configuration of pager and tasklist
- */
+* taskbar_config configuration of pager and tasklist
+*/
 void
 taskbar_config (GlobalPanel *panel)
 {
@@ -94,8 +90,8 @@ taskbar_config (GlobalPanel *panel)
 } /* </taskbar_config> */
 
 /*
- * taskbar_initialize initialization of panel widgets
- */
+* taskbar_initialize initialization of panel widgets
+*/
 void
 taskbar_initialize (GlobalPanel *panel, GtkWidget *layout)
 {
@@ -201,8 +197,8 @@ taskbar_initialize (GlobalPanel *panel, GtkWidget *layout)
 } /* </taskbar_initialize> */
 
 /*
- * pager_configuration_read
- */
+* pager_configuration_read
+*/
 static void
 pager_configuration_read (Modulus *applet, PagerConfig *config)
 {
@@ -251,8 +247,8 @@ pager_configuration_read (Modulus *applet, PagerConfig *config)
 } /* </pager_configuration_read> */
 
 /*
- * pager_place_config
- */
+* pager_place_config
+*/
 static void
 pager_place_config (PagerConfig *config)
 {
@@ -266,9 +262,9 @@ pager_place_config (PagerConfig *config)
 } /* </pager_place_config> */
 
 /*
- * pager_settings_apply
- * pager_settings_cancel
- */
+* pager_settings_apply
+* pager_settings_cancel
+*/
 static void
 pager_settings_apply (Modulus *applet)
 {
@@ -347,8 +343,8 @@ pager_settings_cancel (Modulus *applet)
 } /* </pager_settings_cancel> */
 
 /*
- * pager_enable
- */
+* pager_enable
+*/
 static void
 pager_enable (GtkWidget *button, Modulus *applet)
 {
@@ -370,9 +366,9 @@ pager_enable (GtkWidget *button, Modulus *applet)
 } /* </pager_enable> */
 
 /*
- * pager_workspaces
- * pager_rows
- */
+* pager_workspaces
+* pager_rows
+*/
 static void
 pager_workspaces (GtkRange *range, Modulus *applet)
 {
@@ -404,9 +400,9 @@ pager_rows (GtkRange *range, Modulus *applet)
 } /* </pager_rows> */
 
 /*
- * pager_place_after
- * pager_place_before
- */
+* pager_place_after
+* pager_place_before
+*/
 static void
 pager_place_after (GtkWidget *button, Modulus *applet)
 {
@@ -443,8 +439,8 @@ pager_place_before (GtkWidget *button, Modulus *applet)
 
 
 /*
- * pager_settings_new
- */
+* pager_settings_new
+*/
 GtkWidget *
 pager_settings_new (Modulus *applet, PagerConfig *config)
 {
@@ -582,9 +578,9 @@ pager_settings_new (Modulus *applet, PagerConfig *config)
 } /* </pager_settings_new> */
 
 /*
- * pager_init
- * pager_open
- */
+* pager_init
+* pager_open
+*/
 void
 pager_init (Modulus *applet, GlobalPanel *panel)
 {
@@ -630,8 +626,8 @@ pager_open (Modulus *applet)
 } /* </pager_open> */
 
 /*
- * tasklist_configuration_read
- */
+* tasklist_configuration_read
+*/
 static void
 tasklist_configuration_read (Modulus *applet, TasklistConfig *config)
 {
@@ -673,9 +669,9 @@ tasklist_configuration_read (Modulus *applet, TasklistConfig *config)
 } /* </tasklist_configuration_read> */
 
 /*
- * tasklist_settings_apply
- * tasklist_settings_cancel
- */
+* tasklist_settings_apply
+* tasklist_settings_cancel
+*/
 static void
 tasklist_settings_apply (Modulus *applet)
 {
@@ -745,8 +741,8 @@ tasklist_settings_cancel (Modulus *applet)
 } /* </tasklist_settings_cancel> */
 
 /*
- * tasklist_enable
- */
+* tasklist_enable
+*/
 static void
 tasklist_enable (GtkWidget *button, Modulus *applet)
 {
@@ -768,9 +764,9 @@ tasklist_enable (GtkWidget *button, Modulus *applet)
 } /* </tasklist_enable> */
 
 /*
- * tasklist_allspaces
- * tasklist_grouping
- */
+* tasklist_allspaces
+* tasklist_grouping
+*/
 static void
 tasklist_allspaces (GtkWidget *button, Modulus *applet)
 {
@@ -915,9 +911,9 @@ tasklist_settings_new (Modulus *applet, TasklistConfig *config)
 } /* </tasklist_settings_new> */
 
 /*
- * tasklist_init
- * tasklist_open
- */
+* tasklist_init
+* tasklist_open
+*/
 void
 tasklist_init (Modulus *applet, GlobalPanel *panel)
 {

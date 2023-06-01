@@ -34,10 +34,12 @@
 #define MAXSTR(a,b) MAX(strlen(a),strlen(b))
 #define MINSTR(a,b) MIN(strlen(a),strlen(b))
 
-typedef unsigned short debug_t;
+enum {
+  _SUCCESS,
+  _RUNNING,
+  _MISSING,
+  _INVALID,
+};
 
-#define RUNNING_ 1
-#define MISSING_ 2
-#define INVALID_ 3
-#define VALID_   0
+typedef unsigned short debug_t;
 #endif

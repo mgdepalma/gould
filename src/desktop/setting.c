@@ -17,11 +17,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-<<<<<<< HEAD
-#include "gould.h"
-=======
 #include "gould.h"      /* common package declarations */
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 #include "gpanel.h"
 
 #include <X11/Xlib.h>
@@ -145,8 +141,8 @@ static MenuEditor menueditor_;		/* singleton for menu editor data */
 
 
 /*
- * activate popup window for editing configuration settings
- */
+* activate popup window for editing configuration settings
+*/
 void
 settings_activate (GlobalPanel *panel)
 {
@@ -157,12 +153,12 @@ settings_activate (GlobalPanel *panel)
 } /* </settings_activate> */
 
 /*
- * settings_apply
- * settings_cancel
- * settings_close
- * settings_dismiss
- * settings_key_press
- */
+* settings_apply
+* settings_cancel
+* settings_close
+* settings_dismiss
+* settings_key_press
+*/
 static void
 settings_apply (GtkWidget *button, GlobalPanel *panel)
 {
@@ -217,9 +213,9 @@ settings_key_press (GtkWidget *window, GdkEventKey *event, GlobalPanel *panel)
 #endif
 
 /*
- * settings_save_enable
- * settings_set_agents
- */
+* settings_save_enable
+* settings_set_agents
+*/
 void
 settings_save_enable (PanelSetting *settings, gboolean state)
 {
@@ -242,8 +238,8 @@ settings_set_agents (PanelSetting *settings,
 
 
 /*
- * settings_selection change callback
- */
+* settings_selection change callback
+*/
 static void
 settings_selection (GtkTreeSelection *selection, GlobalPanel *panel)
 {
@@ -273,8 +269,8 @@ settings_selection (GtkTreeSelection *selection, GlobalPanel *panel)
 } /* </settings_selection> */
 
 /*
- * settings_about_new provides the information page
- */
+* settings_about_new provides the information page
+*/
 Modulus *
 settings_about_new ()
 {
@@ -308,8 +304,8 @@ settings_about_new ()
 } /* </settings_about_new> */
 
 /*
- * panel_place_config
- */
+* panel_place_config
+*/
 static void
 panel_place_config (GtkPositionType place)
 {
@@ -335,9 +331,9 @@ panel_place_config (GtkPositionType place)
 } /* </panel_place_config> */
 
 /*
- * panel_settings_apply
- * panel_settings_cancel
- */
+* panel_settings_apply
+* panel_settings_cancel
+*/
 static void
 panel_settings_apply (Modulus *applet)
 {
@@ -427,8 +423,8 @@ panel_settings_cancel (Modulus *applet)
 } /* </panel_settings_cancel> */
 
 /*
- * panel_place callback
- */
+* panel_place callback
+*/
 static void
 panel_place (GtkWidget *button, gpointer value)
 {
@@ -452,10 +448,10 @@ panel_place (GtkWidget *button, gpointer value)
 } /* </panel_place> */
 
 /*
- * panel_thickness
- * panel_margin
- * panel_indent
- */
+* panel_thickness
+* panel_margin
+* panel_indent
+*/
 static void
 panel_thickness (GtkRange *range, GlobalPanel *panel)
 {
@@ -499,8 +495,8 @@ panel_indent (GtkRange *range, GlobalPanel *panel)
 } /* </panel_indent> */
 
 /*
- * settings_general_new provides an under construction page
- */
+* settings_general_new provides an under construction page
+*/
 Modulus *
 settings_general_new (GlobalPanel *panel)
 {
@@ -703,8 +699,8 @@ settings_general_new (GlobalPanel *panel)
 } /* </settings_general_new> */
 
 /*
- * settings_manpage_new provides layout man-page style
- */
+* settings_manpage_new provides layout man-page style
+*/
 GtkWidget *
 settings_manpage_new (Modulus *applet, GlobalPanel *panel)
 {
@@ -742,8 +738,8 @@ settings_manpage_new (Modulus *applet, GlobalPanel *panel)
 } /* </settings_manpage_new> */
 
 /*
- * settings_missing_new builds an applet->settings missing page
- */
+* settings_missing_new builds an applet->settings missing page
+*/
 GtkWidget *
 settings_missing_new (Modulus *applet, GlobalPanel *panel)
 {
@@ -781,8 +777,8 @@ settings_missing_new (Modulus *applet, GlobalPanel *panel)
 } /* </settings_missing_new> */
 
 /*
- * settings_notebook_new build an initial notebook layout
- */
+* settings_notebook_new build an initial notebook layout
+*/
 GtkWidget *
 settings_notebook_new (Modulus *applet, GlobalPanel *panel, ...)
 {
@@ -813,8 +809,8 @@ settings_notebook_new (Modulus *applet, GlobalPanel *panel, ...)
 } /* </settings_notebook_new> */
 
 /*
- * settings_page_new build a page for the main notebook
- */
+* settings_page_new build a page for the main notebook
+*/
 gint
 settings_page_new (GtkTreeStore *store, GtkTreeIter *node,
                    GtkNotebook *notebook, Modulus *applet,
@@ -844,8 +840,8 @@ settings_page_new (GtkTreeStore *store, GtkTreeIter *node,
 
 #ifdef __settings_page_switch_
 /*
- * settings_page_switch handler for settings page change
- */
+* settings_page_switch handler for settings page change
+*/
 static void
 settings_page_switch (GtkNotebook *book, GtkNotebookPage *page,
                       gint index, GlobalPanel *panel)
@@ -856,8 +852,8 @@ settings_page_switch (GtkNotebook *book, GtkNotebookPage *page,
 #endif
 
 /*
- * getSettingsPanelWidth - width of settings panel adjusted by resolution
- */
+* getSettingsPanelWidth - width of settings panel adjusted by resolution
+*/
 static unsigned short
 getSettingsPanelWidth ()
 {
@@ -879,8 +875,8 @@ getSettingsPanelWidth ()
 } /* </getSettingsPanelWidth> */
 
 /*
- * settings_new - popup window for editing configuration settings
- */
+* settings_new - popup window for editing configuration settings
+*/
 void
 settings_new (GlobalPanel *panel)
 {
@@ -1106,9 +1102,8 @@ settings_new (GlobalPanel *panel)
 } /* </settings_new> */
 
 /*
- * settings_menu_apply_changes
- */
-//static void
+* settings_menu_apply_changes
+*/
 void
 settings_menu_apply_changes (MenuEntry *item, GlobalPanel *panel)
 {
@@ -1220,8 +1215,8 @@ settings_menu_apply_changes (MenuEntry *item, GlobalPanel *panel)
 } /* </settings_menu_apply_changes> */
 
 /*
- * settings_menu_reconstruct - reconstruct start menu view.
- */
+* settings_menu_reconstruct - reconstruct start menu view.
+*/
 static void
 settings_menu_reconstruct (GlobalPanel *panel, ConfigurationNode *menu,
                            ConfigurationNode *node)
@@ -1246,9 +1241,9 @@ settings_menu_reconstruct (GlobalPanel *panel, ConfigurationNode *menu,
 } /* </settings_menu_reconstruct> */
 
 /*
- * settings_menu_apply
- * settings_menu_cancel
- */
+* settings_menu_apply
+* settings_menu_cancel
+*/
 static void
 settings_menu_apply (Modulus *applet)
 {
@@ -1335,8 +1330,8 @@ settings_menu_cancel (Modulus *applet)
 } /* </settings_menu_cancel> */
 
 /*
- * settings_menu_enable
- */
+* settings_menu_enable
+*/
 static void
 settings_menu_enable (GlobalPanel *panel)
 {
@@ -1359,8 +1354,8 @@ settings_menu_enable (GlobalPanel *panel)
 } /* </settings_menu_enable> */
 
 /*
- * settings_menu_insert
- */
+* settings_menu_insert
+*/
 static void
 settings_menu_insert (GtkWidget *button, GdkEventButton *ev, GlobalPanel *panel)
 {
@@ -1411,9 +1406,9 @@ settings_menu_insert (GtkWidget *button, GdkEventButton *ev, GlobalPanel *panel)
 } /* </settings_menu_insert> */
 
 /*
- * settings_menu_cut
- * settings_menu_paste
- */
+* settings_menu_cut
+* settings_menu_paste
+*/
 static void
 settings_menu_cut (GtkWidget *button, GdkEventButton *ev, GlobalPanel *panel)
 {
@@ -1496,8 +1491,8 @@ settings_menu_paste (GtkWidget *button, GdkEventButton *ev, GlobalPanel *panel)
 } /* </settings_menu_paste> */
 
 /*
- * settings_menu_remove
- */
+* settings_menu_remove
+*/
 static void
 settings_menu_remove (GtkWidget *button, GdkEventButton *ev, GlobalPanel *panel)
 {
@@ -1519,8 +1514,8 @@ settings_menu_remove (GtkWidget *button, GdkEventButton *ev, GlobalPanel *panel)
 } /* </settings_menu_remove> */
 
 /*
- * settings_menu_item change callback
- */
+* settings_menu_item change callback
+*/
 static void
 settings_menu_item (GtkTreeSelection *selection, GlobalPanel *panel)
 {
@@ -1631,8 +1626,8 @@ settings_menu_item (GtkTreeSelection *selection, GlobalPanel *panel)
 } /* </settings_menu_item> */
 
 /*
- * change menu item type callback
- */
+* change menu item type callback
+*/
 static void
 settings_menu_itemtype (GtkComboBox *combo, GlobalPanel *panel)
 {
@@ -1732,8 +1727,8 @@ settings_menu_itemexec (GtkToggleButton *button, GlobalPanel *panel)
 } /* </settings_menu_itemexec> */
 
 /*
- * restore system configuration callback
- */
+* restore system configuration callback
+*/
 void
 settings_menu_restore (GtkWidget *button,GdkEventButton *ev, GlobalPanel *panel)
 {
@@ -1754,8 +1749,8 @@ settings_menu_restore (GtkWidget *button,GdkEventButton *ev, GlobalPanel *panel)
 } /* </settings_menu_restore> */
 
 /*
- * settings_menu_icon_change
- */
+* settings_menu_icon_change
+*/
 static void
 settings_menu_icon_change (GlobalPanel *panel)
 {
@@ -1772,10 +1767,10 @@ settings_menu_icon_change (GlobalPanel *panel)
 } /* </settings_menu_icon_change> */
 
 /*
- * (private) settings_menu_icon
- * (private) settings_menu_name
- * (private) settings_menu_exec
- */
+* (private) settings_menu_icon
+* (private) settings_menu_name
+* (private) settings_menu_exec
+*/
 void
 settings_menu_icon (GtkWidget *button, GlobalPanel *panel)
 {
@@ -1829,8 +1824,8 @@ settings_menu_exec (GtkEntry *entry, GdkEventKey *event, GlobalPanel *panel)
 } /* </settings_menu_exec> */
 
 /*
- * settings_menu_item_new
- */
+* settings_menu_item_new
+*/
 static void
 settings_menu_item_new (GlobalPanel *panel,
                         ConfigurationNode *chain,
@@ -1895,8 +1890,8 @@ settings_menu_item_new (GlobalPanel *panel,
 } /* </settings_menu_item_new> */
 
 /*
- * settings_menu_new
- */
+* settings_menu_new
+*/
 GtkWidget *
 settings_menu_new (Modulus *applet)
 {
@@ -2233,8 +2228,8 @@ settings_menu_new (Modulus *applet)
 } /* </settings_menu_new> */
 
 /*
- * settings_menu_config
- */
+* settings_menu_config
+*/
 static void
 settings_menu_config (GlobalPanel *panel, ConfigurationNode *menu,
                       GtkTreeStore *store, GtkTreeIter *root)
@@ -2270,8 +2265,8 @@ settings_menu_config (GlobalPanel *panel, ConfigurationNode *menu,
 } /* </settings_menu_config> */
 
 /*
- * settings_menu_select_iter
- */
+* settings_menu_select_iter
+*/
 static gboolean
 settings_menu_select_iter (ConfigurationNode *node, GtkTreeIter *iter,
                            GtkTreeIter *parent)
@@ -2325,4 +2320,3 @@ settings_menu_select_iter (ConfigurationNode *node, GtkTreeIter *iter,
 
   return valid;
 } /* </settings_menu_select_iter> */
-

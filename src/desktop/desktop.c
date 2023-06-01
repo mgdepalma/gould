@@ -17,11 +17,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-<<<<<<< HEAD
-#include "gould.h"
-=======
 #include "gould.h"      /* common package declarations */
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 #include "gpanel.h"
 #include "docklet.h"
 
@@ -58,8 +54,8 @@ const char *DesktopEntryMinimal =
 "</item>\n";
 
 /*
- * desktop_parse_file
- */
+* desktop_parse_file
+*/
 DesktopEntry *
 desktop_file_parse (const char *filename)
 {
@@ -81,8 +77,8 @@ desktop_file_parse (const char *filename)
 }
 
 /*
- * (private) desktop_move - change the position of a desktop shortcut
- */
+* (private) desktop_move - change the position of a desktop shortcut
+*/
 static void
 desktop_move (ConfigurationNode *node, gint xpos, gint ypos)
 {
@@ -101,9 +97,9 @@ desktop_move (ConfigurationNode *node, gint xpos, gint ypos)
 } /* </desktop_move> */
 
 /*
- * (private) desktop_filer_apply
- * (private) desktop_filer_cancel
- */
+* (private) desktop_filer_apply
+* (private) desktop_filer_cancel
+*/
 static gboolean
 desktop_filer_apply (GtkWidget *button, GlobalPanel *panel)
 {
@@ -128,9 +124,9 @@ desktop_filer_cancel (GtkWidget *button, GlobalPanel *panel)
 } /* </desktop_filer_cancel> */
 
 /*
- * (private) desktop_filer_refresh
- * (private) desktop_filer_repaint
- */
+* (private) desktop_filer_refresh
+* (private) desktop_filer_repaint
+*/
 gboolean
 desktop_filer_refresh (GtkWidget *canvas,
                        GdkEventExpose *event,
@@ -160,9 +156,9 @@ desktop_filer_repaint (FileChooserDatum *datum)
 } /* </desktop_filer_repaint> */
 
 /*
- * (private) desktop_setting_apply
- * (private) desktop_setting_cancel
- */
+* (private) desktop_setting_apply
+* (private) desktop_setting_cancel
+*/
 static gboolean
 desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
 {
@@ -278,8 +274,8 @@ desktop_setting_cancel (GtkWidget *button, GlobalPanel *panel)
 } /* </desktop_setting_cancel> */
 
 /*
- * (private) desktop_setting_iconview
- */
+* (private) desktop_setting_iconview
+*/
 static gboolean
 desktop_setting_iconview (GtkWidget *button, GlobalPanel *panel)
 {
@@ -289,8 +285,8 @@ desktop_setting_iconview (GtkWidget *button, GlobalPanel *panel)
 } /* </desktop_setting_iconview> */
 
 /*
- * desktop_new - object for creating and editing desktop shortcuts
- */
+* desktop_new - object for creating and editing desktop shortcuts
+*/
 PanelDesktop *
 desktop_new (GlobalPanel *panel, gint iconsize)
 {
@@ -508,8 +504,8 @@ desktop_new (GlobalPanel *panel, gint iconsize)
 } /* desktop_new */
 
 /*
- * (private) desktop_shortcut - present menu of desktop shortcut
- */
+* (private) desktop_shortcut - present menu of desktop shortcut
+*/
 void
 desktop_shortcut (Docklet *docklet, ConfigurationNode *node)
 {
@@ -547,8 +543,8 @@ desktop_shortcut (Docklet *docklet, ConfigurationNode *node)
 } /* </desktop_shortcut> */
 
 /*
- * (private) desktop_shortcut_callback - callback agent for Docklet events
- */
+* (private) desktop_shortcut_callback - callback agent for Docklet events
+*/
 static gboolean
 desktop_shortcut_callback (DockletDatum *datum)
 {
@@ -572,8 +568,8 @@ desktop_shortcut_callback (DockletDatum *datum)
 } /* </desktop_shortcut_callback> */
 
 /*
- * (private) desktop_settings - change the settings of desktop shortcut
- */
+* (private) desktop_settings - change the settings of desktop shortcut
+*/
 void
 desktop_settings (GlobalPanel *panel, DesktopAction act)
 {
@@ -637,8 +633,8 @@ desktop_settings (GlobalPanel *panel, DesktopAction act)
 } /* </desktop_settings> */
 
 /*
- * desktop_change - GFileMonitor callback for $HOME/Desktop changes
- */
+* desktop_change - GFileMonitor callback for $HOME/Desktop changes
+*/
 static inline ConfigurationNode *
 desktop_change_node (ConfigurationNode *config, const char *match)
 {
@@ -705,8 +701,8 @@ configuration_write (chain, "<%s>\n", stdout);
 } /* </desktop_change> */
 
 /*
- * desktop_config - add gtk_event_box_new() to the interface layout
- */
+* desktop_config - add gtk_event_box_new() to the interface layout
+*/
 void
 desktop_config (GlobalPanel *panel, gboolean once)
 {
@@ -833,8 +829,8 @@ desktop_config (GlobalPanel *panel, gboolean once)
 } /* </desktop_config> */
 
 /*
- * desktop_create - instantiate a new desktop launcher 
- */
+* desktop_create - instantiate a new desktop launcher 
+*/
 Docklet *
 desktop_create (GlobalPanel *panel,
                 ConfigurationNode *node,

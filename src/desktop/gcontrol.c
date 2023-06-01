@@ -17,11 +17,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-<<<<<<< HEAD
-#include "gould.h"
-=======
-#include "gould.h"      /* common package declarations */
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
+#include "gould.h"		/* common package declarations */
 #include "gcontrol.h"
 #include "util.h"
 
@@ -38,8 +34,8 @@ static GlobalControl *global;	/* (protected) encapsulated program data */
 unsigned short debug = 0;	/* (protected) must be present */
 
 /*
- * (private) about
- */
+* (private) about
+*/
 static gboolean
 about (GtkWidget *instance, GtkWidget *parent)
 {
@@ -54,8 +50,8 @@ about (GtkWidget *instance, GtkWidget *parent)
 } /* </about> */
 
 /*
- * clean application exit
- */
+* clean application exit
+*/
 static void
 finis (GtkWidget *instance, gpointer data)
 {
@@ -63,8 +59,8 @@ finis (GtkWidget *instance, gpointer data)
 } /* </finis> */
 
 /*
- * (private) agent
- */
+* (private) agent
+*/
 static void
 agent (GtkIconView *iconview, GlobalControl *control)
 {
@@ -85,8 +81,8 @@ agent (GtkIconView *iconview, GlobalControl *control)
 } /* </agent> */
 
 /*
- * interface - construct user interface
- */
+* interface - construct user interface
+*/
 static GtkWidget*
 interface (GlobalControl *control)
 {
@@ -139,8 +135,8 @@ interface (GlobalControl *control)
 } /* </interface> */
 
 /*
- * initialize
- */
+* initialize
+*/
 static void
 initialize (GlobalControl *control, char *imagepath)
 {
@@ -161,8 +157,8 @@ initialize (GlobalControl *control, char *imagepath)
 } /* </initialize> */
 
 /*
- * main - main program implementation
- */
+* gcontrol main program
+*/
 int
 main(int argc, char *argv[])
 {
@@ -214,4 +210,4 @@ main(int argc, char *argv[])
   gtk_main ();
     
   return Success;
-} /* </main> */
+} /* </gcontrol> */

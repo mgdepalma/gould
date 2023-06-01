@@ -17,11 +17,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-<<<<<<< HEAD
 #include "gould.h"		/* common package declarations */
-=======
-#include "gould.h"	/* common package declarations */
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 #include "gpanel.h"
 #include "gsession.h"
 
@@ -68,11 +64,6 @@ const char *ConfigurationHeader =
 
 debug_t debug = 0;  /* debug verbosity (0 => none) {must be declared} */
 int _stream = -1;   /* stream socket descriptor */
-<<<<<<< HEAD
-=======
-
-const char *gpanelLock = "/tmp/gpanel.lock";
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 
 
 /*
@@ -683,7 +674,6 @@ session_open(const char *pathway)
 } /* session_open */
 
 /*
-<<<<<<< HEAD
 * signal_systemtray_process
 */
 pid_t
@@ -706,7 +696,7 @@ signal_systemtray_process(int sig)
       if(token != NULL) master = token;  /* pid is last on the list */
     }
     ppid = strtoul(master, NULL, 10);
-    /* kill(ppid, sig); */
+    kill(ppid, sig);
     pclose(stream);
   }
   g_free (command);
@@ -716,8 +706,6 @@ signal_systemtray_process(int sig)
 
 /*
 * gpanel_initialize
-=======
-* get_pid_from_lockfile
 */
 pid_t
 get_pid_from_lockfile(const char *lockfile)
@@ -734,7 +722,6 @@ get_pid_from_lockfile(const char *lockfile)
 
 /*
 * initialize
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 */
 void
 gpanel_initialize (GlobalPanel *panel)
@@ -754,27 +741,13 @@ gpanel_initialize (GlobalPanel *panel)
   panel->green    = green_filter_new (selfexclude, DefaultScreen(gdk_display));
 
   if (systray_check_running_screen (green_get_gdk_screen (panel->green))) {
-<<<<<<< HEAD
     pid_t pid = signal_systemtray_process (SIGUSR1);
     g_printerr("%s: %s (pid => %d)\n", Program, abend, pid);
-    if(pid > 0) kill(pid, SIGUSR1);
     _exit(_RUNNING);
   }
   panel->systray  = systray_new ();
-#ifndef NEVER
   panel->session  = session_open(_GSESSION);
-#else
-  printf("%s: not calling session_open() until it stops hanging\n", __func__);
-#endif
-=======
-    pid_t pid = get_pid_from_lockfile (gpanelLock);
-    g_printerr("%s: another instance is already running (pid => %d)\n",
-                    Program, pid);
-    _exit(RUNNING_);
-  }
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 
-  panel->systray  = systray_new ();
   strcpy(dirname, panel->resource);	/* obtain parent directory path */
   scan = strrchr(dirname, '/');
 
@@ -906,7 +879,6 @@ gpanel_getpid(const char *lockfile)
 pid_t
 gpanel_instance (GlobalPanel *panel)
 {
-<<<<<<< HEAD
   pid_t instance = 0;                   /* implies all went wrong */
   memset(panel, 0, sizeof(GlobalPanel));
 
@@ -922,30 +894,6 @@ gpanel_instance (GlobalPanel *panel)
       printf("%s: %s.", Program, _("cannot find configuration file"));
 
     exit(EX_CONFIG);
-=======
-  pid_t instance = 0;
-  memset(panel, 0, sizeof(GlobalPanel));
-
-  if (panel_loader(panel) == EX_OK) {
-    FILE *stream = fopen(gpanelLock, "w");
-
-    if (stream) {
-      instance = getpid();
-      fprintf(stream, "%d\n", instance);
-      panel->lockfile = (char *)gpanelLock;
-      fclose(stream);
-    }
-    global = panel;             /* save GlobalPanel data structure */
-  }
-  else {                        /* configuration file disappeared */
-    if (global)
-      notice_at(50, 50, ICON_ERROR,"%s: %s.",
-                        Program, _("cannot find configuration file"));
-    else
-      printf("%s: %s.", Program, _("cannot find configuration file"));
-
-    _exit(EX_CONFIG);
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
   }
   return instance;
 } /* </gpanel_instance> */
@@ -956,11 +904,7 @@ gpanel_instance (GlobalPanel *panel)
 void
 responder (int sig)
 {
-<<<<<<< HEAD
   const static debug_t BACKTRACE_SIZE = 69;
-=======
-  const static debug_t BACKTRACE_LINES = 69;
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 
   switch (sig) {
     case SIGHUP:
@@ -978,30 +922,18 @@ responder (int sig)
       break;
 
     default:
-<<<<<<< HEAD
 #ifdef LOCKFILE
       remove (LOCKFILE);
 #endif
       if (sig |= SIGINT && sig != SIGKILL) {
         void *trace[BACKTRACE_SIZE];
         int nptrs = backtrace(trace, BACKTRACE_SIZE);
-=======
-      remove (gpanelLock);
-
-      if (sig |= SIGINT && sig != SIGKILL) {
-        void *trace[BACKTRACE_LINES];
-        int nptrs = backtrace(trace, BACKTRACE_LINES);
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 
         printf("%s, exiting on signal: %d\n", Program, sig);
         backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
 
         notice_at(50, 50, ICON_ERROR, "%s: %s.", Program,
-<<<<<<< HEAD
 				_("internal program error"));
-=======
-                             _("internal program error"));
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
       }
       gtk_main_quit ();
       exit (sig);
@@ -1062,7 +994,7 @@ gpanel_lockfile_pid(const char *lockfile)
 int
 gpanel_lockfile_check(const char *lockfile)
 {
-  int status = MISSING_;
+  int status = _MISSING;
 
   if (access(lockfile, F_OK) == 0) {
     char procfile[MAX_STRING];
@@ -1078,7 +1010,7 @@ gpanel_lockfile_check(const char *lockfile)
         fgets(command, MAX_LABEL, stream);
         program = strrchr(command, '/');
         match = (program != NULL) ? program : command;
-        status = (strcmp(match, Program) == 0) ? VALID_ : INVALID_;
+        status = (strcmp(match, Program) == 0) ? _SUCCESS : _INVALID;
 
         fclose(stream);
       }
@@ -1159,7 +1091,6 @@ main(int argc, char *argv[])
   textdomain (GETTEXT_PACKAGE);
   gtk_disable_setlocale();
 #endif
-<<<<<<< HEAD
   if(alias) prctl(PR_SET_NAME, (unsigned long)alias, 0, 0, 0);
 
   gtk_init (&argc, &argv);	/* initialization of the GTK */
@@ -1168,19 +1099,6 @@ main(int argc, char *argv[])
   apply_signal_responder();
   gpanel_instance (&memory);	/* return pid_t ignored */
 
-=======
-  prctl(PR_SET_NAME, (unsigned long)gpanelProcess, 0, 0, 0);
-
-  if (gpanel_lockfile_check (gpanelLock) != VALID_)
-    instance = gpanel_instance (&memory);  /* gpanel_instance() initialize */
-  else {
-    instance = gpanel_lockfile_pid (gpanelLock);
-    status = kill(instance, sig);
-    return status;
-  }
-
-  gtk_init (&argc, &argv);	/* initialization of the GTK */
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
   apply_gtk_theme (CONFIG_FILE);
   gtk_set_locale ();
   gtk_main ();			/* main event loop */

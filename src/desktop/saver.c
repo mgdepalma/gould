@@ -17,11 +17,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-<<<<<<< HEAD
-#include "gould.h"
-=======
 #include "gould.h"      /* common package declarations */
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 #include "gpanel.h"
 #include "module.h"
 #include "util.h"
@@ -221,9 +217,7 @@ events_select (Display *display, Window window, Bool substructure)
   unsigned count = 0;
   unsigned idx;
 
-  /*
-   * Start by querying the server about the root and parent windows.
-  */
+  // Start by querying the server about the root and parent windows.
   _X_ERROR_TRAP_PUSH ();
 
   if (!XQueryTree (display, window, &root, &parent, &children, &count)) {

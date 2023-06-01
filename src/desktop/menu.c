@@ -17,12 +17,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-<<<<<<< HEAD
-#include "gould.h"
-=======
 #include "gould.h"      /* common package declarations */
-#include "xutil.h"
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 #include "gpanel.h"
 #include "gsession.h"
 #include "tasklist.h"
@@ -40,10 +35,10 @@ extern const char *ConfigurationHeader, *Schema;        /* ... */
 /* Needed forward function declarations. */
 static void exit_cancel (GtkWidget *button, GlobalPanel *panel);
 
-#if 0
+#ifdef NEVER
 /*
- * (private) shortcut_cb
- */
+* (private) shortcut_cb
+*/
 static void
 shortcut_cb (GtkWidget *widget, gpointer drag_context, gint x, gint y,
               time_t stamp, gpointer data)
@@ -63,8 +58,8 @@ about (GlobalPanel *panel)
 } /* </about> */
 
 /*
- * save configuration file, when needed
- */
+* save configuration file, when needed
+*/
 int
 saveconfig (GlobalPanel *panel)
 {
@@ -113,10 +108,10 @@ saveconfig (GlobalPanel *panel)
 
           if (delta) {
             if (bytes == info.st_size)
-              vdebug (1, "[saveconfig]configuration changes detected!\n");
+              vdebug (1, "[%s]configuration changes detected!\n", __func__);
             else
-              vdebug (1, "[saveconfig]old config %d bytes, new config %d bytes\n",
-                                                      bytes, (int)info.st_size);
+              vdebug (1, "[%s]old config %d bytes, new config %d bytes\n",
+                                __func__, bytes, (int)info.st_size);
 
             if (rename(resource, oldconfig) == 0)
               rename(newconfig, resource);
@@ -184,7 +179,7 @@ finis (GlobalPanel *panel, gboolean logout, gboolean quit)
 
         if (kill(pid, SIGTERM) == 0) {
           sleep(2);
-          if(kill(pid, 0) == 0) kill(pid, SIGKILL);  /* black/fluxbox may need SIGKILL */
+          if(kill(pid, 0) == 0) kill(pid, SIGKILL); /* signal windowmanager */
         }
       }
       else {
@@ -201,8 +196,8 @@ finis (GlobalPanel *panel, gboolean logout, gboolean quit)
 } /* </finis> */
 
 /*
- * end session callback
- */
+* end session callback
+*/
 static void
 end_session (GtkWidget *button, GlobalPanel *panel)
 {
@@ -214,8 +209,8 @@ end_session (GtkWidget *button, GlobalPanel *panel)
 } /* </end_session> */
 
 /*
- * shutdown halt callback
- */
+* shutdown halt callback
+*/
 static void
 end_session_halt (GtkWidget *button, GlobalPanel *panel)
 {
@@ -228,8 +223,8 @@ end_session_halt (GtkWidget *button, GlobalPanel *panel)
 } /* </end_session_halt> */
 
 /*
- * shutdown reboot callback
- */
+* shutdown reboot callback
+*/
 static void
 end_session_reboot (GtkWidget *button, GlobalPanel *panel)
 {
@@ -242,8 +237,8 @@ end_session_reboot (GtkWidget *button, GlobalPanel *panel)
 } /* </end_session_reboot> */
 
 /*
- * exit cancel callback
- */
+* exit cancel callback
+*/
 static void
 exit_cancel (GtkWidget *button, GlobalPanel *panel)
 {
@@ -253,8 +248,8 @@ exit_cancel (GtkWidget *button, GlobalPanel *panel)
 } /* </exit_cancel> */
 
 /*
- * suspend callback
- */
+* suspend callback
+*/
 static void
 exit_suspend (GtkWidget *button, GlobalPanel *panel)
 {
@@ -264,8 +259,8 @@ exit_suspend (GtkWidget *button, GlobalPanel *panel)
 } /* </exit_suspend> */
 
 /*
- * screenlock
- */
+* screenlock
+*/
 static void
 screenlock (GtkWidget *button, GlobalPanel *panel)
 {
@@ -283,8 +278,8 @@ screenlock (GtkWidget *button, GlobalPanel *panel)
 } /* </screenlock> */
 
 /*
- * (protected) startmenu - position menu consistently
- */
+* (protected) startmenu - position menu consistently
+*/
 void
 startmenu (GtkMenu *menu, gint *x, gint *y, gboolean *pushin, gpointer data)
 {
@@ -322,8 +317,8 @@ startmenu (GtkMenu *menu, gint *x, gint *y, gboolean *pushin, gpointer data)
 } /* </startmenu> */
 
 /*
- * (private) activate - popup the main menu
- */
+* (private) activate - popup the main menu
+*/
 static void
 activate (GtkWidget *button, GdkEventButton *event, GlobalPanel *panel)
 {
@@ -335,8 +330,8 @@ activate (GtkWidget *button, GdkEventButton *event, GlobalPanel *panel)
 } /* </activate> */
 
 /*
- * item_check_access
- */
+* item_check_access
+*/
 const char * 
 item_check_access (ConfigurationNode *node, GlobalPanel *panel, gchar *attr)
 {
@@ -418,8 +413,8 @@ spawn_selected (ConfigurationNode *node, GlobalPanel *panel)
 } /* </spawn_selected> */
 
 /*
- * (protected) executer
- */
+* (protected) executer
+*/
 void
 executer (GtkWidget *widget, ConfigurationNode *node)
 {
@@ -464,8 +459,8 @@ executer (GtkWidget *widget, ConfigurationNode *node)
 } /* </executer> */
 
 /*
- * shutdown_panel - display shutdown dialog
- */
+* shutdown_panel - display shutdown dialog
+*/
 void
 shutdown_panel (GlobalPanel *panel, int sig)
 {
@@ -489,9 +484,9 @@ shutdown_panel (GlobalPanel *panel, int sig)
 } /* </shutdown_panel> */
 
 /*
- * (protected) reconstruct
- * (protected) restart
- */
+* (protected) reconstruct
+* (protected) restart
+*/
 void
 reconstruct (GlobalPanel *panel)
 {
@@ -543,8 +538,8 @@ restart (GlobalPanel *panel)
 } /* </restart> */
 
 /*
- * shutdown_dialog_new - create shutdown dialog window
- */
+* shutdown_dialog_new - create shutdown dialog window
+*/
 GtkWidget *
 shutdown_dialog_new (GlobalPanel *panel)
 {
@@ -722,8 +717,8 @@ shutdown_dialog_new (GlobalPanel *panel)
 } /* shutdown_dialog_new */
 
 /*
- * menu_header_config
- */
+* menu_header_config
+*/
 GtkWidget *
 menu_header_config (ConfigurationNode *config, GlobalPanel *panel)
 {
@@ -744,7 +739,7 @@ menu_header_config (ConfigurationNode *config, GlobalPanel *panel)
     if (font == NULL)
       font = "Sans bold 14";
 
-#if 0 /* may need a NEW menu class to have custom font menuitem labels */
+#ifdef NEVER /* may need a NEW menu class to have custom font menuitem labels */
     PangoFontDescription *fontdesc;
     PangoLayout *layout;
 
@@ -780,8 +775,8 @@ menu_header_config (ConfigurationNode *config, GlobalPanel *panel)
 } /* </menu_header_config> */
 
 /*
- * menu_item_config
- */
+* menu_item_config
+*/
 GtkWidget *
 menu_item_config (ConfigurationNode *config, GlobalPanel *panel, gint iconsize)
 {
@@ -811,11 +806,11 @@ menu_item_config (ConfigurationNode *config, GlobalPanel *panel, gint iconsize)
 } /* </menu_item_config> */
 
 /*
- * menu_element_config
- *
- * parse a menu element which can be:
- *   <item>, <separator>, or <submenu>
- */
+* menu_element_config
+*
+* parse a menu element which can be:
+*   <item>, <separator>, or <submenu>
+*/
 GtkWidget *
 menu_element_config (ConfigurationNode *node, GlobalPanel *panel, gint iconsize)
 {
@@ -853,8 +848,8 @@ menu_element_config (ConfigurationNode *node, GlobalPanel *panel, gint iconsize)
 } /* </menu_element_config> */
 
 /*
- * menu_submenu_config
- */
+* menu_submenu_config
+*/
 GtkWidget *
 menu_submenu_config (ConfigurationNode *chain, GlobalPanel *panel, gint iconsize)
 {
@@ -876,8 +871,8 @@ menu_submenu_config (ConfigurationNode *chain, GlobalPanel *panel, gint iconsize
 } /* </menu_submenu_config> */
 
 /*
- * menu_options_config
- */
+* menu_options_config
+*/
 GtkWidget *
 menu_options_config (ConfigurationNode *menu, GlobalPanel *panel, gint iconsize)
 {
@@ -907,8 +902,8 @@ menu_options_config (ConfigurationNode *menu, GlobalPanel *panel, gint iconsize)
 } /* </menu_options_config> */
 
 /*
- * menu_config
- */
+* menu_config
+*/
 GtkWidget *
 menu_config (Modulus *applet, GlobalPanel *panel)
 {

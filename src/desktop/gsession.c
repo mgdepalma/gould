@@ -19,11 +19,7 @@
 /*
 * gsession - GOULD session manager.
 */
-<<<<<<< HEAD
-#include "gould.h"
-=======
 #include "gould.h"	/* common package declarations */
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 #include "gsession.h"
 
 #include <stdio.h>
@@ -31,24 +27,15 @@
 #include <string.h>
 #include <signal.h>
 #include <libgen.h>
-<<<<<<< HEAD
+#include <unistd.h>
+#include <execinfo.h>	/* backtrace declarations */
 
 const char *Program = "gsession";
 const char *Release = "1.1.1";
 
 debug_t debug = 0;  /* debug verbosity (0 => none) {must be declared} */
 int _stream = -1;   /* stream socket descriptor */
-=======
-#include <unistd.h>
-#include <execinfo.h>	/* backtrace declarations */
-
-const char *Program = "gsession";
-const char *Release = "1.1.1";	/* must be declared (libgould.so) */
-
-debug_t debug = 0;  /* debug verbosity (0 => none) {must be declared} */
-int _stream = -1;   /* stream socket descriptor */
 
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 
 /**
 * spawn child process
@@ -68,38 +55,7 @@ spawn(const char *cmdline)
   return pid;
 } /* </spawn> */
 
-/**
-<<<<<<< HEAD
-* responder - signal handler
-*/
-void
-responder(int sig)
-{
-  const static debug_t BACKTRACE_SIZE = 69;
-
-  switch (sig) {
-    case SIGHUP:
-    case SIGCONT:
-      break;
-
-    default:
-      close(_stream);
-      unlink(_GSESSION);
-    
-      if (sig != SIGINT && sig != SIGTERM) {
-        void *trace[BACKTRACE_SIZE];
-        int nptrs = backtrace(trace, UNIX_PATH_MAX);
-
-        printf("%s, exiting on signal: %d\n", Program, sig);
-        backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
-      }
-      exit (sig);
-  }
-} /* </responder> */
-
-/**
-=======
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
+/*
 * connection handler
 */
 int
@@ -107,10 +63,6 @@ receive (int connection)
 {
   int nbytes;
   char message[MAX_PATHNAME];
-<<<<<<< HEAD
-  pid_t pid;
-=======
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
 
   memset(message, 0, MAX_PATHNAME);
   nbytes = read(connection, message, MAX_PATHNAME);
@@ -138,13 +90,6 @@ receive (int connection)
 int
 stream_socket(const char *sockname)
 {
-<<<<<<< HEAD
-  const char *manager  = getenv("WINDOWMANAGER");
-  const char *launcher = getenv("LAUNCHER");
-  const char *desktop  = getenv("PANEL");
-
-=======
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
   struct sockaddr_un address;
 
   if ((_stream = socket(PF_UNIX, SOCK_STREAM, 0)) < 0) {
@@ -171,13 +116,13 @@ stream_socket(const char *sockname)
   return 0;
 } /* </stream_socket> */
 
-/**
+/*
 * responder - signal handler
 */
 void
 responder(int sig)
 {
-  const static debug_t BACKTRACE_LINES = 69;
+  const static debug_t BACKTRACE_SIZE = 69;
 
   switch (sig) {
     case SIGHUP:
@@ -185,18 +130,17 @@ responder(int sig)
       break;
 
     default:
-      close (_stream);
-      remove (_GSESSION);
+      close(_stream);
+      unlink(_GSESSION);
     
-      if (sig != SIGINT && sig != SIGKILL && sig != SIGTERM) {
-        void *trace[BACKTRACE_LINES];
-        int nptrs = backtrace(trace, BACKTRACE_LINES);
+      if (sig != SIGINT && sig != SIGTERM) {
+        void *trace[BACKTRACE_SIZE];
+        int nptrs = backtrace(trace, UNIX_PATH_MAX);
 
         printf("%s, exiting on signal: %d\n", Program, sig);
         backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
       }
       exit (sig);
-      break;
   }
 } /* </responder> */
 
@@ -243,30 +187,7 @@ int main(int argc, char *argv[])
   if(launcher) spawn( launcher );       /* spawn application launcher */
   if(manager) spawn( manager );	        /* spawn WINDOWMANAGER */
 
-<<<<<<< HEAD
-  signal(SIGCHLD, SIG_IGN);	// ignore SIGCHLD
-  signal(SIGABRT, responder);	// internal program error
-  signal(SIGALRM, responder);	// ..
-  signal(SIGBUS,  responder);	// ..
-  signal(SIGILL,  responder);	// ..
-  signal(SIGIOT,  responder);   // ..
-  signal(SIGKILL, responder);   // ..
-  signal(SIGQUIT, responder);	// ..
-  signal(SIGSEGV, responder);	// ..
-  signal(SIGTERM, responder);	// graceful exit
-  signal(SIGINT,  responder);	// ..
-  signal(SIGCONT, responder);	// cancel request
-  signal(SIGHUP,  responder);	// reload
-
-  // spawn WINDOWMANAGER and TASKBAR
-  if(manager) spawn( manager );
-  if(launcher) spawn( launcher );
-  spawn( (desktop) ? desktop : "gpanel" );
-
-  // main loop
-=======
   /* gsession main loop */
->>>>>>> 1c7ba7d252389ff48c813c34f56bde04273b373c
   for ( ;; ) {
     if ((connection = accept(_stream, 0, 0)) < 0)
       perror("accept connection on socket");
