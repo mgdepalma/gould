@@ -27,9 +27,9 @@
 
 const GdkColor ColorWhite = { 0, 65535, 65535, 65535 };
 
-extern const char *Program, *Release, *Information; /* see, gpanel.c */
-extern const char *ConfigurationHeader, *Schema;         /* .. */
-extern unsigned short debug;				 /* .. */
+extern const char *Program, *Release, *Description;  /* see, gpanel.c */
+extern const char *ConfigurationHeader, *Schema;     /* .. */
+extern debug_t debug;				     /* .. */
 
 static void
 settings_menu_config (GlobalPanel *panel, ConfigurationNode *menu,
@@ -289,7 +289,7 @@ settings_about_new ()
 
   description = g_strdup_printf (
                   "<span font_desc=\"Arial 14\">%s %s</span>",
-                                      Program, Information);
+                                      Program, Description);
   info = gtk_label_new (description);
   gtk_label_set_use_markup (GTK_LABEL (info), TRUE);
   gtk_misc_set_alignment (GTK_MISC(info), 0.06, 0.5);

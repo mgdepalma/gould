@@ -103,7 +103,7 @@ struct _GlobalPanel
   GtkOrientation orientation;	/* GTK_ORIENTATION_{HORIZONTAL, VERTICAL} */
   GtkPositionType place;	/* GTK_POS_{TOP, BOTTOM, LEFT, RIGHT} */
 
-  gboolean visible;		/* controls is the panel is visible */
+  gboolean visible;		/* controls if the panel is visible */
 
   guint thickness;		/* thickness of the panel bar */
   guint margin;			/* margin at each end */

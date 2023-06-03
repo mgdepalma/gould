@@ -365,6 +365,7 @@ query_pointer (SaverQueue *queue)
 
   Display *display = queue->display;
   Window window;
+
   int xpos, ypos;
   int idx, mark;
   unsigned mask;

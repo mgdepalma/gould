@@ -182,10 +182,10 @@ int main(int argc, char *argv[])
   apply_signal_responder();
 
   /* spawn {PANEL}, {LAUNCHER} and {WINDOWMANAGER} */
-  spawn( (panel) ? panel : "gpanel" );  /* spawn desktop [control] panel */
+  spawn( (panel) ? panel : "gpanel" ); /* spawn desktop [control] panel */
 
-  if(launcher) spawn( launcher );       /* spawn application launcher */
-  if(manager) spawn( manager );	        /* spawn WINDOWMANAGER */
+  if(launcher) spawn( launcher );	/* spawn application launcher */
+  if(manager) spawn( manager );		/* spawn WINDOWMANAGER */
 
   /* gsession main loop */
   for ( ;; ) {

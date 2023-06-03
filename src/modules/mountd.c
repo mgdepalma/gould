@@ -17,8 +17,9 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include "module.h"
+#include "gould.h"
 #include "gpanel.h"
+#include "module.h"
 
 extern const char *Program;	/* see, gpanel.c */
 extern const char *Authors;	/* .. */

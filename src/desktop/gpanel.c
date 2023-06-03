@@ -26,13 +26,17 @@
 #include <sys/prctl.h>
 #include <execinfo.h>
 
+#ifndef SIGUNUSED
+#define SIGUNUSED 31
+#endif
+
 const gchar *Authors = "Mauro Gianni DePalma";  /* <bugs@softcraft.org> */
 static GlobalPanel *global = NULL; /* (protected) encapsulated program data */
 
 const char *Program = "gpanel";	   /* (public) published program name    */
-const char *Release = "1.6.6";	   /* (public) published program version */
+const char *Release = "1.6.7";	   /* (public) published program version */
 
-const char *Information =
+const char *Description =
 "is a gtk-based simple desktop panel.\n"
 "\n"
 "The program is developed for Generations Linux and distributed\n"
@@ -40,20 +44,23 @@ const char *Information =
 "\n\t\thttp://www.softcraft.org\n";
 
 const char *Usage =
-"usage: %s [-h | -v | -c | -l | -n | -r | -s]\n"
+"usage: %s [-h | -v ] | [ -p <name>] [-s]\n"
+"  when already running [ -c | -l | -n]\n"
 "\n"
-"\t-h print help usage\n"
+"\t-h print help usage (what you are reading)\n"
 "\t-v print version information\n"
-"\t-c display contrl panel\n"
+"\n"
+"\t-p <name> use process <name> instead of `%s'\n"
+"\t-s silent => no splash at startup\n"
+"\n"
+"\t-c cancel logout dialog\n"
 "\t-l display logout dialog\n"
 "\t-n create new desktop shortcut\n"
 "\n"
-"without options start program or display the configuration control\n"
-"panel if the program is already running. The -l and -n options only\n"
-"come into effect if the program is already running.\n"
+"%s when already running, without options will\n"
+"display the configuration control panel.\n"
 "\n";
 
-const char *Schema = "panel";	/* (public) XML configuration schema */
 const char *ConfigurationHeader =
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<%s>\n"
@@ -62,8 +69,13 @@ const char *ConfigurationHeader =
 "   changes made will be lost when the program using this file exits.  -->\n"
 "\n";
 
-debug_t debug = 0;  /* debug verbosity (0 => none) {must be declared} */
-int _stream = -1;   /* stream socket descriptor */
+const char *Running = "another instance of this program is already running.";
+const char *Schema = "panel";	/* (public) XML configuration schema */
+
+debug_t debug = 0;	  /* debug verbosity (0 => none) {must be declared} */
+gboolean _silent = FALSE; /* show splash screen (or not) */
+int _signal = SIGUSR1;	  /* (default optional) what to signal */
+int _stream = -1;	   /* stream socket descriptor */
 
 
 /*
@@ -465,18 +477,14 @@ panel_config_moduli (GlobalPanel *panel, GList *builtin, GList *plugins)
   for (iter = list; iter != NULL; iter = iter->next) {
     applet = (Modulus *)iter->data;
 
+    if (debug)
+      printf ("applet name => %s, place => %d, space => 0x%.4x\n",
+               applet->name, applet->place, applet->space);
+
     if (applet->space == MODULI_SPACE_ANCHOR) {
       list = g_list_remove (list, applet);  /* move to the end of the list */
       list = g_list_append (list, applet);
       break;
-    }
-  }
-
-  if (debug) {
-    for (iter = list; iter != NULL; iter = iter->next) {
-      applet = (Modulus *)iter->data;
-      printf ("applet name => %s, place => %d, space => 0x%.4x\n",
-               applet->name, applet->place, applet->space);
     }
   }
 } /* </panel_config_moduli> */
@@ -678,15 +686,15 @@ session_open(const char *pathway)
 } /* session_open */
 
 /*
-* signal_systemtray_process
+* gpanel_master_pid
 */
 pid_t
-signal_systemtray_process(int sig)
+gpanel_master_pid(const char* master)
 {
   static char answer[MAX_STRING];
-  gchar *command = g_strdup_printf ("pidof %s", Program);
+  gchar *command = g_strdup_printf ("pidof %s", master);
   FILE *stream = popen(command, "r");
-  pid_t ppid = 0;			/* process running systemtray */
+  pid_t gpanelpid = 0;			/* gpanel master pid */
 
   if (stream) {
     const char delim[2] = " ";
@@ -699,40 +707,22 @@ signal_systemtray_process(int sig)
       token = strtok(NULL, delim);
       if(token != NULL) master = token;  /* pid is last on the list */
     }
-    ppid = strtoul(master, NULL, 10);
-    kill(ppid, sig);
+    gpanelpid = strtoul(master, NULL, 10);
     pclose(stream);
   }
   g_free (command);
 
-  return ppid;
-} /* </signal_systemtray_process> */
+  return gpanelpid;
+} /* </gpanel_master_pid> */
 
 /*
 * gpanel_initialize
-*/
-pid_t
-get_pid_from_lockfile(const char *lockfile)
-{
-  pid_t pid = 0;
-  FILE *stream = fopen(lockfile, "r");
-
-  if (stream) {
-    fscanf (stream, "%d", &pid);
-    fclose(stream);
-  }
-  return pid;
-} /* </get_pid_from_lockfile> */
-
-/*
-* initialize
 */
 void
 gpanel_initialize (GlobalPanel *panel)
 {
   GList *builtin, *plugins;
   SchemaVersion *version = NULL;
-  const char *abend = "another program is already using system tray";
 
   char dirname[MAX_PATHNAME];
   char *home = getenv("HOME");
@@ -745,9 +735,14 @@ gpanel_initialize (GlobalPanel *panel)
   panel->green    = green_filter_new (selfexclude, DefaultScreen(gdk_display));
 
   if (systray_check_running_screen (green_get_gdk_screen (panel->green))) {
-    pid_t pid = signal_systemtray_process (SIGUSR1);
-    g_printerr("%s: %s (pid => %d)\n", Program, abend, pid);
-    _exit(_RUNNING);
+    const char *message = "another program is already using system tray.";
+    pid_t instance = gpanel_master_pid (Program);
+
+    if (instance > 0) {
+      if ((kill(instance, _signal)) == -1)
+        g_printerr("%s: %s\n", Program, message);
+    }
+    _exit (_RUNNING);
   }
   panel->systray  = systray_new ();
   panel->session  = session_open(_GSESSION);
@@ -789,7 +784,7 @@ gpanel_initialize (GlobalPanel *panel)
 * application constructor
 */
 void
-constructor (GlobalPanel *panel)
+panel_constructor (GlobalPanel *panel)
 {
   GtkWidget *frame;
   GtkWidget *layout;
@@ -821,7 +816,7 @@ constructor (GlobalPanel *panel)
 
   g_list_free (panel->notice);
   panel->notice = NULL;
-} /* </constructor> */
+} /* </panel_constructor> */
 
 /*
 * reload data structures and reconstruct as needed
@@ -842,7 +837,7 @@ panel_loader (GlobalPanel *panel)
       if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0)
         panel->visible = FALSE;
 
-    constructor (panel);
+    panel_constructor (panel);
     status = EX_OK;
   }
   return status;
@@ -883,13 +878,13 @@ gpanel_getpid(const char *lockfile)
 pid_t
 gpanel_instance (GlobalPanel *panel)
 {
-  pid_t instance = 0;                   /* implies all went wrong */
-  memset(panel, 0, sizeof(GlobalPanel));
+  pid_t instance = 0;		/* implies something went wrong */
 
-  if (panel_loader(panel) == EX_OK) {
+  memset(panel, 0, sizeof(GlobalPanel));
+  global = panel;		/* save GlobalPanel data structure */
+
+  if (panel_loader(panel) == EX_OK)
     instance = getpid();
-    global = panel;		/* save GlobalPanel data structure */
-  }
   else {			/* configuration file disappeared */
     if (global)
       notice_at(50, 50, ICON_ERROR,"%s: %s.",
@@ -926,9 +921,6 @@ responder (int sig)
       break;
 
     default:
-#ifdef LOCKFILE
-      remove (LOCKFILE);
-#endif
       if (sig |= SIGINT && sig != SIGKILL) {
         void *trace[BACKTRACE_SIZE];
         int nptrs = backtrace(trace, BACKTRACE_SIZE);
@@ -936,11 +928,14 @@ responder (int sig)
         printf("%s, exiting on signal: %d\n", Program, sig);
         backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
 
-        notice_at(50, 50, ICON_ERROR, "%s: %s.", Program,
+        /* SIGBUS causes gtk_dialog() never return */
+        if (sig != SIGBUS) {
+          notice_at(50, 50, ICON_ERROR, "%s: %s.", Program,
 				_("internal program error"));
+        }
       }
       gtk_main_quit ();
-      exit (sig);
+      _exit (sig);
       break;
   }
 } /* </responder> */
@@ -951,77 +946,52 @@ responder (int sig)
 static inline void
 apply_signal_responder(void)
 {
-  signal(SIGHUP,  responder);	/* reload */
-  signal(SIGTERM, responder);	/* logout */
-  signal(SIGCONT, responder);	/* cancel logout */
-  signal(SIGUSR1, responder);	/* show control panel */
-  signal(SIGUSR2, responder);	/* new desktop shortcut */
-  signal(SIGABRT, responder);   /* internal program error */
-  signal(SIGALRM, responder);   /* .. */
-  signal(SIGBUS,  responder);   /* .. */
-  signal(SIGILL,  responder);   /* .. */
-  signal(SIGINT,  responder);   /* .. */
-  signal(SIGIOT,  responder);   /* .. */
-  signal(SIGKILL, responder);   /* .. */
-  signal(SIGQUIT, responder);   /* .. */
-  signal(SIGSEGV, responder);	/* .. */
-  signal(SIGCHLD, SIG_IGN);	/* do not want to wait() for SIGCHLD */
+  signal(SIGHUP,  responder);	/* 1 reload */
+  signal(SIGINT,  responder);   /* 2 internal program error */
+  signal(SIGQUIT, responder);   /* 3 internal program error */
+  signal(SIGILL,  responder);   /* 4 internal program error */
+  signal(SIGTRAP, responder);   /* 5 internal program error */
+  signal(SIGABRT, responder);   /* 6 internal program error */
+  signal(SIGBUS,  responder);   /* 7 internal program error */
+  signal(SIGFPE,  responder);   /* 8 internal program error */
+  signal(SIGKILL, responder);   /* 9 internal program error */
+  signal(SIGUSR1, responder);	/* 10 show control panel */
+  signal(SIGSEGV, responder);	/* 11 internal program error */
+  signal(SIGUSR2, responder);	/* 12 new desktop shortcut */
+  signal(SIGPIPE, responder);   /* 13 internal program error */
+  signal(SIGALRM, responder);   /* 14 internal program error */
+  signal(SIGTERM, responder);	/* 15 show logout panel */
+  signal(SIGCHLD, SIG_IGN);	/* 17 ignore SIGCHLD */
+  signal(SIGCONT, responder);	/* 18 cancel logout */
+  signal(SIGSTOP, responder);   /* 19 internal program error */
+  signal(SIGTSTP, responder);   /* 20 internal program error */
+  signal(SIGTTIN, responder);   /* 21 internal program error */
+  signal(SIGTTOU, responder);   /* 22 internal program error */
+  signal(SIGURG, responder);    /* 23 internal program error */
+  signal(SIGIO, responder);     /* 29 internal program error */
 } /* </apply_signal_responder> */
 
 /*
-* gpanel_lockfile_pid
+* daemonize
 */
-pid_t
-gpanel_lockfile_pid(const char *lockfile)
+static void daemonize(void)
 {
-  FILE *stream;                           /* lockfile descriptor */
-  pid_t pid = 0;
+  pid_t pid = fork();
 
-  if ((stream = fopen(lockfile, "r"))) {  /* open lockfile readonly */
-    const int bytes = sizeof(double);
-
-    char line[bytes];
-    fgets(line, bytes, stream);
-    fclose(stream);
-
-    if (strlen(line) > 0) {
-      line[strlen(line) - 1] = (char)0;   /* chomp newline */
-      pid = atoi(line);
-    }
+  if (pid < 0) {
+    perror("fork() failed: %m");
+    _exit(EX_OSERR);
   }
-  return pid;
-} /* </gpanel_lockfile_pid> */
 
-/*
-* gpanel_lockfile_check
-*/
-int
-gpanel_lockfile_check(const char *lockfile)
-{
-  int status = _MISSING;
+  if (pid != 0)
+    _exit(0);
 
-  if (access(lockfile, F_OK) == 0) {
-    char procfile[MAX_STRING];
-    sprintf(procfile, "/proc/%d", gpanel_lockfile_pid(lockfile));
-
-    if (access(procfile, F_OK) == 0) {
-      FILE *stream;
-      strcat(procfile, "/cmdline");
-
-      if ( (stream = fopen(procfile, "r")) ) {
-        char command[MAX_LABEL], *match, *program;
-
-        fgets(command, MAX_LABEL, stream);
-        program = strrchr(command, '/');
-        match = (program != NULL) ? program : command;
-        status = (strcmp(match, Program) == 0) ? _SUCCESS : _INVALID;
-
-        fclose(stream);
-      }
-    }
+  if (setsid() < 0) {
+    perror("setsid() failed: %m");
+    _exit (EX_SOFTWARE);
   }
-  return status;
-} /* </gpanel_lockfile_check> */
+  //hostpid_init();
+} /* <daemonize> */
 
 /*
 * main - gpanel program main
@@ -1030,82 +1000,80 @@ int
 main(int argc, char *argv[])
 {
   GlobalPanel memory;		/* master data structure (gpanel.h) */
-  char *alias = NULL;		/* used to changer process name */
+  char *pretend = NULL;		/* used to change process name */
 
-  int sig = SIGUSR1;		/* show control panel */
   int status = EX_OK;
   int opt;
 
   /* disable invalid option messages */
   opterr = 0;
      
-  while ((opt = getopt (argc, argv, "d:hvlnprs")) != -1) {
+  while ((opt = getopt (argc, argv, "d:hvclnp:s")) != -1) {
   /* while ((opt = getopt_long (argc, argv, opts, longopts, NULL)) != -1) */
     switch (opt) {
       case 'd':
+        _signal = SIGUNUSED;
         debug = atoi(optarg);
         break;
 
       case 'h':
-        printf(Usage, Program);
-        exit(0);
+        printf(Usage, Program, Program, Program);
+        _exit (status);
 
       case 'v':
-        printf("\n%s %s %s\n", Program, Release, Information);
-        exit(0);
+        printf("\n%s %s %s\n", Program, Release, Description);
+        _exit (status);
 
-      case 'c':			/* show control panel */
-        sig = SIGUSR1;
+      case 'c':			/* cancel logout panel */
+        _signal = SIGCONT;
         break;
-
       case 'l':			/* show logout panel */
-        sig = SIGTERM;
+        _signal = SIGTERM;
         break;
-
       case 'n':			/* create new shortcut */
-        sig = SIGUSR2;
+        _signal = SIGUSR2;
         break;
 
-      case 'p':			/* process name */
-        alias = optarg;
+      case 'p':			/* set process name */
+        _signal = SIGUNUSED;
+        pretend = optarg;
         break;
-
-      case 'r':
-        sig = SIGCONT;
-        break;
-
-      case 's':
-        sig = SIGHUP;
+      case 's':			/* inert splash screen */
+        _signal = SIGUNUSED;
+        _silent = TRUE;
         break;
 
       default:
-        if (optopt == 'd')		/* debug default => 1 */
-          debug = 1;
-        else {
-          printf("%s: invalid option, use -h for help usage.\n", Program);
-          exit(1);
-        }
+        printf("%s: invalid option, use -h for help usage.\n", Program);
+        _exit (EX_USAGE);
     }
   }
-  apply_signal_responder();
 
+  if (_signal == SIGUNUSED) {
+    pid_t instance = gpanel_master_pid (Program);
+
+    if (instance && instance != getpid()) {
+      printf("%s: %s (pid => %d)\n", Program, Running, instance);
+      _exit (status);
+    }
+  }
 #ifdef GETTEXT_PACKAGE
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
   gtk_disable_setlocale();
 #endif
-  if(alias) prctl(PR_SET_NAME, (unsigned long)alias, 0, 0, 0);
+  if(pretend) prctl(PR_SET_NAME, (unsigned long)pretend, 0, 0, 0);
 
-  gtk_init (&argc, &argv);	/* initialization of the GTK */
+  gtk_init (&argc, &argv);		/* initialization of the GTK */
   gtk_set_locale ();
 
   apply_signal_responder();
-  gpanel_instance (&memory);	/* return pid_t ignored */
+  gpanel_instance (&memory);		/* return pid_t ignored */
 
   apply_gtk_theme (CONFIG_FILE);
   gtk_set_locale ();
-  gtk_main ();			/* main event loop */
+  gtk_main ();				/* main event loop */
 
   return status;
 } /* </main> */

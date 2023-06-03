@@ -17,11 +17,13 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "module.h"
-#include "docklet.h"
+#include "gould.h"
 #include "gpanel.h"
+#include "docklet.h"
+#include "module.h"
 
 extern const char *Authors;	/* see, gpanel.c */
+extern gboolean _silent;	/* see, gpanel.c */
 
 /*
 * Data structures used by this module.
@@ -407,7 +409,7 @@ module_init (Modulus *applet)
   applet->icon    = "welcome.png";
   applet->place   = PLACE_SCREEN;
   applet->space   = MODULI_SPACE_DESKTOP;
-  applet->release = "0.9.11";
+  applet->release = "0.9.12";
   applet->authors = Authors;
 
   /* Read configuration data for the splash screen. */
@@ -434,6 +436,8 @@ module_open (Modulus *applet)
 {
   GlobalPanel  *panel  = applet->data;
   SplashConfig *splash = local_.splash;
+
+  if (_silent) return;
 
   if (splash->command) {
     /* shutdown (panel, SIGHUP); */

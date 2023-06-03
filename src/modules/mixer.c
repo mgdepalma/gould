@@ -17,14 +17,15 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "gould.h"
+#include "gpanel.h"
+#include "module.h"
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/soundcard.h>
 #include <alsa/asoundlib.h>
-
-#include "gpanel.h"
-#include "module.h"
 
 #define _SCALE 100		/* slider bar long dimension */
 

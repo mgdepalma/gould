@@ -17,8 +17,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "module.h"
+#include "gould.h"
 #include "gpanel.h"
+#include "module.h"
 
 #define BATTERY_FORMAT_MAX 80
 

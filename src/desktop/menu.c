@@ -28,8 +28,7 @@
 
 extern const char *Program;				/* see, gpanel.c */
 extern const char *Release;				/* ... */
-
-extern const char *Information;				/* ... */
+extern const char *Description;				/* ... */
 extern const char *ConfigurationHeader, *Schema;        /* ... */
 
 /* Needed forward function declarations. */
@@ -54,7 +53,7 @@ static void
 about (GlobalPanel *panel)
 {
   notice_at(100, 100, ICON_SNAPSHOT,
-               "\n%s %s %s", Program, Release, Information);
+               "\n%s %s %s", Program, Release, Description);
 } /* </about> */
 
 /*
