@@ -26,9 +26,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <libgen.h>
-#include <unistd.h>
 #include <execinfo.h>	/* backtrace declarations */
+#include <libgen.h>	/* definitions for pattern matching functions */
+#include <sysexits.h>	/* exit status codes for system programs */
+#include <sys/prctl.h>	/* operations on a process or thread */
+#include <unistd.h>
 
 const char *Program = "gsession";
 const char *Release = "1.1.1";
@@ -37,8 +39,30 @@ debug_t debug = 0;  /* debug verbosity (0 => none) {must be declared} */
 int _stream = -1;   /* stream socket descriptor */
 
 
-/**
-* spawn child process
+/*
+* daemonize
+*/
+static void daemonize(void)
+{
+  pid_t pid = fork();
+
+  if (pid < 0) {
+    perror("fork() failed: %m");
+    _exit (EX_OSERR);
+  }
+
+  if (pid != 0)		/* not in spawned process - exit */
+    _exit (EX_OK);
+
+  if (setsid() < 0) {
+    perror("setsid() failed: %m");
+    _exit (EX_SOFTWARE);
+  }
+  //hostpid_init();
+} /* <daemonize> */
+
+/*
+* spawn child process - override libgould.so implementation
 */
 pid_t
 spawn(const char *cmdline)
@@ -129,6 +153,10 @@ responder(int sig)
     case SIGCONT:
       break;
 
+    case SIGCHLD:		/* reap children */
+      while (waitpid(-1, NULL, WNOHANG) > 0);
+      break;
+
     default:
       close(_stream);
       unlink(_GSESSION);
@@ -150,19 +178,18 @@ responder(int sig)
 static inline void
 apply_signal_responder(void)
 {
-  signal(SIGCHLD, SIG_IGN);	/* ignore SIGCHLD */
-  signal(SIGABRT, responder);	/* internal program error */
-  signal(SIGALRM, responder);	/* .. */
-  signal(SIGBUS,  responder);	/* .. */
-  signal(SIGILL,  responder);	/* .. */
-  signal(SIGIOT,  responder);   /* .. */
-  signal(SIGKILL, responder);   /* .. */
-  signal(SIGQUIT, responder);	/* .. */
-  signal(SIGSEGV, responder);	/* .. */
-  signal(SIGTERM, responder);	/* graceful exit on kill */
-  signal(SIGINT,  responder);	/* Ctrl+C received */
-  signal(SIGCONT, responder);	/* cancel request */
-  signal(SIGHUP,  responder);	/* TBD reload */
+  signal(SIGHUP,  responder);	/* 1 TBD reload */
+  signal(SIGINT,  responder);	/* 2 Ctrl+C received */
+  signal(SIGQUIT, responder);	/* 3 internal program error */
+  signal(SIGILL,  responder);	/* 4 internal program error */
+  signal(SIGABRT, responder);	/* 6 internal program error */
+  signal(SIGBUS,  responder);	/* 7 internal program error */
+  signal(SIGKILL, responder);   /* 9 internal program error */
+  signal(SIGSEGV, responder);	/* 11 internal program error */
+  signal(SIGALRM, responder);	/* 14 internal program error */
+  signal(SIGTERM, responder);	/* 15 graceful exit on kill */
+  signal(SIGCHLD, responder);	/* 17 reap children */
+  signal(SIGCONT, responder);	/* 18 cancel request */
 } /* </apply_signal_responder> */
 
 /**
@@ -177,12 +204,12 @@ int main(int argc, char *argv[])
   int connection;
 
   if (stream_socket(_GSESSION) != 0)
-    return 1;
+    return EX_PROTOCOL;
 
   apply_signal_responder();
 
   /* spawn {PANEL}, {LAUNCHER} and {WINDOWMANAGER} */
-  spawn( (panel) ? panel : "gpanel" ); /* spawn desktop [control] panel */
+  spawn( (panel) ? panel : "gpanel" );  /* spawn desktop [control] panel */
 
   if(launcher) spawn( launcher );	/* spawn application launcher */
   if(manager) spawn( manager );		/* spawn WINDOWMANAGER */
@@ -196,5 +223,5 @@ int main(int argc, char *argv[])
       close(connection);
     }
   }
-  return 0;
+  return EX_OK;
 } /* </gsession> */

@@ -17,21 +17,22 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "gould.h"		/* common package declarations */
+#include "gould.h"	/* common package declarations */
 #include "gpanel.h"
 #include "gsession.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
-#include <sys/prctl.h>
-#include <execinfo.h>
+#include <execinfo.h>	/* backtrace declarations */
+#include <sysexits.h>	/* exit status codes for system programs */
+#include <sys/prctl.h>	/* operations on a process or thread */
 
 #ifndef SIGUNUSED
 #define SIGUNUSED 31
 #endif
 
 const gchar *Authors = "Mauro Gianni DePalma";  /* <bugs@softcraft.org> */
-static GlobalPanel *global = NULL; /* (protected) encapsulated program data */
+static GlobalPanel *_desktop = NULL; /* (protected)encapsulated program data */
 
 const char *Program = "gpanel";	   /* (public) published program name    */
 const char *Release = "1.6.7";	   /* (public) published program version */
@@ -69,6 +70,7 @@ const char *ConfigurationHeader =
 "   changes made will be lost when the program using this file exits.  -->\n"
 "\n";
 
+const char *Bugger  = "internal program error";
 const char *Running = "another instance of this program is already running.";
 const char *Schema = "panel";	/* (public) XML configuration schema */
 
@@ -740,7 +742,7 @@ gpanel_initialize (GlobalPanel *panel)
 
     if (instance > 0) {
       if ((kill(instance, _signal)) == -1)
-        g_printerr("%s: %s\n", Program, message);
+        g_printerr("%s: %s\n", Program, _(message));
     }
     _exit (_RUNNING);
   }
@@ -878,21 +880,21 @@ gpanel_getpid(const char *lockfile)
 pid_t
 gpanel_instance (GlobalPanel *panel)
 {
-  pid_t instance = 0;		/* implies something went wrong */
-
+  pid_t instance = _INVALID;	/* implies something went wrong */
   memset(panel, 0, sizeof(GlobalPanel));
-  global = panel;		/* save GlobalPanel data structure */
 
-  if (panel_loader(panel) == EX_OK)
+  if (panel_loader(panel) == EX_OK) {
+    _desktop = panel;		/* save GlobalPanel data structure */
     instance = getpid();
+  }
   else {			/* configuration file disappeared */
-    if (global)
+    if (_desktop)
       notice_at(50, 50, ICON_ERROR,"%s: %s.",
 			Program, _("cannot find configuration file"));
     else
       printf("%s: %s.", Program, _("cannot find configuration file"));
 
-    exit(EX_CONFIG);
+    _exit (EX_CONFIG);
   }
   return instance;
 } /* </gpanel_instance> */
@@ -909,15 +911,19 @@ responder (int sig)
     case SIGHUP:
     case SIGCONT:
     case SIGTERM:
-      shutdown_panel (global, sig);
+      shutdown_panel (_desktop, sig);	/* show logout panel */
       break;
 
     case SIGUSR1:
-      settings_activate (global);
+      settings_activate (_desktop);	/* show setting panel */
       break;
 
-    case SIGUSR2:
-      desktop_settings (global, DESKTOP_SHORTCUT_CREATE);
+    case SIGUSR2:			/* create new shortcut */
+      desktop_settings (_desktop, DESKTOP_SHORTCUT_CREATE);
+      break;
+
+    case SIGCHLD:			/* reap children */
+      while (waitpid(-1, NULL, WNOHANG) > 0);
       break;
 
     default:
@@ -930,8 +936,7 @@ responder (int sig)
 
         /* SIGBUS causes gtk_dialog() never return */
         if (sig != SIGBUS) {
-          notice_at(50, 50, ICON_ERROR, "%s: %s.", Program,
-				_("internal program error"));
+          notice_at(50, 50, ICON_ERROR, "%s: %s.", Program, _(Bugger));
         }
       }
       gtk_main_quit ();
@@ -947,7 +952,7 @@ static inline void
 apply_signal_responder(void)
 {
   signal(SIGHUP,  responder);	/* 1 reload */
-  signal(SIGINT,  responder);   /* 2 internal program error */
+  signal(SIGINT,  responder);   /* 2 Ctrl+C received */
   signal(SIGQUIT, responder);   /* 3 internal program error */
   signal(SIGILL,  responder);   /* 4 internal program error */
   signal(SIGTRAP, responder);   /* 5 internal program error */
@@ -961,7 +966,7 @@ apply_signal_responder(void)
   signal(SIGPIPE, responder);   /* 13 internal program error */
   signal(SIGALRM, responder);   /* 14 internal program error */
   signal(SIGTERM, responder);	/* 15 show logout panel */
-  signal(SIGCHLD, SIG_IGN);	/* 17 ignore SIGCHLD */
+  signal(SIGCHLD, responder);	/* 17 reap children */
   signal(SIGCONT, responder);	/* 18 cancel logout */
   signal(SIGSTOP, responder);   /* 19 internal program error */
   signal(SIGTSTP, responder);   /* 20 internal program error */
@@ -970,28 +975,6 @@ apply_signal_responder(void)
   signal(SIGURG, responder);    /* 23 internal program error */
   signal(SIGIO, responder);     /* 29 internal program error */
 } /* </apply_signal_responder> */
-
-/*
-* daemonize
-*/
-static void daemonize(void)
-{
-  pid_t pid = fork();
-
-  if (pid < 0) {
-    perror("fork() failed: %m");
-    _exit(EX_OSERR);
-  }
-
-  if (pid != 0)
-    _exit(0);
-
-  if (setsid() < 0) {
-    perror("setsid() failed: %m");
-    _exit (EX_SOFTWARE);
-  }
-  //hostpid_init();
-} /* <daemonize> */
 
 /*
 * main - gpanel program main
@@ -1053,8 +1036,8 @@ main(int argc, char *argv[])
     pid_t instance = gpanel_master_pid (Program);
 
     if (instance && instance != getpid()) {
-      printf("%s: %s (pid => %d)\n", Program, Running, instance);
-      _exit (status);
+      printf("%s: %s (pid => %d)\n", Program, _(Running), instance);
+      _exit (_RUNNING);
     }
   }
 #ifdef GETTEXT_PACKAGE
@@ -1069,7 +1052,10 @@ main(int argc, char *argv[])
   gtk_set_locale ();
 
   apply_signal_responder();
-  gpanel_instance (&memory);		/* return pid_t ignored */
+  if (gpanel_instance (&memory) == _INVALID) {
+    printf("%s: %s\n", Program, _(Bugger));
+    _exit (EX_SOFTWARE);
+  }
 
   apply_gtk_theme (CONFIG_FILE);
   gtk_set_locale ();
