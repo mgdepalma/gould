@@ -605,13 +605,21 @@ dispatch (int stream, const char *command)
   return pid;
 } /* </dispatch> */
 
+/*
+* gpanel_spawn - silently dispatch() _self_
+*/
 pid_t
-session_request(int stream, const char *program)
+gpanel_spawn(int stream)
 {
-  const char *command = path_finder(desktop_->path, program);
+  gchar *command;
+  command = g_strdup_printf ("%s -s", path_finder(desktop_->path, Program));
   vdebug(2, "%s: command => %s\n", __func__, command);
-  return dispatch(stream, command);
-} /* </session_request> */
+
+  pid_t instance = dispatch(stream, command);
+  g_free (command);
+
+  return instance;
+} /* </gpanel_spawn> */
 
 /*
 * settings_initialize post modules load initialization
@@ -931,7 +939,7 @@ signal_responder (int signum)
     case SIGTTIN:
     case SIGTTOU:
       vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
-      session_request (desktop_->session, Program);
+      gpanel_spawn (desktop_->session);
       break;
 
     default:
@@ -948,7 +956,7 @@ signal_responder (int signum)
         }
       }
       vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
-      session_request (desktop_->session, Program);
+      gpanel_spawn (desktop_->session);
 
       gtk_main_quit ();
       _exit (signum);

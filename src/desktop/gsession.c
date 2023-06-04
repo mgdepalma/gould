@@ -39,14 +39,15 @@
 const char *Program = "gsession";
 const char *Release = "1.2.1";
 
-FILE *_logstream = 0;	/* depends on getenv( LOGLEVEL ) > 0 */
+FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
 debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 int _stream = -1;	/* stream socket descriptor */
+pid_t _instance;	/* singleton process ID */
 
 /**
 * prototypes (forward method declarations)
 */
-int acquiesce(int connection);
+int consign(int connection);
 int sessionlog(unsigned short level, const char *format, ...);
 int stream_socket(const char *sockname);
 void signal_responder(int signum);
@@ -79,10 +80,10 @@ static void daemonize(void)
 #endif
 
 /*
-* acquiesce - accept request from socket stream
+* consign - socket stream request delivery
 */
 int
-acquiesce(int connection)
+consign(int connection)
 {
   int nbytes;
   char request[MAX_PATHNAME];
@@ -96,17 +97,17 @@ acquiesce(int connection)
     request[nbytes] = 0;
 
     if (strcmp(request, _GETPID) == 0) {  /* request => pidof( gsession ) */
-      sprintf(request, "%d\n", getpid());
-      sessionlog(1, "%s: pidof( %s ) => %s", __func__, Program, request);
+      sessionlog(1, "pidof( %s ) => %d\n", Program, _instance);
+      sprintf(request, "%d\n", _instance);
     }
     else {				  /* request => spawn( <command> ) */
-      sessionlog(1, "%s: spawn( %s )\n", __func__, request);
+      sessionlog(1, "spawn( %s )\n", request);
       sprintf(request, "%d\n", spawn( request ));
     }
     write(connection, request, strlen(request));
   }
   return nbytes;
-} /* </acquiesce> */
+} /* </consign> */
 
 /*
 * signal_responder - signal handler
@@ -280,6 +281,7 @@ int main(int argc, char *argv[])
     return EX_PROTOCOL;
 
   apply_signal_responder();
+  _instance = getpid();			/* singleton process ID */
 
   /* spawn {PANEL}, {LAUNCHER} and {WINDOWMANAGER} */
   spawn( (panel) ? panel : "gpanel" );  /* spawn desktop [control] panel */
@@ -292,7 +294,7 @@ int main(int argc, char *argv[])
     if ((connection = accept(_stream, 0, 0)) < 0)
       perror("accept connection on socket");
     else {
-      while (acquiesce (connection) > 0) ;
+      while (consign (connection) > 0) ;
       close(connection);
     }
   }
