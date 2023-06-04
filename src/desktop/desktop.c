@@ -812,7 +812,7 @@ desktop_config (GlobalPanel *panel, gboolean once)
 
     if (init) {			/* init before g_file_monitor_directory */
       desktop->init = init;
-      dispatch (init, panel->session);
+      session_request (panel->session, init);
     }
 
     desktop->monitor = g_file_monitor_directory (file, flags, NULL, NULL);

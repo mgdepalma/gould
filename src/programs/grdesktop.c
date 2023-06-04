@@ -17,11 +17,11 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "util.h"
+#include "gould.h"	/* common package declarations */
 #include "grdesktop.h"
+#include "util.h"
 
 static GlobalRemote *global;	/* (protected) encapsulated program data */
-unsigned short debug = 0;	/* (protected) must be present */
 
 const char *Program;		/* (public) published program name */
 const char *Release;		/* (public) published program version */
@@ -30,6 +30,8 @@ const char *Information =
 "\n"
 "The program is developed for Generations Linux and distributed\n"
 "under the terms and condition of the GNU Public License.\n";
+
+debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 
 
 /*

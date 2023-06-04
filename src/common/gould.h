@@ -30,6 +30,7 @@
 #define MAX_PATHNAME    256
 #define MAX_STRING      128
 #define MAX_LABEL       64
+#define MAX_STAMP       32
 
 #define MAXSTR(a,b) MAX(strlen(a),strlen(b))
 #define MINSTR(a,b) MIN(strlen(a),strlen(b))

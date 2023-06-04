@@ -17,12 +17,12 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "interface.h"
-#include "xpmglyphs.h"
-
 #include <ctype.h>
 #include <unistd.h>
 #include <dirent.h>
+
+#include "interface.h"
+#include "xpmglyphs.h"
 
 /*
  * Protected data structures.

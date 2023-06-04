@@ -20,19 +20,20 @@
 #ifndef GDISPLAY_H
 #define GDISPLAY_H
 
-#include <math.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <gtk/gtk.h>
-
+#include "gould.h"	/* common package declarations */
 #include "green.h"
 #include "dialog.h"
 #include "filechooser.h"
 #include "xpmglyphs.h"
 #include "window.h"
 #include "util.h"
+
+#include <math.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <gtk/gtk.h>
 
 G_BEGIN_DECLS
 

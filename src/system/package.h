@@ -27,7 +27,7 @@
 #include <fcntl.h>
 #include <glib.h>
 
-/* #define _(String) gettext (String) */
+#include "util.h"
 
 #define RPM_DEFAULT_DBPATH "/var/lib/rpm"
 #define RPM_DEFAULT_SPOOL  "/var/spool/rpm"

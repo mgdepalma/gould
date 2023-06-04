@@ -16,8 +16,10 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
-#include "util.h"
+
+#include "gould.h"	/* common package declarations */
 #include "package.h"
+#include "util.h"
 
 #include <rpm/rpmcli.h>
 #include <rpm/rpmlib.h>
@@ -25,7 +27,7 @@
 #include <rpm/rpmdb.h>
 #include <rpm/rpmts.h>
 
-extern unsigned debug;	/* transcendentalism */
+extern debug_t debug;	/* transcendentalism */
 
 const char *Bugger =
 "Sorry, you have experienced an internal program inconsistecy.\n"

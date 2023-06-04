@@ -24,24 +24,40 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <signal.h>
 #include <execinfo.h>	/* backtrace declarations */
 #include <libgen.h>	/* definitions for pattern matching functions */
 #include <sysexits.h>	/* exit status codes for system programs */
 #include <sys/prctl.h>	/* operations on a process or thread */
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
+#include <time.h>
 
 const char *Program = "gsession";
-const char *Release = "1.1.1";
+const char *Release = "1.2.1";
 
-debug_t debug = 0;  /* debug verbosity (0 => none) {must be declared} */
-int _stream = -1;   /* stream socket descriptor */
+FILE *_logstream = 0;	/* depends on getenv( LOGLEVEL ) > 0 */
+debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
+int _stream = -1;	/* stream socket descriptor */
+
+/**
+* prototypes (forward method declarations)
+*/
+int accept_request(int connection);
+int sessionlog(unsigned short level, const char *format, ...);
+int stream_socket(const char *sockname);
+void signal_responder(int signum);
+pid_t spawn(const char *cmdline);
+static char *timestamp(void);
 
 
 /*
 * daemonize
 */
+#ifdef DAEMONIZE
 static void daemonize(void)
 {
   pid_t pid = fork();
@@ -60,53 +76,98 @@ static void daemonize(void)
   }
   //hostpid_init();
 } /* <daemonize> */
+#endif
 
 /*
-* spawn child process - override libgould.so implementation
-*/
-pid_t
-spawn(const char *cmdline)
-{
-  pid_t pid = fork();
-
-  if (pid == 0) {	/* child process */
-    const static char *shell = "/bin/sh";
-
-    setsid();
-    execlp(shell, shell, "-f", "-c", cmdline, NULL);
-    exit(0);
-  }
-  return pid;
-} /* </spawn> */
-
-/*
-* connection handler
+* accept_request - accept request from socket stream
 */
 int
-receive (int connection)
+accept_request(int connection)
 {
   int nbytes;
-  char message[MAX_PATHNAME];
+  char request[MAX_PATHNAME];
 
-  memset(message, 0, MAX_PATHNAME);
-  nbytes = read(connection, message, MAX_PATHNAME);
+  memset(request, 0, MAX_PATHNAME);
+  nbytes = read(connection, request, MAX_PATHNAME);
 
   if (nbytes < 0)
-    perror("reading message from stream socket");
-  else if (nbytes > 0)
-  {
-    message[nbytes] = 0;
+    perror("reading request from stream socket");
+  else if (nbytes > 0) {
+    request[nbytes] = 0;
 
-    /* overload message[] with process id */
-    if (strcmp(message, _GETPID) == 0)
-      sprintf(message, "%d\n", getpid());
-    else
-      sprintf(message, "%d\n", spawn( message ));
-
-    write(connection, message, strlen(message));
+    if (strcmp(request, _GETPID) == 0) {  /* request => pidof( gsession ) */
+      sprintf(request, "%d\n", getpid());
+      sessionlog(1, "%s: pidof( %s ) => %s", __func__, Program, request);
+    }
+    else {				  /* request => spawn( <command> ) */
+      sessionlog(1, "%s: spawn( %s )\n", __func__, request);
+      sprintf(request, "%d\n", spawn( request ));
+    }
+    write(connection, request, strlen(request));
   }
   return nbytes;
-} /* receive */
+} /* </accept_request> */
+
+/*
+* signal_responder - signal handler
+*/
+void
+signal_responder(int signum)
+{
+  const static debug_t BACKTRACE_SIZE = 69;
+
+  switch (signum) {
+    case SIGHUP:
+    case SIGCONT:
+      break;
+
+    case SIGCHLD:		/* reap children */
+      while (waitpid(-1, NULL, WNOHANG) > 0) ;
+      break;
+
+    case SIGTTIN:
+    case SIGTTOU:
+      sessionlog(1, "%s: caught signal %d, ignoring.\n", __func__, signum);
+      break;
+
+    default:
+      close(_stream);
+      unlink(_GSESSION);
+    
+      if (signum != SIGINT && signum != SIGTERM) {
+        void *trace[BACKTRACE_SIZE];
+        int nptrs = backtrace(trace, UNIX_PATH_MAX);
+
+        printf("%s, exiting on signal: %d\n", Program, signum);
+        backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
+      }
+
+      if (debug) {
+        sessionlog(1, "%s ended on %s\n", Program, timestamp());
+        fclose(_logstream);
+      }
+      _exit (signum);
+  }
+} /* </signal_responder> */
+
+/*
+* sessionlog - write to _logstream when debug >= {level}
+*/
+int
+sessionlog(unsigned short level, const char *format, ...)
+{
+  if(! _logstream) return -1;	/* sanity check - return if no _logstream */
+
+  va_list args;
+  va_start (args, format);
+
+  if (debug >= level) {
+    vfprintf(_logstream, format, args);
+  }
+  va_end (args);
+
+  return fflush(_logstream);
+} /* </sessionlog> */
 
 /*
 * stream_socket
@@ -141,36 +202,39 @@ stream_socket(const char *sockname)
 } /* </stream_socket> */
 
 /*
-* responder - signal handler
+* spawn child process - override libgould.so implementation
 */
-void
-responder(int sig)
+pid_t
+spawn(const char *cmdline)
 {
-  const static debug_t BACKTRACE_SIZE = 69;
+  pid_t pid = fork();
 
-  switch (sig) {
-    case SIGHUP:
-    case SIGCONT:
-      break;
+  if (pid == 0) {	/* child process */
+    const static char *shell = "/bin/sh";
 
-    case SIGCHLD:		/* reap children */
-      while (waitpid(-1, NULL, WNOHANG) > 0);
-      break;
-
-    default:
-      close(_stream);
-      unlink(_GSESSION);
-    
-      if (sig != SIGINT && sig != SIGTERM) {
-        void *trace[BACKTRACE_SIZE];
-        int nptrs = backtrace(trace, UNIX_PATH_MAX);
-
-        printf("%s, exiting on signal: %d\n", Program, sig);
-        backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
-      }
-      exit (sig);
+    setsid();
+    execlp(shell, shell, "-f", "-c", cmdline, NULL);
+    exit(0);
   }
-} /* </responder> */
+  return pid;
+} /* </spawn> */
+
+/*
+* timestamp - yield a "%Y-%m-%d %H:%M:%S" string
+*/
+static char *
+timestamp(void)
+{
+  static char stamp[MAX_STAMP];
+  struct tm* tinfo;
+  time_t clock;
+
+  clock = time(NULL);
+  tinfo = localtime(&clock);
+  strftime(stamp, MAX_STAMP-1, "%Y-%m-%d %H:%M:%S", tinfo);
+
+  return stamp;
+} /* </timestamp> */
 
 /*
 * apply_signal_responder
@@ -178,18 +242,18 @@ responder(int sig)
 static inline void
 apply_signal_responder(void)
 {
-  signal(SIGHUP,  responder);	/* 1 TBD reload */
-  signal(SIGINT,  responder);	/* 2 Ctrl+C received */
-  signal(SIGQUIT, responder);	/* 3 internal program error */
-  signal(SIGILL,  responder);	/* 4 internal program error */
-  signal(SIGABRT, responder);	/* 6 internal program error */
-  signal(SIGBUS,  responder);	/* 7 internal program error */
-  signal(SIGKILL, responder);   /* 9 internal program error */
-  signal(SIGSEGV, responder);	/* 11 internal program error */
-  signal(SIGALRM, responder);	/* 14 internal program error */
-  signal(SIGTERM, responder);	/* 15 graceful exit on kill */
-  signal(SIGCHLD, responder);	/* 17 reap children */
-  signal(SIGCONT, responder);	/* 18 cancel request */
+  signal(SIGHUP,  signal_responder);	/* 1 TBD reload */
+  signal(SIGINT,  signal_responder);	/* 2 Ctrl+C received */
+  signal(SIGQUIT, signal_responder);	/* 3 internal program error */
+  signal(SIGILL,  signal_responder);	/* 4 internal program error */
+  signal(SIGABRT, signal_responder);	/* 6 internal program error */
+  signal(SIGBUS,  signal_responder);	/* 7 internal program error */
+  signal(SIGKILL, signal_responder);    /* 9 internal program error */
+  signal(SIGSEGV, signal_responder);	/* 11 internal program error */
+  signal(SIGALRM, signal_responder);	/* 14 internal program error */
+  signal(SIGTERM, signal_responder);	/* 15 graceful exit on kill */
+  signal(SIGCHLD, signal_responder);	/* 17 reap children */
+  signal(SIGCONT, signal_responder);	/* 18 cancel request */
 } /* </apply_signal_responder> */
 
 /**
@@ -197,11 +261,20 @@ apply_signal_responder(void)
 */
 int main(int argc, char *argv[])
 {
+  const char *loglevel = getenv("LOGLEVEL");	/* 0 => none */
+
   const char *launcher = getenv("LAUNCHER");
   const char *manager  = getenv("WINDOWMANAGER");
   const char *panel    = getenv("PANEL");
 
   int connection;
+
+  if ((debug = (loglevel) ? atoi(loglevel) : 0)) {
+    static char logfile[MAX_PATHNAME];
+    sprintf(logfile, "%s/%s.log", getenv("HOME"), Program);
+    if (! (_logstream = fopen(logfile, "w"))) perror("cannot open logfile");
+    sessionlog(1, "%s started on %s\n", Program, timestamp());
+  }
 
   if (stream_socket(_GSESSION) != 0)
     return EX_PROTOCOL;
@@ -219,7 +292,7 @@ int main(int argc, char *argv[])
     if ((connection = accept(_stream, 0, 0)) < 0)
       perror("accept connection on socket");
     else {
-      while (receive(connection) > 0) ;
+      while (accept_request(connection) > 0) ;
       close(connection);
     }
   }

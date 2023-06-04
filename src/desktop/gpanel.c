@@ -381,10 +381,10 @@ panel_quicklaunch (GtkWidget *widget, Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
   const gchar *command = path_finder(panel->path, applet->label);
-  vdebug(2, "%s command => %s\n", __func__, command);
+  vdebug(2, "%s: command => %s\n", __func__, command);
 
   if (command)
-    dispatch (command, panel->session);
+    session_request (panel->session, command);
   else
      notice_at(100, 100, ICON_WARNING, "[%s]%s: %s.",
                Program, applet->label, _("command not found"));
@@ -580,6 +580,31 @@ applets_loadable (GlobalPanel *panel, guint space)
 
   return moduli;
 } /* </applets_loadable> */
+
+/*
+* session_request - dispatch request using session socket stream
+*/
+pid_t
+session_request (int stream, const char *command)
+{
+  pid_t pid;
+
+  if (stream < 0)
+    pid = spawn (command);
+  else {
+    int  nbytes;
+    char reply[MAX_PATHNAME];
+    vdebug(2, "%s: stream => %d, command => %s\n", __func__, command, stream);
+
+    write(stream, command, strlen(command));
+    nbytes = read(stream, reply, MAX_PATHNAME);
+    reply[nbytes] = 0;
+    pid = atoi(reply);
+  }
+  vdebug(2, "%s: pid => %d\n", __func__, pid);
+
+  return pid;
+} /* </session_request> */
 
 /*
 * settings_initialize post modules load initialization
@@ -846,35 +871,6 @@ panel_loader (GlobalPanel *panel)
 } /* </panel_loader> */
 
 /*
-* check running status
-*/
-/* inline */ pid_t
-gpanel_getpid(const char *lockfile)
-{
-  FILE *stream;			/* file descriptor for lockfile */
-  pid_t pid = 0;
-
-  if ((stream = fopen(lockfile, "r"))) {  /* lockfile exists */
-    const int bytes = sizeof(double);
-
-    char line[bytes];
-    fgets(line, bytes, stream);
-    fclose(stream);
-
-    if (strlen(line) > 0) {
-      char *procpid;
-
-      line[strlen(line) - 1] = (char)0;		/* chomp newline */
-      procpid = g_strdup_printf("/proc/%s", line);
-
-      if(access(procpid, F_OK) == 0) pid = atoi(line);
-      g_free (procpid);
-    }
-  }
-  return pid;
-} /* </gpanel_getpid> */
-
-/*
 * application unique instance
 */
 pid_t
@@ -900,50 +896,56 @@ gpanel_instance (GlobalPanel *panel)
 } /* </gpanel_instance> */
 
 /*
-* responder - signal handler
+* signal_responder - signal handler
 */
 void
-responder (int sig)
+signal_responder (int signum)
 {
   const static debug_t BACKTRACE_SIZE = 69;
 
-  switch (sig) {
+  switch (signum) {
     case SIGHUP:
     case SIGCONT:
     case SIGTERM:
-      shutdown_panel (_desktop, sig);	/* show logout panel */
+      shutdown_panel (_desktop, signum); /* show logout panel */
       break;
 
     case SIGUSR1:
-      settings_activate (_desktop);	/* show setting panel */
+      settings_activate (_desktop);	 /* show setting panel */
       break;
 
-    case SIGUSR2:			/* create new shortcut */
+    case SIGUSR2:			 /* create new shortcut */
       desktop_settings (_desktop, DESKTOP_SHORTCUT_CREATE);
       break;
 
-    case SIGCHLD:			/* reap children */
-      while (waitpid(-1, NULL, WNOHANG) > 0);
+    case SIGCHLD:			 /* reap children */
+      while (waitpid(-1, NULL, WNOHANG) > 0) ;
+      break;
+
+    case SIGTTIN:
+    case SIGTTOU:
+      vdebug(1, "%s::%s: caught signal %d, ignoring.\n",
+			Program, __func__, signum);
       break;
 
     default:
-      if (sig |= SIGINT && sig != SIGKILL) {
+      if (signum |= SIGINT && signum != SIGKILL) {
         void *trace[BACKTRACE_SIZE];
         int nptrs = backtrace(trace, BACKTRACE_SIZE);
 
-        printf("%s, exiting on signal: %d\n", Program, sig);
+        printf("%s, exiting on signal: %d\n", Program, signum);
         backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
 
         /* SIGBUS causes gtk_dialog() never return */
-        if (sig != SIGBUS) {
+        if (signum != SIGBUS) {
           notice_at(50, 50, ICON_ERROR, "%s: %s.", Program, _(Bugger));
         }
       }
       gtk_main_quit ();
-      _exit (sig);
+      _exit (signum);
       break;
   }
-} /* </responder> */
+} /* </signal_responder> */
 
 /*
 * apply_signal_responder
@@ -951,29 +953,29 @@ responder (int sig)
 static inline void
 apply_signal_responder(void)
 {
-  signal(SIGHUP,  responder);	/* 1 reload */
-  signal(SIGINT,  responder);   /* 2 Ctrl+C received */
-  signal(SIGQUIT, responder);   /* 3 internal program error */
-  signal(SIGILL,  responder);   /* 4 internal program error */
-  signal(SIGTRAP, responder);   /* 5 internal program error */
-  signal(SIGABRT, responder);   /* 6 internal program error */
-  signal(SIGBUS,  responder);   /* 7 internal program error */
-  signal(SIGFPE,  responder);   /* 8 internal program error */
-  signal(SIGKILL, responder);   /* 9 internal program error */
-  signal(SIGUSR1, responder);	/* 10 show control panel */
-  signal(SIGSEGV, responder);	/* 11 internal program error */
-  signal(SIGUSR2, responder);	/* 12 new desktop shortcut */
-  signal(SIGPIPE, responder);   /* 13 internal program error */
-  signal(SIGALRM, responder);   /* 14 internal program error */
-  signal(SIGTERM, responder);	/* 15 show logout panel */
-  signal(SIGCHLD, responder);	/* 17 reap children */
-  signal(SIGCONT, responder);	/* 18 cancel logout */
-  signal(SIGSTOP, responder);   /* 19 internal program error */
-  signal(SIGTSTP, responder);   /* 20 internal program error */
-  signal(SIGTTIN, responder);   /* 21 internal program error */
-  signal(SIGTTOU, responder);   /* 22 internal program error */
-  signal(SIGURG, responder);    /* 23 internal program error */
-  signal(SIGIO, responder);     /* 29 internal program error */
+  signal(SIGHUP,  signal_responder);	/* 1 reload */
+  signal(SIGINT,  signal_responder);	/* 2 Ctrl+C received */
+  signal(SIGQUIT, signal_responder);	/* 3 internal program error */
+  signal(SIGILL,  signal_responder);	/* 4 internal program error */
+  signal(SIGTRAP, signal_responder);	/* 5 internal program error */
+  signal(SIGABRT, signal_responder);	/* 6 internal program error */
+  signal(SIGBUS,  signal_responder);	/* 7 internal program error */
+  signal(SIGFPE,  signal_responder);	/* 8 internal program error */
+  signal(SIGKILL, signal_responder);	/* 9 internal program error */
+  signal(SIGUSR1, signal_responder);	/* 10 show control panel */
+  signal(SIGSEGV, signal_responder);	/* 11 internal program error */
+  signal(SIGUSR2, signal_responder);	/* 12 new desktop shortcut */
+  signal(SIGPIPE, signal_responder);	/* 13 internal program error */
+  signal(SIGALRM, signal_responder);	/* 14 internal program error */
+  signal(SIGTERM, signal_responder);	/* 15 show logout panel */
+  signal(SIGCHLD, signal_responder);	/* 17 reap children */
+  signal(SIGCONT, signal_responder);	/* 18 cancel logout */
+  signal(SIGSTOP, signal_responder);	/* 19 internal program error */
+  signal(SIGTSTP, signal_responder);	/* 20 internal program error */
+  signal(SIGTTIN, signal_responder);	/* 21 catch and ignore */
+  signal(SIGTTOU, signal_responder);	/* 22 catch and ignore */
+  signal(SIGURG,  signal_responder);    /* 23 internal program error */
+  signal(SIGIO,   signal_responder);	/* 29 internal program error */
 } /* </apply_signal_responder> */
 
 /*

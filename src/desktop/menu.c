@@ -156,13 +156,11 @@ finis (GlobalPanel *panel, gboolean logout, gboolean quit)
     if (applet->module_close)
       applet->module_close (applet);
   }
-
   saveconfig (panel);		/* check for changes and save configuration */
-  remove(panel->lockfile);	/* remove program running semaphore */
 
-  if (logout) {			/* end session.. */
+  if (logout) {	
     if (panel->session >= 0) {	/* send SIGTERM to gsession */
-      pid_t pid = dispatch(_GETPID, panel->session);
+      pid_t pid = session_request (panel->session, _GETPID);
       kill(pid, SIGTERM);
     }
     else {			/* signal {WINDOWMANAGER} */
@@ -373,27 +371,6 @@ item_check_access (ConfigurationNode *node, GlobalPanel *panel, gchar *attr)
 } /* </item_check_access> */
 
 /**
-* (protected) dispatch forks child process using session socket stream
-*/
-pid_t dispatch (const char *program, const int stream)
-{
-  pid_t pid;
-
-  if (stream < 0)
-    pid = spawn (program);
-  else {
-    char message[MAX_PATHNAME];
-    int  nbytes;
-
-    write(stream, program, strlen(program));
-    nbytes = read(stream, message, MAX_PATHNAME);
-    message[nbytes] = 0;
-    pid = atoi(message);
-  }
-  return pid;
-} /* dispatch */
-
-/**
 * (protected) spawn_selected forks child process for selected application
 */
 pid_t
@@ -403,7 +380,7 @@ spawn_selected (ConfigurationNode *node, GlobalPanel *panel)
   pid_t pid = 0;
 
   if (cmdline != NULL)
-    pid = dispatch (cmdline, panel->session);
+    pid = session_request  (panel->session, cmdline);
   else
     notice_at(100, 100, ICON_WARNING, "[%s]%s: %s.",
                Program, node->element, _("command not found"));
