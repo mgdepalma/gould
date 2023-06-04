@@ -2,7 +2,7 @@
 ##
 # X Window System wrapper script.
 #
-# 2008-08-08 Generations Linux <info@softcraft.org>
+# 2008-08-08 Generations Linux <bugs@softcraft.org>
 #
 [ -r /etc/sysconfig/xserver ] && . /etc/sysconfig/xserver
 [ -r $HOME/.config/xserver ] && . $HOME/.config/xserver

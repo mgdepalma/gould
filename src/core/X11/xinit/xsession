@@ -2,7 +2,7 @@
 ##
 # X Window System session initialization file.
 #
-# 2014-04-04 Generations Linux <info@softcraft.org>
+# 2014-04-04 Generations Linux <bugs@softcraft.org>
 #
 GNOME=/opt/gnome
 KDE=/opt/kde

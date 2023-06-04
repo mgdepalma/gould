@@ -160,7 +160,7 @@ finis (GlobalPanel *panel, gboolean logout, gboolean quit)
 
   if (logout) {	
     if (panel->session >= 0) {	/* send SIGTERM to gsession */
-      pid_t pid = session_request (panel->session, _GETPID);
+      pid_t pid = dispatch (panel->session, _GETPID);
       kill(pid, SIGTERM);
     }
     else {			/* signal {WINDOWMANAGER} */
@@ -380,7 +380,7 @@ spawn_selected (ConfigurationNode *node, GlobalPanel *panel)
   pid_t pid = 0;
 
   if (cmdline != NULL)
-    pid = session_request  (panel->session, cmdline);
+    pid = dispatch (panel->session, cmdline);
   else
     notice_at(100, 100, ICON_WARNING, "[%s]%s: %s.",
                Program, node->element, _("command not found"));

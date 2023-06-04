@@ -46,7 +46,7 @@ int _stream = -1;	/* stream socket descriptor */
 /**
 * prototypes (forward method declarations)
 */
-int accept_request(int connection);
+int acquiesce(int connection);
 int sessionlog(unsigned short level, const char *format, ...);
 int stream_socket(const char *sockname);
 void signal_responder(int signum);
@@ -79,10 +79,10 @@ static void daemonize(void)
 #endif
 
 /*
-* accept_request - accept request from socket stream
+* acquiesce - accept request from socket stream
 */
 int
-accept_request(int connection)
+acquiesce(int connection)
 {
   int nbytes;
   char request[MAX_PATHNAME];
@@ -106,7 +106,7 @@ accept_request(int connection)
     write(connection, request, strlen(request));
   }
   return nbytes;
-} /* </accept_request> */
+} /* </acquiesce> */
 
 /*
 * signal_responder - signal handler
@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
     if ((connection = accept(_stream, 0, 0)) < 0)
       perror("accept connection on socket");
     else {
-      while (accept_request(connection) > 0) ;
+      while (acquiesce (connection) > 0) ;
       close(connection);
     }
   }

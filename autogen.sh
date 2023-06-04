@@ -2,7 +2,7 @@
 ##
 # autogen.sh - bootstrap GNU automake (maintainer)
 #
-# 2023-05-16 Generations Linux <info@softcraft.org>
+# 2023-05-16 Generations Linux <bugs@softcraft.org>
 #
 
 if [ "x${ACLOCAL_DIR}" != "x" ]; then

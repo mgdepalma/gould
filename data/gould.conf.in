@@ -1,7 +1,7 @@
 ##
 # gould (gtk ultra light desktop) display manager configuration
 #
-# 2010/04/30 Generations Linux <info@softcraft.org>
+# 2010-04-30 Generations Linux <bugs@softcraft.org>
 #
 [core]
 #autologin=guest

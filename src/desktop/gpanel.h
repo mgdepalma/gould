@@ -256,6 +256,7 @@ startmenu (GtkMenu *menu, gint *x, gint *y, gboolean *pushin, gpointer data);
 
 pid_t session_request (int stream, const char *command);
 pid_t spawn_selected (ConfigurationNode *node, GlobalPanel *panel);
+pid_t dispatch (int stream, const char *command);
 
 void executer (GtkWidget *widget, ConfigurationNode *node);
 

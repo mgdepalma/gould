@@ -1,12 +1,9 @@
 #!/bin/sh
-#$Id: Xclients,v 1.0.18 2013/12/11 softcraft Exp $
-###
 ##
 # Xclients sets the environment and starts initial X clients.
 #
-# 2002-02-02 Generations Linux <info@softcraft.org>
-##
-###
+# 2002-02-02 Generations Linux <bugs@softcraft.org>
+#
 
 ONE=$(xrandr|grep ' connected' | head -1 | awk '{print $1}')
 TWO=$(xrandr|grep ' connected' | tail -1 | awk '{print $1}')

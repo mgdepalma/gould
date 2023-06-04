@@ -2,7 +2,7 @@
 ##
 # xsession - X Window session startup script for GOULD.
 #
-# 2014-10-04 Generations Linux <info@softcraft.org>
+# 2023-06-04 Generations Linux <bugs@softcraft.org>
 
 # source desktop resource configurations (system and user)
 [ -r /etc/sysconfig/desktop ] && . /etc/sysconfig/desktop
@@ -18,9 +18,9 @@
 # export {LAUNCHER} i.e. launch bar (used by gsession)
 [ -n "$LAUNCHER" ] && export LAUNCHER=$LAUNCHER
 
-# export {TASKBAR} desktop environment (used by gsession)
+# export {PANEL} desktop environment (used by gsession)
 /sbin/pidof gpanel >/dev/null && killall -9 gpanel
-export TASKBAR=${TASKBAR:-"gpanel"}
+export PANEL=${PANEL:-"gpanel"}
 
 # export {WINDOWMANAGER} desktop environment (used by gsession)
 export WINDOWMANAGER=${WINDOWMANAGER:-"openbox"}

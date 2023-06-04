@@ -32,10 +32,10 @@
 #endif
 
 const gchar *Authors = "Mauro Gianni DePalma";  /* <bugs@softcraft.org> */
-static GlobalPanel *_desktop = NULL; /* (protected)encapsulated program data */
+static GlobalPanel *desktop_;	/* (protected)encapsulated program data */
 
-const char *Program = "gpanel";	   /* (public) published program name    */
-const char *Release = "1.6.7";	   /* (public) published program version */
+const char *Program = "gpanel";	/* (public) published program name    */
+const char *Release = "1.6.7";	/* (public) published program version */
 
 const char *Description =
 "is a gtk-based simple desktop panel.\n"
@@ -384,7 +384,7 @@ panel_quicklaunch (GtkWidget *widget, Modulus *applet)
   vdebug(2, "%s: command => %s\n", __func__, command);
 
   if (command)
-    session_request (panel->session, command);
+    dispatch (panel->session, command);
   else
      notice_at(100, 100, ICON_WARNING, "[%s]%s: %s.",
                Program, applet->label, _("command not found"));
@@ -513,8 +513,8 @@ panel_update_pack_position (GlobalPanel *panel, Modulus *applet)
   else
     panel->epos += requisition.width - 4;
 
-  vdebug (3, "panel spos => %d, epos => %d, applet => %s\n",
-              panel->spos, panel->epos, applet->name);
+  vdebug (3, "%s: panel spos => %d, epos => %d, applet => %s\n",
+             __func__, panel->spos, panel->epos, applet->name);
 } /* </panel_update_pack_position> */
 
 /*
@@ -582,10 +582,10 @@ applets_loadable (GlobalPanel *panel, guint space)
 } /* </applets_loadable> */
 
 /*
-* session_request - dispatch request using session socket stream
+* dispatch - dispatch request using session socket stream
 */
 pid_t
-session_request (int stream, const char *command)
+dispatch (int stream, const char *command)
 {
   pid_t pid;
 
@@ -601,9 +601,16 @@ session_request (int stream, const char *command)
     reply[nbytes] = 0;
     pid = atoi(reply);
   }
-  vdebug(2, "%s: pid => %d\n", __func__, pid);
 
   return pid;
+} /* </dispatch> */
+
+pid_t
+session_request(int stream, const char *program)
+{
+  const char *command = path_finder(desktop_->path, program);
+  vdebug(2, "%s: command => %s\n", __func__, command);
+  return dispatch(stream, command);
 } /* </session_request> */
 
 /*
@@ -879,12 +886,10 @@ gpanel_instance (GlobalPanel *panel)
   pid_t instance = _INVALID;	/* implies something went wrong */
   memset(panel, 0, sizeof(GlobalPanel));
 
-  if (panel_loader(panel) == EX_OK) {
-    _desktop = panel;		/* save GlobalPanel data structure */
+  if (panel_loader(panel) == EX_OK)
     instance = getpid();
-  }
   else {			/* configuration file disappeared */
-    if (_desktop)
+    if (desktop_)
       notice_at(50, 50, ICON_ERROR,"%s: %s.",
 			Program, _("cannot find configuration file"));
     else
@@ -892,6 +897,7 @@ gpanel_instance (GlobalPanel *panel)
 
     _exit (EX_CONFIG);
   }
+  desktop_ = panel;		/* save GlobalPanel data structure */
   return instance;
 } /* </gpanel_instance> */
 
@@ -907,15 +913,15 @@ signal_responder (int signum)
     case SIGHUP:
     case SIGCONT:
     case SIGTERM:
-      shutdown_panel (_desktop, signum); /* show logout panel */
+      shutdown_panel (desktop_, signum); /* show logout panel */
       break;
 
     case SIGUSR1:
-      settings_activate (_desktop);	 /* show setting panel */
+      settings_activate (desktop_);	 /* show setting panel */
       break;
 
     case SIGUSR2:			 /* create new shortcut */
-      desktop_settings (_desktop, DESKTOP_SHORTCUT_CREATE);
+      desktop_settings (desktop_, DESKTOP_SHORTCUT_CREATE);
       break;
 
     case SIGCHLD:			 /* reap children */
@@ -924,8 +930,8 @@ signal_responder (int signum)
 
     case SIGTTIN:
     case SIGTTOU:
-      vdebug(1, "%s::%s: caught signal %d, ignoring.\n",
-			Program, __func__, signum);
+      vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
+      session_request (desktop_->session, Program);
       break;
 
     default:
@@ -941,9 +947,11 @@ signal_responder (int signum)
           notice_at(50, 50, ICON_ERROR, "%s: %s.", Program, _(Bugger));
         }
       }
+      vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
+      session_request (desktop_->session, Program);
+
       gtk_main_quit ();
       _exit (signum);
-      break;
   }
 } /* </signal_responder> */
 
