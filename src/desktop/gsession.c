@@ -94,14 +94,15 @@ consign(int connection)
   if (nbytes < 0)
     perror("reading request from stream socket");
   else if (nbytes > 0) {
+    char *stamp = timestamp();
     request[nbytes] = 0;
 
     if (strcmp(request, _GETPID) == 0) {  /* request => pidof( gsession ) */
-      sessionlog(1, "pidof( %s ) => %d\n", Program, _instance);
+      sessionlog(1, "%s pidof( %s ) => %d\n", stamp, Program, _instance);
       sprintf(request, "%d\n", _instance);
     }
     else {				  /* request => spawn( <command> ) */
-      sessionlog(1, "spawn( %s )\n", request);
+      sessionlog(1, "%s spawn( %s )\n", stamp, request);
       sprintf(request, "%d\n", spawn( request ));
     }
     write(connection, request, strlen(request));
