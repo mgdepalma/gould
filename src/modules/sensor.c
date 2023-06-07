@@ -21,7 +21,9 @@
 #include "gpanel.h"
 #include "module.h"
 
-extern const char *Authors;	/* see, gpanel.c */
+extern const char *Program;     /* see, gpanel.c */
+const char *Release = "1.0.1";
+
 
 /*
 * Data structures used by this module.
@@ -104,7 +106,7 @@ module_init (Modulus *applet)
   applet->icon    = "sensor.png";
   applet->place   = PLACE_END;
   applet->space   = MODULI_SPACE_ANCHOR;
-  applet->release = "0.1";
+  applet->release = Release;
   applet->authors = Authors;
 
   /* Read configuration data for the splash screen. */

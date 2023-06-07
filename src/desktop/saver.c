@@ -35,7 +35,6 @@ G_LOCK_DEFINE (applet);
 
 extern const char *Program;	/* see, gpanel.c */
 extern const char *Release;	/* ... */
-extern const char *Authors;	/* ... */
 extern debug_t debug;		/* ... */
 
 /*

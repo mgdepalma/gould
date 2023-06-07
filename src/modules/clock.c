@@ -24,7 +24,7 @@
 #define CLOCK_FORMAT_MAX 80
 
 extern const char *Program;	/* see, gpanel.c */
-extern const char *Authors;	/* .. */
+const char *Release = "1.2.1";
 
 /*
 * Data structures used by this module.
@@ -485,7 +485,7 @@ module_init (Modulus *applet)
   applet->icon    = "clock.png";
   applet->place   = PLACE_END;
   applet->space   = MODULI_SPACE_TASKBAR;
-  applet->release = "1.2";
+  applet->release = Release;
   applet->authors = Authors;
 
   /* Read configuration data for the splash screen. */

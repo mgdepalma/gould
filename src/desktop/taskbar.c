@@ -22,7 +22,7 @@
 #include "tasklist.h"
 #include "pager.h"
 
-extern const char *Program, *Release, *Authors;	/* see, gpanel.c */
+extern const char *Program, *Release;	/* see, gpanel.c */
 
 /*
 * Data structures used by this module.

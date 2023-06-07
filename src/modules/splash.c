@@ -22,8 +22,9 @@
 #include "docklet.h"
 #include "module.h"
 
-extern const char *Authors;	/* see, gpanel.c */
 extern gboolean _silent;	/* see, gpanel.c */
+extern const char *Program;     /* see, gpanel.c */
+const char *Release = "1.6.7";
 
 /*
 * Data structures used by this module.
@@ -409,7 +410,7 @@ module_init (Modulus *applet)
   applet->icon    = "welcome.png";
   applet->place   = PLACE_SCREEN;
   applet->space   = MODULI_SPACE_DESKTOP;
-  applet->release = "0.9.12";
+  applet->release = Release;
   applet->authors = Authors;
 
   /* Read configuration data for the splash screen. */

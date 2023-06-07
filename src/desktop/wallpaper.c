@@ -26,8 +26,7 @@
 extern char *get_current_dir_name(void);
 #endif
 
-extern const char *Authors;	/* see, gpanel.c */
-extern const char *Program;     /* see, gpanel.c */
+extern const char *Program, *Release;     /* see, gpanel.c */
 
 /*
 * Data structures used by this module.

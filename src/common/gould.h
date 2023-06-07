@@ -35,6 +35,8 @@
 #define MAXSTR(a,b) MAX(strlen(a),strlen(b))
 #define MINSTR(a,b) MIN(strlen(a),strlen(b))
 
+#define Authors "Generations Linux <bugs@softcraft.org>"
+
 enum {
   _SUCCESS,
   _RUNNING,

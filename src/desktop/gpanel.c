@@ -31,7 +31,6 @@
 #define SIGUNUSED 31
 #endif
 
-const gchar *Authors = "Mauro Gianni DePalma";  /* <bugs@softcraft.org> */
 static GlobalPanel *desktop_;	/* (protected)encapsulated program data */
 
 const char *Program = "gpanel";	/* (public) published program name    */
@@ -72,12 +71,15 @@ const char *ConfigurationHeader =
 
 const char *Bugger  = "internal program error";
 const char *Running = "another instance of this program is already running.";
-const char *Schema = "panel";	/* (public) XML configuration schema */
+const char *Schema  = "panel";	/* (public) XML configuration schema */
 
-debug_t debug = 0;	  /* debug verbosity (0 => none) {must be declared} */
-gboolean _silent = FALSE; /* show splash screen (or not) */
-int _signal = SIGUSR1;	  /* (default optional) what to signal */
-int _stream = -1;	   /* stream socket descriptor */
+debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
+
+gboolean _persistent = TRUE;	/* if getenv("LIFESPAN") then, we are not */
+gboolean _silent = FALSE;	/* show splash screen (or not) */
+
+int _signal = SIGUSR1;	 	/* (default optional) what to signal */
+int _stream = -1;	 	/* stream socket descriptor */
 
 
 /*
@@ -606,10 +608,10 @@ dispatch (int stream, const char *command)
 } /* </dispatch> */
 
 /*
-* gpanel_spawn - silently dispatch() _self_
+* gpanel_respawn - dispatch() _self_, silently
 */
 pid_t
-gpanel_spawn(int stream)
+gpanel_respawn(int stream)
 {
   gchar *command;
   command = g_strdup_printf ("%s -s", path_finder(desktop_->path, Program));
@@ -619,7 +621,7 @@ gpanel_spawn(int stream)
   g_free (command);
 
   return instance;
-} /* </gpanel_spawn> */
+} /* </gpanel_respawn> */
 
 /*
 * settings_initialize post modules load initialization
@@ -777,12 +779,13 @@ gpanel_initialize (GlobalPanel *panel)
   panel->green    = green_filter_new (selfexclude, DefaultScreen(gdk_display));
 
   if (systray_check_running_screen (green_get_gdk_screen (panel->green))) {
-    const char *message = "another program is already using system tray.";
     pid_t instance = gpanel_master_pid (Program);
 
     if (instance > 0) {
-      if ((kill(instance, _signal)) == -1)
+      if ((kill(instance, _signal)) == -1) {
+        char *message = "another program is already using system tray.";
         g_printerr("%s: %s\n", Program, _(message));
+      }
     }
     _exit (_RUNNING);
   }
@@ -936,14 +939,8 @@ signal_responder (int signum)
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
       break;
 
-    case SIGTTIN:
-    case SIGTTOU:
-      vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
-      gpanel_spawn (desktop_->session);
-      break;
-
     default:
-      if (signum |= SIGINT && signum != SIGKILL) {
+      if (signum |= SIGINT && signum != SIGQUIT && signum != SIGKILL) {
         void *trace[BACKTRACE_SIZE];
         int nptrs = backtrace(trace, BACKTRACE_SIZE);
 
@@ -955,9 +952,11 @@ signal_responder (int signum)
           notice_at(50, 50, ICON_ERROR, "%s: %s.", Program, _(Bugger));
         }
       }
-      vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
-      gpanel_spawn (desktop_->session);
 
+      if (_persistent) {
+        vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
+        gpanel_respawn (desktop_->session);
+      }
       gtk_main_quit ();
       _exit (signum);
   }
@@ -969,15 +968,15 @@ signal_responder (int signum)
 static inline void
 apply_signal_responder(void)
 {
-  signal(SIGHUP,  signal_responder);	/* 1 reload */
+  signal(SIGHUP,  signal_responder);	/* 1 resume/reload */
   signal(SIGINT,  signal_responder);	/* 2 Ctrl+C received */
-  signal(SIGQUIT, signal_responder);	/* 3 internal program error */
+  signal(SIGQUIT, signal_responder);	/* 3 terminate */
   signal(SIGILL,  signal_responder);	/* 4 internal program error */
   signal(SIGTRAP, signal_responder);	/* 5 internal program error */
   signal(SIGABRT, signal_responder);	/* 6 internal program error */
   signal(SIGBUS,  signal_responder);	/* 7 internal program error */
   signal(SIGFPE,  signal_responder);	/* 8 internal program error */
-  signal(SIGKILL, signal_responder);	/* 9 internal program error */
+  signal(SIGKILL, signal_responder);	/* 9 terminate */
   signal(SIGUSR1, signal_responder);	/* 10 show control panel */
   signal(SIGSEGV, signal_responder);	/* 11 internal program error */
   signal(SIGUSR2, signal_responder);	/* 12 new desktop shortcut */
@@ -1015,6 +1014,7 @@ main(int argc, char *argv[])
       case 'd':
         _signal = SIGUNUSED;
         debug = atoi(optarg);
+        putenv("DEBUG=1");
         break;
 
       case 'h':
@@ -1070,6 +1070,8 @@ main(int argc, char *argv[])
   gtk_set_locale ();
 
   apply_signal_responder();
+  if(debug || getenv ("DEBUG")) _persistent = FALSE;
+
   if (gpanel_instance (&memory) == _INVALID) {
     printf("%s: %s\n", Program, _(Bugger));
     _exit (EX_SOFTWARE);

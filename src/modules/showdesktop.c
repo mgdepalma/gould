@@ -24,7 +24,8 @@
 #include "greenwindow.h"
 #include "xutil.h"
 
-extern const char *Authors;	/* see, gpanel.c */
+extern const char *Program;     /* see, gpanel.c */
+const char *Release = "1.2.1";
 
 /*
 * Data structures used by this module.
@@ -151,7 +152,7 @@ module_init (Modulus *applet)
   applet->icon    = "showdesktop.png";
   applet->place   = PLACE_START;
   applet->space   = MODULI_SPACE_TASKBAR;
-  applet->release = "1.1";
+  applet->release = Release;
   applet->authors = Authors;
 
   /* Initialize private data structure singleton. */
