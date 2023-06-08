@@ -31,10 +31,6 @@
 #define SIGUNUSED 31
 #endif
 
-#ifndef SIGUSR3
-#define SIGUSR3 SIGWINCH
-#endif
-
 static GlobalPanel *_desktop;	/* (protected)encapsulated program data */
 
 const char *Program = "gpanel";	/* (public) published program name    */
@@ -60,7 +56,6 @@ const char *Usage =
 "\t-a activate logout dialog\n"
 "\t-c cancel logout dialog\n"
 "\t-n new desktop shortcut\n"
-"\t-e(xecute) <command>\n"
 "\n"
 "%s when already running, without options will\n"
 "activate the configuration control settings panel.\n"
@@ -77,7 +72,6 @@ const char *ConfigurationHeader =
 const char *Bugger  = "internal program error";
 const char *Schema  = "panel";	/* (public) XML configuration schema */
 
-char *_command = NULL;	/* dispatch command to session manager, when running */
 debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 
 gboolean _persistent = TRUE;	/* if getenv("LIFESPAN") then, we are not */
@@ -789,12 +783,8 @@ gpanel_initialize (GlobalPanel *panel)
     pid_t instance = get_process_id (Program);
 
     if (instance > 0) {
-      if (_command && _signal == SIGUSR3) 	/* (experimental) */
-        spawn (_command);
-      else {
-        if ((kill(instance, _signal)) == -1) {
-          g_printerr("%s: %s\n", Program, _(Singleton));
-        }
+      if ((kill(instance, _signal)) == -1) {
+        g_printerr("%s: %s\n", Program, _(Singleton));
       }
     }
     _exit (_RUNNING);
@@ -955,12 +945,6 @@ signal_responder (int signum)
       desktop_settings (_desktop, DESKTOP_SHORTCUT_CREATE);
       break;
 
-    case SIGUSR3:		/* dispatch command */
-      spawn_dialog(100, 100, ICON_BROKEN, "[%s]command => %s",
-					Program, _command);
-      break;
-
-
     case SIGCHLD:		/* reap children */
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
       break;
@@ -1023,7 +1007,6 @@ apply_signal_responder(void)
   signal(SIGTTIN, signal_responder);	/* 21 catch and ignore */
   signal(SIGTTOU, signal_responder);	/* 22 catch and ignore */
   signal(SIGURG,  signal_responder);    /* 23 internal program error */
-  signal(SIGUSR3, signal_responder);	/* 28 spawn (_command) */
   signal(SIGIO,   signal_responder);	/* 29 internal program error */
 } /* </apply_signal_responder> */
 
@@ -1042,7 +1025,7 @@ main(int argc, char *argv[])
   /* disable invalid option messages */
   opterr = 0;
      
-  while ((opt = getopt (argc, argv, "d:hvacne:p:s")) != -1) {
+  while ((opt = getopt (argc, argv, "d:hvacnp:s")) != -1) {
   /* while ((opt = getopt_long (argc, argv, opts, longopts, NULL)) != -1) */
     switch (opt) {
       case 'd':
@@ -1067,10 +1050,6 @@ main(int argc, char *argv[])
         break;
       case 'n':			/* create new shortcut */
         _signal = SIGUSR2;
-        break;
-      case 'e':			/* execute command */
-        _signal = SIGUSR3;
-        _command = optarg;
         break;
 
       case 'p':			/* set process name */
