@@ -52,7 +52,7 @@ shortcut_cb (GtkWidget *widget, gpointer drag_context, gint x, gint y,
 static void
 about (GlobalPanel *panel)
 {
-  notice_at(100, 100, ICON_SNAPSHOT,
+  spawn_dialog(100, 100, ICON_SNAPSHOT,
                "\n%s %s %s", Program, Release, Description);
 } /* </about> */
 
@@ -116,18 +116,18 @@ saveconfig (GlobalPanel *panel)
               rename(newconfig, resource);
           }
           else {
-            vdebug (1, "[saveconfig]no configuration changes detected!\n");
+            vdebug (1, "[%s]no configuration changes detected!\n", __func__);
             remove(newconfig);
           }
         }
         else {
           configuration_write (panel->config, ConfigurationHeader, stderr);
-          fprintf(stderr, "[saveconfig]new configuration is corrupted.\n");
+          fprintf(stderr, "[%s]new configuration is corrupted.\n", __func__);
           status = 1;
         }
       } /* </lstat newconfig> */
       else {
-        fprintf(stderr, "[saveconfig]error saving new configuration.\n");
+        fprintf(stderr, "[%s]error saving new configuration.\n", __func__);
         status = 1;
       }
     }
@@ -181,7 +181,7 @@ finis (GlobalPanel *panel, gboolean logout, gboolean quit)
       }
       else {
         status = BadAtom;
-        notice_at(100, 100, ICON_ERROR, "[%s]%s.",
+        spawn_dialog(100, 100, ICON_ERROR, "[%s]%s.",
                   Program, _("Sorry, cannot get window manager process ID"));
       }
     }
@@ -269,9 +269,10 @@ screenlock (GtkWidget *button, GlobalPanel *panel)
   else
     strcpy(command, XLOCK);
 
+  vdebug (1, "[%s]%s\n", __func__, command);
   exit_cancel(button, panel);
-  vdebug (1, "%s\n", command);
-  system(command);
+
+  system (command);
 } /* </screenlock> */
 
 /*
@@ -382,7 +383,7 @@ spawn_selected (ConfigurationNode *node, GlobalPanel *panel)
   if (cmdline != NULL)
     pid = dispatch (panel->session, cmdline);
   else
-    notice_at(100, 100, ICON_WARNING, "[%s]%s: %s.",
+    spawn_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
                Program, node->element, _("command not found"));
 
   return pid;
@@ -400,7 +401,7 @@ executer (GtkWidget *widget, ConfigurationNode *node)
   const gchar *type = configuration_attrib (exec->back, "type");
   const gchar *item = exec->element;
 
-  vdebug (2, "[executer]%s.exec: %s (type=%s)\n",
+  vdebug (2, "[%s]%s.exec: %s (type=%s)\n", __func__,
           configuration_attrib (node, "name"), item,
           (type != NULL) ? type : "application");
 
@@ -426,7 +427,7 @@ executer (GtkWidget *widget, ConfigurationNode *node)
     else if (strcmp(item, "shortcut:open") == 0)
       desktop_settings (panel, DESKTOP_SHORTCUT_OPEN);
     else
-      notice_at(100, 100, ICON_ERROR, "[%s]%s: %s.",
+      spawn_dialog(100, 100, ICON_ERROR, "[%s]%s: %s.",
                  Program, item, _("unimplemented method"));
   }
   else {

@@ -37,21 +37,41 @@
 #include <time.h>
 
 const char *Program = "gsession";
-const char *Release = "1.2.1";
+const char *Release = "1.2.2";
+
+const char *Description =
+"<!-- %s %s is a X Window System session manager.\n"
+"  The program is developed for Generations Linux and distributed\n"
+"  under the terms and condition of the GNU Public License. It is\n"
+"  a central part of gould (http://www.softcraft.org/gould).\n"
+"-->\n";
+
+const char *Usage =
+"usage: %s [-v | -h]\n"
+"\n"
+"\t-v print version information\n"
+"\t-h print help usage (what you are reading)\n"
+"\n"
+"There can only be one instance running per display.\n"
+"\n";
+
+debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
-debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 int _stream = -1;	/* stream socket descriptor */
+
 pid_t _instance;	/* singleton process ID */
 
 /**
 * prototypes (forward method declarations)
 */
-int consign(int connection);
+int acknowledge(int connection);
 int sessionlog(unsigned short level, const char *format, ...);
-int stream_socket(const char *sockname);
+int open_stream_socket(const char *sockname);
+
 void signal_responder(int signum);
 pid_t spawn(const char *cmdline);
+
 static char *timestamp(void);
 
 
@@ -80,10 +100,10 @@ static void daemonize(void)
 #endif
 
 /*
-* consign - socket stream request delivery
+* acknowledge - socket stream request delivery
 */
 int
-consign(int connection)
+acknowledge(int connection)
 {
   int nbytes;
   char request[MAX_PATHNAME];
@@ -108,49 +128,7 @@ consign(int connection)
     write(connection, request, strlen(request));
   }
   return nbytes;
-} /* </consign> */
-
-/*
-* signal_responder - signal handler
-*/
-void
-signal_responder(int signum)
-{
-  const static debug_t BACKTRACE_SIZE = 69;
-
-  switch (signum) {
-    case SIGHUP:
-    case SIGCONT:
-      break;
-
-    case SIGCHLD:		/* reap children */
-      while (waitpid(-1, NULL, WNOHANG) > 0) ;
-      break;
-
-    case SIGTTIN:
-    case SIGTTOU:
-      sessionlog(1, "%s: caught signal %d, ignoring.\n", __func__, signum);
-      break;
-
-    default:
-      close(_stream);
-      unlink(_GSESSION);
-    
-      if (signum != SIGINT && signum != SIGTERM) {
-        void *trace[BACKTRACE_SIZE];
-        int nptrs = backtrace(trace, UNIX_PATH_MAX);
-
-        printf("%s, exiting on signal: %d\n", Program, signum);
-        backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
-      }
-
-      if (debug) {
-        sessionlog(1, "%s ended on %s\n", Program, timestamp());
-        fclose(_logstream);
-      }
-      _exit (signum);
-  }
-} /* </signal_responder> */
+} /* </acknowledge> */
 
 /*
 * sessionlog - write to _logstream when debug >= {level}
@@ -172,10 +150,10 @@ sessionlog(unsigned short level, const char *format, ...)
 } /* </sessionlog> */
 
 /*
-* stream_socket
+* open_stream_socket - open communication stream socket
 */
 int
-stream_socket(const char *sockname)
+open_stream_socket(const char *sockname)
 {
   struct sockaddr_un address;
 
@@ -201,7 +179,47 @@ stream_socket(const char *sockname)
     return 1;
   }
   return 0;
-} /* </stream_socket> */
+} /* </open_stream_socket> */
+
+/*
+* signal_responder - signal handler
+*/
+void
+signal_responder(int signum)
+{
+  switch (signum) {
+    case SIGHUP:
+    case SIGCONT:
+      break;
+
+    case SIGCHLD:		/* reap children */
+      while (waitpid(-1, NULL, WNOHANG) > 0) ;
+      break;
+
+    case SIGTTIN:
+    case SIGTTOU:
+      sessionlog(1, "%s: caught signal %d, ignoring.\n", __func__, signum);
+      break;
+
+    default:
+      close(_stream);
+      unlink(_GSESSION);
+    
+      if (! (signum == SIGINT || signum == SIGTERM)) {
+        void *trace[BACKTRACE_SIZE];
+        int nptrs = backtrace(trace, UNIX_PATH_MAX);
+
+        printf("%s, exiting on signal: %d\n", Program, signum);
+        backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
+      }
+
+      if (debug) {
+        sessionlog(1, "%s ended on %s\n", Program, timestamp());
+        fclose(_logstream);
+      }
+      _exit (signum);
+  }
+} /* </signal_responder> */
 
 /*
 * spawn child process - override libgould.so implementation
@@ -258,10 +276,43 @@ apply_signal_responder(void)
   signal(SIGCONT, signal_responder);	/* 18 cancel request */
 } /* </apply_signal_responder> */
 
-/**
-* gession main program
+/*
+* get_process_id - get {program} PID or -1, if not running  
 */
-int main(int argc, char *argv[])
+static pid_t
+get_process_id(const char *program)
+{
+  char command[MAX_STRING];
+  static char answer[MAX_STRING];
+
+  pid_t instance = -1;
+  FILE *stream;
+
+  sprintf(command, "pidof %s", program);
+  stream = popen(command, "r");
+
+  if (stream) {
+    const char delim[2] = " ";
+    char *master, *token;
+
+    fgets(answer, MAX_STRING, stream);	/* answer maybe a list */
+    master = strtok(answer, delim);
+
+    for (token = master; token != NULL; ) {
+      token = strtok(NULL, delim);
+      if(token != NULL) master = token;	/* pid is last on the list */
+    }
+    instance = strtoul(master, NULL, 10);
+    fclose (stream);
+  }
+  return instance;
+} /* </get_process_id> */
+
+/*
+* interface {program} stream socket 
+*/
+int
+interface(const char *program)
 {
   const char *loglevel = getenv("LOGLEVEL");	/* 0 => none */
 
@@ -269,16 +320,16 @@ int main(int argc, char *argv[])
   const char *manager  = getenv("WINDOWMANAGER");
   const char *panel    = getenv("PANEL");
 
-  int connection;
+  int connection;	/* connection stream socket */
 
   if ((debug = (loglevel) ? atoi(loglevel) : 0)) {
     static char logfile[MAX_PATHNAME];
-    sprintf(logfile, "%s/%s.log", getenv("HOME"), Program);
+    sprintf(logfile, "%s/%s.log", getenv("HOME"), program);
     if (! (_logstream = fopen(logfile, "w"))) perror("cannot open logfile");
-    sessionlog(1, "%s started on %s\n", Program, timestamp());
+    sessionlog(1, "%s started on %s\n", program, timestamp());
   }
 
-  if (stream_socket(_GSESSION) != 0)
+  if (open_stream_socket(_GSESSION) != 0)
     return EX_PROTOCOL;
 
   apply_signal_responder();
@@ -290,14 +341,53 @@ int main(int argc, char *argv[])
   if(launcher) spawn( launcher );	/* spawn application launcher */
   if(manager) spawn( manager );		/* spawn WINDOWMANAGER */
 
-  /* gsession main loop */
-  for ( ;; ) {
+  for ( ;; ) {				/* gsession main loop */
     if ((connection = accept(_stream, 0, 0)) < 0)
       perror("accept connection on socket");
     else {
-      while (consign (connection) > 0) ;
+      while (acknowledge (connection) > 0) ;
       close(connection);
     }
   }
   return EX_OK;
+} /* </interface> */
+
+/**
+* gession main program
+*/
+int
+main(int argc, char *argv[])
+{
+  int opt;
+  /* disable invalid option messages */
+  opterr = 0;
+
+  while ((opt = getopt (argc, argv, "d:hv")) != -1) {
+    switch (opt) {
+      case 'd':
+        debug = atoi(optarg);
+        break;
+
+      case 'h':
+        printf(Usage, Program);
+        _exit (EX_OK);
+        break;
+
+      case 'v':
+        printf(Description, Program, Release);
+        _exit (EX_OK);
+        break;
+
+      default:
+        printf("%s: invalid option, use -h for help usage.\n", Program);
+        _exit (EX_USAGE);
+    }
+  }
+  _instance = get_process_id (Program); /* see if already running ... */
+
+  if (_instance > 0 && _instance != getpid()) {
+    printf("%s: %s (pid => %d)\n", Program, _(Singleton), _instance);
+    return EX_UNAVAILABLE;
+  }
+  return interface (Program);
 } /* </gsession> */

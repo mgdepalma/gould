@@ -266,6 +266,7 @@ void restart (GlobalPanel *panel);
 void reconstruct (GlobalPanel *panel);
 int saveconfig (GlobalPanel *panel);
 
+gint spawn_dialog(gint xpos, gint ypos, IconIndex icon, const gchar* fmt, ...);
 G_END_DECLS
 
 #endif /* </GPANEL_H */

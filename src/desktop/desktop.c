@@ -422,6 +422,7 @@ desktop_new (GlobalPanel *panel, gint iconsize)
   gtk_box_pack_end (GTK_BOX(layer), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
 
+  /* 2023.06.07 DEBUG - child process stuck,,, desktop.c:425 */
   g_signal_connect (G_OBJECT(button), "clicked",
                      G_CALLBACK(desktop_setting_cancel), panel);
   gtk_widget_show (button);
@@ -577,7 +578,7 @@ desktop_settings (GlobalPanel *panel, DesktopAction act)
   GtkWidget *iconview = desktop->iconview;
 
   if (desktop == NULL) {
-    notice_at(100, 100, ICON_ERROR, "desktop_settings: %s.",
+    spawn_dialog(100, 100, ICON_ERROR, "desktop_settings: %s.",
 				_("assert desktop failed!"));
     return;
   }

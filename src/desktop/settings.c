@@ -942,9 +942,11 @@ settings_new (GlobalPanel *panel)
   g_signal_connect(G_OBJECT (window), "delete_event",
                    G_CALLBACK (settings_dismiss), panel);
 
+#ifdef NEVER
 #if __key_press_event_
   g_signal_connect(G_OBJECT (window), "key_press_event",
                    G_CALLBACK (settings_key_press), panel);
+#endif
 #endif
 
   frame = gtk_frame_new (NULL);

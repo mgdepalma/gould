@@ -18,7 +18,7 @@
  */
 
 #include "gould.h"		/* common package declarations */
-#include "gcontrol.h"
+#include "gscreen.h"
 #include "util.h"
 
 const char *Program;		/* (public) published program name */

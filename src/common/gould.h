@@ -26,6 +26,8 @@
 #define GETTEXT_PACKAGE "gould"
 #define _(string) gettext(string)
 
+#define BACKTRACE_SIZE  69
+
 #define MAX_BUFFER_SIZE 512
 #define MAX_PATHNAME    256
 #define MAX_STRING      128
@@ -35,7 +37,12 @@
 #define MAXSTR(a,b) MAX(strlen(a),strlen(b))
 #define MINSTR(a,b) MIN(strlen(a),strlen(b))
 
-#define Authors "Generations Linux <bugs@softcraft.org>"
+#define Authors "Generations Linux (bugs@softcraft.org)"
+//"Generations Linux <bugs@softcraft.org>" <= problem with <>
+
+#define Singleton "another instance of this program is already running."
+
+typedef unsigned short debug_t;
 
 enum {
   _SUCCESS,
@@ -43,6 +50,5 @@ enum {
   _MISSING,
   _INVALID,
 };
-
-typedef unsigned short debug_t;
 #endif
+

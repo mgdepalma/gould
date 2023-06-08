@@ -4,11 +4,14 @@
 #
 MAINTAINERCLEANFILES = Makefile.in
 
-ALL_CFLAGS = -Wno-deprecated-declarations
-PKG_DEFINE = -D_GNU_SOURCE -DLOCALEDIR=\""$(datadir)/locale"\" 
+ALL_CFLAGS  = -Wno-deprecated-declarations
+ALL_LDFLAGS = -Wl,-export-dynamic
+
+PKG_DEFINE  = -D_GNU_SOURCE -DLOCALEDIR=\""$(datadir)/locale"\" 
 PKG_DEFINE += -DCONFIG_FILE=\"@sysconfdir@/X11/@PACKAGE@.conf\"
-PKG_CFLAGS = $(PKG_DEFINE) $(ALL_CFLAGS) -I../common -Wall -g -O -pipe
-PKG_LDFLAGS = -Wl,-export-dynamic
+
+PKG_CFLAGS  = $(PKG_DEFINE) $(ALL_CFLAGS) -I../common -Wall -g -O -pipe
+PKG_LDFLAGS = $(ALL_LDFLAGS)
 
 AM_CFLAGS  = $(PKG_CFLAGS) `pkg-config --cflags gtk+-2.0 libxml-2.0`
 AM_LDFLAGS = $(PKG_LDFLAGS) `pkg-config --libs gtk+-2.0 libxml-2.0`
@@ -21,22 +24,23 @@ gpanel \
 gsession
 
 noinst_PROGRAMS = \
-gcontrol \
+gscreen \
 prova
 
 # additional LDFLAGS needed by gpanel
 gpanel_LDADD = -lgthread-2.0
 
 # program source dependencies
-gpanel_SOURCES = gpanel.h gpanel.c \
-                          menu.c \
-                          taskbar.c \
-                          settings.c \
-                          wallpaper.c \
-                          desktop.c \
-                          saver.c \
-			  gsession.h
+gpanel_SOURCES = gpanel.h gsession.h \
+		 gpanel.c \
+		 desktop.c \
+		 taskbar.c \
+		 settings.c \
+		 wallpaper.c \
+		 dialog.c \
+		 menus.c \
+		 saver.c
 
-gcontrol_SOURCES  = gcontrol.h gcontrol.c
+gscreen_SOURCES  = gscreen.h gscreen.c
 
 #/
