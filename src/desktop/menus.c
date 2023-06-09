@@ -52,7 +52,7 @@ shortcut_cb (GtkWidget *widget, gpointer drag_context, gint x, gint y,
 static void
 about (GlobalPanel *panel)
 {
-  spawn_dialog(100, 100, ICON_SNAPSHOT,
+  gpanel_dialog(100, 100, ICON_SNAPSHOT,
                "\n%s %s %s", Program, Release, Description);
 } /* </about> */
 
@@ -181,7 +181,7 @@ finis (GlobalPanel *panel, gboolean logout, gboolean quit)
       }
       else {
         status = BadAtom;
-        spawn_dialog(100, 100, ICON_ERROR, "[%s]%s.",
+        gpanel_dialog(100, 100, ICON_ERROR, "[%s]%s.",
                   Program, _("Sorry, cannot get window manager process ID"));
       }
     }
@@ -383,7 +383,7 @@ spawn_selected (ConfigurationNode *node, GlobalPanel *panel)
   if (cmdline != NULL)
     pid = dispatch (panel->session, cmdline);
   else
-    spawn_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
+    gpanel_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
                Program, node->element, _("command not found"));
 
   return pid;
@@ -427,7 +427,7 @@ executer (GtkWidget *widget, ConfigurationNode *node)
     else if (strcmp(item, "shortcut:open") == 0)
       desktop_settings (panel, DESKTOP_SHORTCUT_OPEN);
     else
-      spawn_dialog(100, 100, ICON_ERROR, "[%s]%s: %s.",
+      gpanel_dialog(100, 100, ICON_ERROR, "[%s]%s: %s.",
                  Program, item, _("unimplemented method"));
   }
   else {

@@ -96,6 +96,36 @@ message(GtkWidget *parent, IconIndex icon, const gchar *text)
 } /* </message> */
 
 /*
+* provide a GTK+ dialog at (xpos,ypos), IconIndex icon, message,...
+*/
+void
+gpanel_dialog(gint xpos, gint ypos, IconIndex icon, const gchar* format, ...)
+{
+  GtkWidget *dialog;
+  gchar *text;
+
+  va_list args;			/* declare a va_list type variable */
+  va_start (args, format);	/* initialize va_list variable with '...' */
+  text = g_strdup_vprintf (format, args);
+  va_end (args);		/* clean up the va_list */
+
+  dialog = message(NULL, icon, text);
+  g_free (text);
+
+  if (xpos > 0 && ypos > 0)
+    gtk_window_move (GTK_WINDOW(dialog), xpos, ypos);
+  else {
+    gint xres = gdk_screen_width ();
+    gint yres = gdk_screen_height ();
+    gtk_window_move (GTK_WINDOW(dialog), (xres/2) - 200, (yres/2) - 100);
+  }
+
+  gtk_widget_show (dialog);
+  gtk_dialog_run (GTK_DIALOG (dialog));
+  gtk_widget_hide (dialog);
+} /* </gpanel_dialog> */
+
+/*
 * provide a GTK+ dialog in a separate process
 */
 pid_t
@@ -104,33 +134,12 @@ spawn_dialog(gint xpos, gint ypos, IconIndex icon, const gchar* format, ...)
   pid_t pid = fork();
 
   if (pid == 0) {		/* child process */
-    GtkWidget *dialog;
-    gchar *text;
-
+    //setsid();			/* create a new session */
     va_list args;
     va_start (args, format);
-    text = g_strdup_vprintf (format, args);
+    /* Forward the '...' to gpanel_dialog */
+    gpanel_dialog(xpos, ypos, icon, format, args);
     va_end (args);
-
-    /*setsid();			/* create a new session */
-    dialog = message(NULL, icon, text);
-    g_free (text);
-
-    if (xpos > 0 && ypos > 0)
-      gtk_window_move (GTK_WINDOW(dialog), xpos, ypos);
-    else {
-      Display *display = GDK_WINDOW_XDISPLAY( GDK_ROOT_PARENT() );
-      GdkWindow *window = DefaultRootWindow (display);
-
-      gint xres, yres;
-      gdk_window_get_size (window, &xres, &yres);
-
-      gtk_window_move (GTK_WINDOW(dialog), (xres/2) - 200, (yres/2) - 100);
-    }
-
-    gtk_widget_show (dialog);
-    gtk_dialog_run (GTK_DIALOG (dialog));
-    gtk_widget_hide (dialog);
 
     _exit(EX_OK);
   }

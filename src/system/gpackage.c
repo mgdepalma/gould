@@ -21,8 +21,11 @@
 #include "interface.h"
 #include "xpmglyphs.h"
 
+#include <sysexits.h>	/* exit status codes for system programs */
+#include <sys/prctl.h>	/* operations on a process or thread */
+
 /*
- * Private data structures.
+* Private data structures.
 */
 #define MAX_PKGNAME_LENGTH 15
 #define MAX_SUMMARY_LENGTH 30
@@ -45,6 +48,9 @@ enum
   LAST_PAGE		/* last page marker */
 };
 
+const char *Program = "gpackage";
+const char *Release = "0.9.1";
+
 const char *About =
 " The program presents two notebook style tabs, one for viewing"
 " and managing packages already installed\n"
@@ -55,23 +61,23 @@ const char *About =
 " likely will always be /. UPDATES path is\n"
 " expected to contain RPM files.\n";
 
-const char *License = "(GNU General Public License version 3)";
+const char *Description =
+"<!-- %s %s is a software package manager for RPM based system.\n"
+"%s\n"
+"-->\n";
 
 const char *Terms =
-" The program is developed for Generations Linux (http://www.softcraft.org/)"
-" and distributed under\n"
-" the terms and conditions of the GNU Public License (GPL) version 3.";
+"  The program is developed for Generations Linux and distributed\n"
+"  under the terms and condition of the GNU Public License. It is\n"
+"  included as part of gould (http://www.softcraft.org/gould).";
 
 const char *Usage =
-"License: GPL %s\n"
+"usage: %s [-v | -h | <root>]\n"
 "\n"
-"usage: %s [-d[n] | -h | -v <root>]\n"
-"\n"
-"\t-d debug level [n (default => 1)]\n"
-"\t-h print help usage (what you are reading)\n"
 "\t-v print version information and exit\n"
+"\t-h print help usage (what you are reading)\n"
 "\n"
-"<root> is the installation path, default / {i am root}\n"
+"<root> is the installation path. (default /)\n"
 "\n";
 
 GlobalData *global_;		/* global program data singleton */
@@ -90,8 +96,8 @@ finis (GtkWidget *widget, gpointer data)
 } /* </finis> */
 
 /*
- * depot_changed
- */
+* depot_changed
+*/
 static void
 depot_changed (GtkNotebook *book, GtkNotebookPage *page,
                  gint index, gpointer data)
@@ -111,8 +117,8 @@ depot_changed (GtkNotebook *book, GtkNotebookPage *page,
 } /* </depot_changed> */
 
 /*
- * depot_column_header
- */
+* depot_column_header
+*/
 static void
 depot_column_header (GtkWidget *view, const char *name, guint place)
 {
@@ -129,8 +135,8 @@ depot_column_header (GtkWidget *view, const char *name, guint place)
 } /* </depot_column_header> */
 
 /*
- * depot_layout
- */
+* depot_layout
+*/
 static GtkWidget *
 depot_layout (GlobalDepot *depot)
 {
@@ -212,9 +218,9 @@ depot_layout (GlobalDepot *depot)
 } /* </depot_layout> */
 
 /*
- * depot_selection
- * depot_selection_handler
- */
+* depot_selection
+* depot_selection_handler
+*/
 static void
 depot_selection (GtkTreeModel *model, GtkTreePath *path,
                    GtkTreeIter *iter, GlobalDepot *depot)
@@ -314,8 +320,8 @@ depot_add_package (Package *package, GtkTreeStore *store, GtkTreeIter *node)
 } /* </depot_add_package> */
 
 /*
- * depot_group_hash
- */
+* depot_group_hash
+*/
 static void inline
 depot_group_hash (GHashTable *hash, GList *list)
 {
@@ -332,8 +338,8 @@ depot_group_hash (GHashTable *hash, GList *list)
 } /* </depot_group_hash> */
 
 /*
- * depot_update
- */
+* depot_update
+*/
 static void
 depot_update (GlobalDepot *depot, GHashTable *groups)
 {
@@ -366,9 +372,9 @@ depot_update (GlobalDepot *depot, GHashTable *groups)
 } /* </depot_update> */
 
 /*
- * gpackage_induct
- * gpackage_remove
- */
+* gpackage_induct
+* gpackage_remove
+*/
 static void
 _prototype_helper (GtkTreeModel *model, GtkTreePath *path,
                    GtkTreeIter *iter, gpointer data)
@@ -400,8 +406,8 @@ gpackage_remove (GtkWidget *widget, gpointer data)
 } /* </gpackage_remove> */
 
 /*
- * gpackage_page
- */
+* gpackage_page
+*/
 void
 gpackage_page (GtkWidget *widget, gpointer data)
 {
@@ -441,9 +447,9 @@ gpackage_page (GtkWidget *widget, gpointer data)
 } /* </gpackage_page> */
 
 /*
- * gpackage_installed
- * gpackage_updates
- */
+* gpackage_installed
+* gpackage_updates
+*/
 static GtkWidget *
 gpackage_installed (const char *root)
 {
@@ -505,8 +511,8 @@ gpackage_updates (const char *path)
 
 
 /*
- * gpackage_navigate
- */
+* gpackage_navigate
+*/
 static GtkWidget *
 gpackage_navigate (const char *root, const char *path)
 {
@@ -573,9 +579,9 @@ gpackage_navigate (const char *root, const char *path)
 } /* </gpackage_navigate> */
 
 /*
- * gpackage_about
- * gpackage_layout
- */
+* gpackage_about
+* gpackage_layout
+*/
 GtkWidget *
 gpackage_about (void)
 {
@@ -717,8 +723,8 @@ gpackage_layout (const char *root, const char *path)
 } /* </gpackage_layout> */
 
 /*
- * constructor main notebook pages
- */
+* constructor main notebook pages
+*/
 GtkWidget *
 constructor (GtkWidget *widget, const char *root)
 {
@@ -755,8 +761,8 @@ constructor (GtkWidget *widget, const char *root)
 } /* </constructor> */
 
 /*
- * interactive graphical user interface
- */
+* gpackage main program
+*/
 int
 main (int argc, char *argv[])
 {
@@ -764,43 +770,32 @@ main (int argc, char *argv[])
   GtkWidget *interface;
   GtkWidget *layout;
 
+  gint yres, height, width;
   const char *root;
-  int flag;
 
-  gint width, height;
-  gint yres;
+  int opt;
+  /* disable invalid option messages */
+  opterr = 0;
 
-  Program = basename(argv[0]);	/* strip leading path for Progname */
-  Release = "0.9.1";
-
-  /* Change the process name using Program variable. */
-  strncpy(argv[0], Program, strlen(argv[0]));
-  setprogname (Program = argv[0]);
-  opterr = 0;			/* disable invalid option messages */
-
-  while ((flag = getopt (argc, argv, "d:hv")) != -1)
-    switch (flag) {
-      case 'v':
-        printf("%s version %s %s\n", Program, Release, License);
-        exit(0);
-
-      case 'h':
-        printf(Usage, License, Program);
-        exit(0);
-
+  while ((opt = getopt (argc, argv, "d:hv")) != -1) {
+    switch (opt) {
       case 'd':
         debug = atoi(optarg);
         break;
 
-      default:
-        if (optopt == 'd')
-          debug = 1;
-        else {
-          printf("%s: invalid option, use -h for help usage.\n", Program);
-          exit(1);
-        }
-    }
+      case 'h':
+        printf(Usage, Program);
+        _exit (EX_OK);
 
+      case 'v':
+        printf(Description, Program, Release, Terms);
+        _exit (EX_OK);
+
+      default:
+        printf("%s: invalid option, use -h for help usage.\n", Program);
+        _exit (EX_USAGE);
+    }
+  }
   root = argv[optind] ? argv[optind] : "/";
 
 #ifdef GETTEXT_PACKAGE
@@ -813,7 +808,7 @@ main (int argc, char *argv[])
   gtk_init (&argc, &argv);      /* initialization of the GTK */
   gtk_set_locale ();
 
-  /* Adjust width and height according to screen resolution. */
+    /* Adjust width and height according to screen resolution. */
   yres = gdk_screen_height ();
   height = 3 * yres / 5;
   width  = 2 * height;
@@ -845,5 +840,5 @@ main (int argc, char *argv[])
 
   gtk_main ();				   /* main event loop */
 
-  return 0;
-} /* </main> */
+  return EX_OK;
+} /* </gpackage> */

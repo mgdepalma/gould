@@ -17,20 +17,21 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "gould.h"	/* common package declarations */
+#include "gould.h"		/* common package declarations */
 #include "gpanel.h"
 #include "gsession.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
-#include <execinfo.h>	/* backtrace declarations */
-#include <sysexits.h>	/* exit status codes for system programs */
-#include <sys/prctl.h>	/* operations on a process or thread */
+#include <execinfo.h>		/* backtrace declarations */
+#include <sysexits.h>		/* exit status codes for system programs */
+#include <sys/prctl.h>		/* operations on a process or thread */
+
+#define SIGUSR3 SIGWINCH	/* SIGWINCH => 28, reserved */
 
 #ifndef SIGUNUSED
 #define SIGUNUSED 31
 #endif
-#define SIGUSR3 SIGWINCH
 
 static GlobalPanel *_desktop;	/* (protected)encapsulated program data */
 
@@ -388,7 +389,7 @@ panel_quicklaunch (GtkWidget *widget, Modulus *applet)
   if (command)
     dispatch (panel->session, command);
   else
-     spawn_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
+     gpanel_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
                	Program, applet->label, _("command not found"));
 
 } /* </panel_quicklaunch> */
@@ -607,7 +608,7 @@ dispatch (int stream, const char *command)
 } /* </dispatch> */
 
 /*
-* gpanel_respawn - dispatch() _self_, silently
+* gpanel_respawn - dispatch(_self_ silently)
 */
 pid_t
 gpanel_respawn(int stream)
@@ -616,7 +617,7 @@ gpanel_respawn(int stream)
   command = g_strdup_printf ("%s -s", path_finder(_desktop->path, Program));
   vdebug(2, "%s: command => %s\n", __func__, command);
 
-  pid_t instance = dispatch(stream, command);
+  pid_t instance = dispatch (stream, command);
   g_free (command);
 
   return instance;
@@ -793,6 +794,9 @@ gpanel_initialize (GlobalPanel *panel)
   panel->systray  = systray_new ();
   panel->session  = open_session_stream(_GSESSION);
 
+  _stream = panel->session;
+  g_assert (_stream > 0);	/* sanity check */
+
   strcpy(dirname, panel->resource);	/* obtain parent directory path */
   scan = strrchr(dirname, '/');
 
@@ -858,7 +862,7 @@ panel_constructor (GlobalPanel *panel)
 
   /* Iterate the alert notices list. */
   for (iter = panel->notice; iter != NULL; iter = iter->next)
-    spawn_dialog(100,100, ICON_WARNING,"%s: %s.", Program, (gchar*)iter->data);
+    gpanel_dialog(100,100, ICON_WARNING,"%s: %s.", Program, (gchar*)iter->data);
 
   g_list_free (panel->notice);
   panel->notice = NULL;
@@ -895,22 +899,15 @@ panel_loader (GlobalPanel *panel)
 pid_t
 gpanel_instance (GlobalPanel *panel)
 {
-  pid_t instance = _INVALID;	/* implies something went wrong */
   memset(panel, 0, sizeof(GlobalPanel));
 
-  if (panel_loader(panel) == EX_OK)
-    instance = getpid();
-  else {			/* configuration file disappeared */
-    if (_desktop)
-      spawn_dialog(50, 50, ICON_ERROR,"%s: %s.",
-			Program, _("cannot find configuration file"));
-    else
-      printf("%s: %s.", Program, _("cannot find configuration file"));
-
-    _exit (EX_CONFIG);
+  if (panel_loader(panel) != EX_OK) {
+    printf("%s: %s.", Program, _("cannot find configuration file"));
+    _exit (EX_CONFIG);		/* configuration file disappeared */
   }
   _desktop = panel;		/* save GlobalPanel data structure */
-  return instance;
+
+  return getpid();
 } /* </gpanel_instance> */
 
 /*
@@ -948,6 +945,10 @@ signal_responder (int signum)
       break;
 
     case SIGUSR3:		/* <reserved> */
+      gtk_widget_show (_desktop->backdrop);
+      gpanel_dialog (200, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
+					Program, _(Bugger), signum);
+      gtk_widget_hide (_desktop->backdrop);
       break;
 
     case SIGCHLD:		/* reap children */
@@ -970,8 +971,9 @@ signal_responder (int signum)
         void *trace[BACKTRACE_SIZE];
         int nptrs = backtrace(trace, BACKTRACE_SIZE);
         backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
+        vdebug(2, "%s: caught signal %d.\n", __func__, signum);
 
-        spawn_dialog (-1, -1, ICON_ERROR, "%s: %s. (caught signal => %d)",
+        gpanel_dialog (200, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
 					Program, _(Bugger), signum);
         if (_persistent) {
           vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
@@ -1010,7 +1012,7 @@ apply_signal_responder(void)
   signal(SIGTTIN, signal_responder);	/* 21 catch and ignore */
   signal(SIGTTOU, signal_responder);	/* 22 catch and ignore */
   signal(SIGURG,  signal_responder);    /* 23 internal program error */
-  signal(SIGWINCH,SIG_IGN);		/* 28 SIGUSR3 <reserved> */
+  signal(SIGWINCH,signal_responder);	/* 28 SIGUSR3 <reserved> */
   signal(SIGIO,   SIG_IGN);		/* 29 ignore <reserved> */
 } /* </apply_signal_responder> */
 
@@ -1107,3 +1109,4 @@ main(int argc, char *argv[])
 
   return status;
 } /* </main> */
+
