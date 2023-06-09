@@ -30,11 +30,12 @@
 #ifndef SIGUNUSED
 #define SIGUNUSED 31
 #endif
+#define SIGUSR3 SIGWINCH
 
 static GlobalPanel *_desktop;	/* (protected)encapsulated program data */
 
 const char *Program = "gpanel";	/* (public) published program name    */
-const char *Release = "1.6.7";	/* (public) published program version */
+const char *Release = "1.6.6";	/* (public) published program version */
 
 const char *Description =
 "<!-- %s %s is a desktop navigation and control panel.\n"
@@ -52,7 +53,7 @@ const char *Usage =
 "\t-p <name> use process <name> instead of `%s'\n"
 "\t-s silent => no splash at startup\n"
 "\n"
-"  when already running [ -a | -c | -n | -e <command>]\n"
+"  when already running [ -a | -c | -n]\n"
 "\t-a activate logout dialog\n"
 "\t-c cancel logout dialog\n"
 "\t-n new desktop shortcut\n"
@@ -74,7 +75,7 @@ const char *Schema  = "panel";	/* (public) XML configuration schema */
 
 debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 
-gboolean _persistent = TRUE;	/* if getenv("LIFESPAN") then, we are not */
+gboolean _persistent = TRUE;	/* getenv("PANEL_RESPAWN") => {yes,no} */
 gboolean _silent = FALSE;	/* show splash screen (or not) */
 
 int _signal = SIGUSR1;	 	/* what to signal [default] */
@@ -777,7 +778,6 @@ gpanel_initialize (GlobalPanel *panel)
   panel->settings = NULL;
   panel->resource = g_strdup_printf("%s/.config/panel", home);
   panel->green    = green_filter_new (selfexclude, DefaultScreen(gdk_display));
-  panel->session  = open_session_stream(_GSESSION);
 
   if (systray_check_running_screen (green_get_gdk_screen (panel->green))) {
     pid_t instance = get_process_id (Program);
@@ -789,7 +789,9 @@ gpanel_initialize (GlobalPanel *panel)
     }
     _exit (_RUNNING);
   }
+
   panel->systray  = systray_new ();
+  panel->session  = open_session_stream(_GSESSION);
 
   strcpy(dirname, panel->resource);	/* obtain parent directory path */
   scan = strrchr(dirname, '/');
@@ -945,6 +947,9 @@ signal_responder (int signum)
       desktop_settings (_desktop, DESKTOP_SHORTCUT_CREATE);
       break;
 
+    case SIGUSR3:		/* <reserved> */
+      break;
+
     case SIGCHLD:		/* reap children */
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
       break;
@@ -953,10 +958,11 @@ signal_responder (int signum)
     case SIGTTOU:
       break;
 
-    case SIGINT:		/* graceful exit */
-    case SIGQUIT:
+    case SIGINT:
+    case SIGABRT:
+    case SIGQUIT:		/* graceful exit */
     case SIGKILL:
-      gpanel_graceful (signum, FALSE);
+      gpanel_graceful (signum, ((debug > 0) ? TRUE : FALSE));
       break;
 
     default:
@@ -965,11 +971,8 @@ signal_responder (int signum)
         int nptrs = backtrace(trace, BACKTRACE_SIZE);
         backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
 
-        /* SIGBUS || SIGPIPE || ...make gtk_dialog() hang ..spawn_dialog */
-        if (signum != SIGSEGV) {
-          spawn_dialog(50, 50, ICON_ERROR, "%s: %s. (caught signal => %d)",
+        spawn_dialog (-1, -1, ICON_ERROR, "%s: %s. (caught signal => %d)",
 					Program, _(Bugger), signum);
-	}
         if (_persistent) {
           vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
           gpanel_respawn (_desktop->session);
@@ -986,10 +989,10 @@ static inline void
 apply_signal_responder(void)
 {
   signal(SIGHUP,  signal_responder);	/* 1 action required backdrop */
-  signal(SIGINT,  signal_responder);	/* 2 graceful exit <ctrl-c> */
+  signal(SIGINT,  signal_responder);	/* 2 graceful exit <crtl-c> */
   signal(SIGQUIT, signal_responder);	/* 3 graceful exit */
   signal(SIGILL,  signal_responder);	/* 4 internal program error */
-  signal(SIGTRAP, signal_responder);	/* 5 internal program error */
+  signal(SIGTRAP, SIG_DFL);		/* 5 debugger */
   signal(SIGABRT, signal_responder);	/* 6 internal program error */
   signal(SIGBUS,  signal_responder);	/* 7 internal program error */
   signal(SIGFPE,  signal_responder);	/* 8 internal program error */
@@ -997,17 +1000,18 @@ apply_signal_responder(void)
   signal(SIGUSR1, signal_responder);	/* 10 show control panel */
   signal(SIGSEGV, signal_responder);	/* 11 internal program error */
   signal(SIGUSR2, signal_responder);	/* 12 new desktop shortcut */
-  signal(SIGPIPE, signal_responder);	/* 13 internal program error */
-  signal(SIGALRM, signal_responder);	/* 14 internal program error */
+  signal(SIGPIPE, SIG_IGN);		/* 13 ignore */
+  signal(SIGALRM, SIG_IGN);		/* 14 ignore */
   signal(SIGTERM, signal_responder);	/* 15 show logout panel */
   signal(SIGCHLD, signal_responder);	/* 17 reap children */
-  signal(SIGCONT, signal_responder);	/* 18 cancel logout */
-  signal(SIGSTOP, signal_responder);	/* 19 internal program error */
-  signal(SIGTSTP, signal_responder);	/* 20 internal program error */
+  signal(SIGCONT, signal_responder);	/* 18 resume (cancel logout) */
+  signal(SIGSTOP, SIG_DFL);	 	/* 19 pause */
+  signal(SIGTSTP, SIG_IGN);		/* 20 ignore <crtl-z> */
   signal(SIGTTIN, signal_responder);	/* 21 catch and ignore */
   signal(SIGTTOU, signal_responder);	/* 22 catch and ignore */
   signal(SIGURG,  signal_responder);    /* 23 internal program error */
-  signal(SIGIO,   signal_responder);	/* 29 internal program error */
+  signal(SIGWINCH,SIG_IGN);		/* 28 SIGUSR3 <reserved> */
+  signal(SIGIO,   SIG_IGN);		/* 29 ignore <reserved> */
 } /* </apply_signal_responder> */
 
 /*
@@ -1018,6 +1022,8 @@ main(int argc, char *argv[])
 {
   GlobalPanel memory;		/* master data structure (gpanel.h) */
   char *pretend = NULL;		/* used to change process name */
+
+  const char *respawn = getenv("PANEL_RESPAWN");
 
   int status = EX_OK;
   int opt;
@@ -1081,8 +1087,9 @@ main(int argc, char *argv[])
   textdomain (GETTEXT_PACKAGE);
   //gtk_disable_setlocale();
 #endif
-  if(debug || getenv ("DEBUG")) _persistent = FALSE;
+
   if(pretend) prctl(PR_SET_NAME, (unsigned long)pretend, 0, 0, 0);
+  if(respawn && strcasecmp(respawn, "no") == 0) _persistent = FALSE;
 
   gtk_init (&argc, &argv);	/* initialization of the GTK */
   gtk_set_locale ();
