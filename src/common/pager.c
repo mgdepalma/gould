@@ -19,7 +19,7 @@
 
 #include "util.h"
 #include "gould.h"
-#include "window.h"
+#include "gwindow.h"
 #include "pager.h"
 
 #include <gdk-pixbuf/gdk-pixbuf.h>

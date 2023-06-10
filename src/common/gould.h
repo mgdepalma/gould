@@ -50,5 +50,10 @@ enum {
   _MISSING,
   _INVALID,
 };
+
+/* Methods exported by implementation */
+int gould_diagnostics(const char *program);
+const char *timestamp(void);
+
 #endif
 

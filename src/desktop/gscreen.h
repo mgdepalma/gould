@@ -27,10 +27,10 @@
 #include <unistd.h>
 #include <gtk/gtk.h>
 
+#include "dialog.h"
+#include "gwindow.h"
 #include "iconbox.h"
 #include "xpmglyphs.h"
-#include "window.h"
-#include "dialog.h"
 
 G_BEGIN_DECLS
 

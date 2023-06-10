@@ -23,7 +23,6 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
-#include <execinfo.h>		/* backtrace declarations */
 #include <sysexits.h>		/* exit status codes for system programs */
 #include <sys/prctl.h>		/* operations on a process or thread */
 
@@ -76,7 +75,7 @@ const char *Schema  = "panel";	/* (public) XML configuration schema */
 
 debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 
-gboolean _persistent = TRUE;	/* getenv("PANEL_RESPAWN") => {yes,no} */
+gboolean _persistent = TRUE;	/* getenv("GOULD_RESPAWN") => {yes,no} */
 gboolean _silent = FALSE;	/* show splash screen (or not) */
 
 int _signal = SIGUSR1;	 	/* what to signal [default] */
@@ -964,9 +963,7 @@ signal_responder (int signum)
 
     default:
       {
-        void *trace[BACKTRACE_SIZE];
-        int nptrs = backtrace(trace, BACKTRACE_SIZE);
-        backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
+        gould_diagnostics (Program );
         vdebug(2, "%s: caught signal %d.\n", __func__, signum);
 
         gpanel_dialog (200, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
@@ -1021,7 +1018,7 @@ main(int argc, char *argv[])
   GlobalPanel memory;		/* master data structure (gpanel.h) */
   char *pretend = NULL;		/* used to change process name */
 
-  const char *respawn = getenv("PANEL_RESPAWN");
+  const char *respawn = getenv("GOULD_RESPAWN");
 
   int status = EX_OK;
   int opt;

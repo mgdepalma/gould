@@ -27,7 +27,6 @@
 #include <stdarg.h>
 #include <string.h>
 #include <signal.h>
-#include <execinfo.h>	/* backtrace declarations */
 #include <libgen.h>	/* definitions for pattern matching functions */
 #include <sysexits.h>	/* exit status codes for system programs */
 #include <sys/prctl.h>	/* operations on a process or thread */
@@ -65,14 +64,13 @@ pid_t _instance;	/* singleton process ID */
 /**
 * prototypes (forward method declarations)
 */
-int acknowledge(int connection);
-int sessionlog(unsigned short level, const char *format, ...);
+static pid_t spawn(const char *cmdline);
+static pid_t get_process_id(const char *program);
+
 int open_stream_socket(const char *sockname);
+int acknowledge(int connection);
 
 void signal_responder(int signum);
-pid_t spawn(const char *cmdline);
-
-static char *timestamp(void);
 
 
 /*
@@ -100,6 +98,72 @@ static void daemonize(void)
 #endif
 
 /*
+* (private)get_process_id - get {program} PID or -1, if not running  
+*/
+static pid_t
+get_process_id(const char *program)
+{
+  pid_t instance = -1;
+
+  char command[MAX_STRING];
+  static char answer[MAX_STRING];
+  FILE *stream;
+
+  sprintf(command, "pidof %s", program);
+  stream = popen(command, "r");
+
+  if (stream) {
+    const char delim[2] = " ";
+    char *master, *token;
+
+    fgets(answer, MAX_STRING, stream);	/* answer maybe a list */
+    master = strtok(answer, delim);
+
+    for (token = master; token != NULL; ) {
+      token = strtok(NULL, delim);
+      if(token != NULL) master = token;	/* pid is last on the list */
+    }
+    instance = strtoul(master, NULL, 10);
+    fclose (stream);
+  }
+  return instance;
+} /* </get_process_id> */
+
+/*
+* spawn child process - override libgould.so implementation
+*/
+static pid_t
+spawn(const char *cmdline)
+{
+  pid_t pid = fork();
+
+  if (pid == 0) {	/* child process */
+    const static char *shell = "/bin/sh";
+
+    setsid();
+    execlp(shell, shell, "-f", "-c", cmdline, NULL);
+    exit(0);
+  }
+  return pid;
+} /* </spawn> */
+
+/*
+* (private)sessionlog - write to _logstream when debug >= {level}
+*/
+static int
+sessionlog(unsigned short level, const char *format, ...)
+{
+  if(! _logstream) return -1;	/* sanity check - return if no _logstream */
+
+  va_list args;
+  va_start (args, format);
+  if(debug >= level) vfprintf(_logstream, format, args);
+  va_end (args);
+
+  return fflush(_logstream);
+} /* </sessionlog> */
+
+/*
 * acknowledge - socket stream request delivery
 */
 int
@@ -114,14 +178,15 @@ acknowledge(int connection)
   if (nbytes < 0)
     perror("reading request from stream socket");
   else if (nbytes > 0) {
-    char *stamp = timestamp();
+    const char *stamp = timestamp();
     request[nbytes] = 0;
 
-    if (strcmp(request, _GETPID) == 0) {  /* request => pidof( gsession ) */
+    if (strcmp(request, _GETPID) == 0)	/* request => pidof( gsession ) */
+    {
       sessionlog(1, "%s pidof( %s ) => %d\n", stamp, Program, _instance);
       sprintf(request, "%d\n", _instance);
     }
-    else {				  /* request => spawn( <command> ) */
+    else {				/* request => spawn( <command> ) */
       sessionlog(1, "%s spawn( %s )\n", stamp, request);
       sprintf(request, "%d\n", spawn( request ));
     }
@@ -129,25 +194,6 @@ acknowledge(int connection)
   }
   return nbytes;
 } /* </acknowledge> */
-
-/*
-* sessionlog - write to _logstream when debug >= {level}
-*/
-int
-sessionlog(unsigned short level, const char *format, ...)
-{
-  if(! _logstream) return -1;	/* sanity check - return if no _logstream */
-
-  va_list args;
-  va_start (args, format);
-
-  if (debug >= level) {
-    vfprintf(_logstream, format, args);
-  }
-  va_end (args);
-
-  return fflush(_logstream);
-} /* </sessionlog> */
 
 /*
 * open_stream_socket - open communication stream socket
@@ -206,11 +252,8 @@ signal_responder(int signum)
       unlink(_GSESSION);
     
       if (! (signum == SIGINT || signum == SIGTERM)) {
-        void *trace[BACKTRACE_SIZE];
-        int nptrs = backtrace(trace, UNIX_PATH_MAX);
-
         printf("%s, exiting on signal: %d\n", Program, signum);
-        backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
+        gould_diagnostics (Program);
       }
 
       if (debug) {
@@ -220,41 +263,6 @@ signal_responder(int signum)
       _exit (signum);
   }
 } /* </signal_responder> */
-
-/*
-* spawn child process - override libgould.so implementation
-*/
-pid_t
-spawn(const char *cmdline)
-{
-  pid_t pid = fork();
-
-  if (pid == 0) {	/* child process */
-    const static char *shell = "/bin/sh";
-
-    setsid();
-    execlp(shell, shell, "-f", "-c", cmdline, NULL);
-    exit(0);
-  }
-  return pid;
-} /* </spawn> */
-
-/*
-* timestamp - yield a "%Y-%m-%d %H:%M:%S" string
-*/
-static char *
-timestamp(void)
-{
-  static char stamp[MAX_STAMP];
-  struct tm* tinfo;
-  time_t clock;
-
-  clock = time(NULL);
-  tinfo = localtime(&clock);
-  strftime(stamp, MAX_STAMP-1, "%Y-%m-%d %H:%M:%S", tinfo);
-
-  return stamp;
-} /* </timestamp> */
 
 /*
 * apply_signal_responder
@@ -277,38 +285,6 @@ apply_signal_responder(void)
 } /* </apply_signal_responder> */
 
 /*
-* get_process_id - get {program} PID or -1, if not running  
-*/
-static pid_t
-get_process_id(const char *program)
-{
-  char command[MAX_STRING];
-  static char answer[MAX_STRING];
-
-  pid_t instance = -1;
-  FILE *stream;
-
-  sprintf(command, "pidof %s", program);
-  stream = popen(command, "r");
-
-  if (stream) {
-    const char delim[2] = " ";
-    char *master, *token;
-
-    fgets(answer, MAX_STRING, stream);	/* answer maybe a list */
-    master = strtok(answer, delim);
-
-    for (token = master; token != NULL; ) {
-      token = strtok(NULL, delim);
-      if(token != NULL) master = token;	/* pid is last on the list */
-    }
-    instance = strtoul(master, NULL, 10);
-    fclose (stream);
-  }
-  return instance;
-} /* </get_process_id> */
-
-/*
 * interface {program} stream socket 
 */
 int
@@ -316,11 +292,12 @@ interface(const char *program)
 {
   const char *loglevel = getenv("LOGLEVEL");	/* 0 => none */
 
+  const char *desktop  = getenv("DESKTOP");
   const char *launcher = getenv("LAUNCHER");
   const char *manager  = getenv("WINDOWMANAGER");
-  const char *panel    = getenv("PANEL");
 
-  int connection;	/* connection stream socket */
+  int connection;		/* connection stream socket */
+  int status = EX_IOERR;	/* socket accept(2) error */
 
   if ((debug = (loglevel) ? atoi(loglevel) : 0)) {
     static char logfile[MAX_PATHNAME];
@@ -332,24 +309,21 @@ interface(const char *program)
   if (open_stream_socket(_GSESSION) != 0)
     return EX_PROTOCOL;
 
-  apply_signal_responder();
-  _instance = getpid();			/* singleton process ID */
+  /* spawn {WINDOWMANAGER}, {DESKTOP}, and (optional){LAUNCHER} */
+  spawn( (manager) ? manager : "twm" );	    /* spawn {WINDOWMANAGER} */
+  spawn( (desktop) ? desktop : "desktop" ); /* spawn desktop [control] panel */
+  if(launcher) spawn( launcher );	    /* spawn application launcher */
 
-  /* spawn {PANEL}, {LAUNCHER} and {WINDOWMANAGER} */
-  spawn( (panel) ? panel : "gpanel" );  /* spawn desktop [control] panel */
-
-  if(launcher) spawn( launcher );	/* spawn application launcher */
-  if(manager) spawn( manager );		/* spawn WINDOWMANAGER */
-
-  for ( ;; ) {				/* gsession main loop */
+  for ( ;; ) {			/* gsession main loop */
     if ((connection = accept(_stream, 0, 0)) < 0)
       perror("accept connection on socket");
     else {
       while (acknowledge (connection) > 0) ;
       close(connection);
+      status = EX_OK;
     }
   }
-  return EX_OK;
+  return status;
 } /* </interface> */
 
 /**
@@ -370,24 +344,28 @@ main(int argc, char *argv[])
 
       case 'h':
         printf(Usage, Program);
-        _exit (EX_OK);
+        return EX_OK;
         break;
 
       case 'v':
         printf(Description, Program, Release);
-        _exit (EX_OK);
+        return EX_OK;
         break;
 
       default:
         printf("%s: invalid option, use -h for help usage.\n", Program);
-        _exit (EX_USAGE);
+        return EX_USAGE;
     }
   }
-  _instance = get_process_id (Program); /* see if already running ... */
+  _instance = get_process_id (Program); /* see if already running... */
 
   if (_instance > 0 && _instance != getpid()) {
     printf("%s: %s (pid => %d)\n", Program, _(Singleton), _instance);
     return EX_UNAVAILABLE;
   }
+
+  _instance = getpid();			/* singleton process ID */
+  apply_signal_responder();
+
   return interface (Program);
 } /* </gsession> */

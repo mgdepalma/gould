@@ -19,8 +19,8 @@
 
 #include "util.h"
 #include "gould.h"
-#include "window.h"
 #include "grabber.h"
+#include "gwindow.h"
 #include "xpmglyphs.h"
 #include "docklet.h"
 

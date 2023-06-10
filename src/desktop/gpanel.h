@@ -20,14 +20,14 @@
 #ifndef _GPANEL
 #define _GPANEL "/tmp/gpanel"
 
-#include "util.h"
 #include "green.h"
 #include "dialog.h"
 #include "docklet.h"
-#include "module.h"
-#include "window.h"
+#include "gwindow.h"
 #include "systray.h"
 #include "xmlconfig.h"
+#include "module.h"
+#include "util.h"
 
 #include <signal.h>
 #include <sysexits.h>

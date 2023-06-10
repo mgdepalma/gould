@@ -12,40 +12,41 @@ AM_LDFLAGS = -Wl,-export-dynamic `pkg-config --libs x11 libxml-2.0`
 lib_LTLIBRARIES = libgould.la
 
 include_HEADERS = \
-	module.h \
 	dialog.h \
 	docklet.h \
-	print.h \
-	window.h \
 	grabber.h \
-        iconbox.h \
+	gwindow.h \
 	filechooser.h \
-	xmlconfig.h \
-	xpmglyphs.h \
 	greenwindow.h \
 	green.h \
+        iconbox.h \
 	pager.h \
+	module.h \
+	print.h \
 	tasklist.h \
 	systray.h \
+	xmlconfig.h \
+	xpmglyphs.h \
 	xutil.h \
 	util.h
 
 libgould_SOURCES = \
-        module.c \
+	diagnostics.c \
 	dialog.c \
 	docklet.c \
-	print.c \
-	window.c \
-	grabber.c \
-        iconbox.c \
 	filechooser.c \
-	xmlconfig.c \
-	xpmglyphs.c \
+	grabber.c \
+	gwindow.c \
+        iconbox.c \
+        module.c \
 	greenwindow.c \
 	green.c \
 	pager.c \
+	print.c \
 	tasklist.c \
 	systray.c \
+	xmlconfig.c \
+	xpmglyphs.c \
 	xutil.c \
 	util.c
 

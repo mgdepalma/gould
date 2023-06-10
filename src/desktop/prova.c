@@ -18,8 +18,8 @@
  */
 
 #include "gould.h"		/* common package declarations */
+#include "gwindow.h"
 #include "xutil.h"
-#include "window.h"
 
 #include "green.h"
 #include "systray.h"

@@ -18,8 +18,8 @@
  */
 
 #include "gould.h"
+#include "gwindow.h"
 #include "xutil.h"
-#include "window.h"
 
 #include <string.h>
 #include <stdlib.h>
