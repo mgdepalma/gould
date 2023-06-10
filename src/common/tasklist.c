@@ -1252,7 +1252,7 @@ tasklist_container_remove (GtkContainer *container, GtkWidget *widget)
     if (item->button == widget) {
       g_hash_table_remove (priv->winhash, item->window);
       priv->visible = g_list_remove (priv->visible, item);
-      gtk_widget_unparent (widget);
+       gtk_widget_unparent (widget);
       g_free (item);
       break;
     }

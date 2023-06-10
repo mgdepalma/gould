@@ -591,13 +591,13 @@ pid_t
 dispatch (int stream, const char *command)
 {
   pid_t pid;
+  vdebug(2, "%s: stream => %d, command => %s\n", __func__, stream, command);
 
-  if (stream <= 0)		/* stream socket must be > 0 */ 
+  if (stream < 0)	/* stream socket must be > 0 */ 
     pid = spawn (command);
   else {
     int  nbytes;
     char reply[MAX_PATHNAME];
-    vdebug(2, "%s: stream => %d, command => %s\n", __func__, command, stream);
 
     write(stream, command, strlen(command));
     nbytes = read(stream, reply, MAX_PATHNAME);
@@ -613,12 +613,11 @@ dispatch (int stream, const char *command)
 pid_t
 gpanel_respawn(int stream)
 {
-  gchar *command;
-  command = g_strdup_printf ("%s -s", path_finder(_desktop->path, Program));
-  vdebug(2, "%s: command => %s\n", __func__, command);
+  static char command[MAX_PATHNAME];
 
+  sprintf(command, "%s -s", path_finder(_desktop->path, Program));
+  vdebug(2, "%s: command => %s\n", __func__, command);
   pid_t instance = dispatch (stream, command);
-  g_free (command);
 
   return instance;
 } /* </gpanel_respawn> */
@@ -794,9 +793,6 @@ gpanel_initialize (GlobalPanel *panel)
   panel->systray  = systray_new ();
   panel->session  = open_session_stream(_GSESSION);
 
-  _stream = panel->session;
-  g_assert (_stream > 0);	/* sanity check */
-
   strcpy(dirname, panel->resource);	/* obtain parent directory path */
   scan = strrchr(dirname, '/');
 
@@ -946,13 +942,13 @@ signal_responder (int signum)
 
     case SIGUSR3:		/* <reserved> */
       gtk_widget_show (_desktop->backdrop);
-      gpanel_dialog (200, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
+      gpanel_dialog (150, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
 					Program, _(Bugger), signum);
       gtk_widget_hide (_desktop->backdrop);
       break;
 
     case SIGCHLD:		/* reap children */
-      while (waitpid(-1, NULL, WNOHANG) > 0) ;
+      //DEBUG: while (waitpid(-1, NULL, WNOHANG) > 0) ;
       break;
 
     case SIGTTIN:		/* ignore (until we know better) */
@@ -994,7 +990,7 @@ apply_signal_responder(void)
   signal(SIGINT,  signal_responder);	/* 2 graceful exit <crtl-c> */
   signal(SIGQUIT, signal_responder);	/* 3 graceful exit */
   signal(SIGILL,  signal_responder);	/* 4 internal program error */
-  signal(SIGTRAP, SIG_DFL);		/* 5 debugger */
+  signal(SIGTRAP, signal_responder);	/* 5 debugger */
   signal(SIGABRT, signal_responder);	/* 6 internal program error */
   signal(SIGBUS,  signal_responder);	/* 7 internal program error */
   signal(SIGFPE,  signal_responder);	/* 8 internal program error */
@@ -1002,18 +998,18 @@ apply_signal_responder(void)
   signal(SIGUSR1, signal_responder);	/* 10 show control panel */
   signal(SIGSEGV, signal_responder);	/* 11 internal program error */
   signal(SIGUSR2, signal_responder);	/* 12 new desktop shortcut */
-  signal(SIGPIPE, SIG_IGN);		/* 13 ignore */
-  signal(SIGALRM, SIG_IGN);		/* 14 ignore */
+  signal(SIGPIPE, signal_responder);	/* 13 ignore */
+  signal(SIGALRM, signal_responder);	/* 14 ignore */
   signal(SIGTERM, signal_responder);	/* 15 show logout panel */
   signal(SIGCHLD, signal_responder);	/* 17 reap children */
   signal(SIGCONT, signal_responder);	/* 18 resume (cancel logout) */
-  signal(SIGSTOP, SIG_DFL);	 	/* 19 pause */
-  signal(SIGTSTP, SIG_IGN);		/* 20 ignore <crtl-z> */
+  signal(SIGSTOP, signal_responder); 	/* 19 pause */
+  signal(SIGTSTP, signal_responder);	/* 20 ignore <crtl-z> */
   signal(SIGTTIN, signal_responder);	/* 21 catch and ignore */
   signal(SIGTTOU, signal_responder);	/* 22 catch and ignore */
   signal(SIGURG,  signal_responder);    /* 23 internal program error */
   signal(SIGWINCH,signal_responder);	/* 28 SIGUSR3 <reserved> */
-  signal(SIGIO,   SIG_IGN);		/* 29 ignore <reserved> */
+  signal(SIGIO,   signal_responder);	/* 29 ignore <reserved> */
 } /* </apply_signal_responder> */
 
 /*
@@ -1096,14 +1092,10 @@ main(int argc, char *argv[])
   gtk_init (&argc, &argv);	/* initialization of the GTK */
   gtk_set_locale ();
 
-  if (gpanel_instance (&memory) == _INVALID) {
-    printf("%s: %s\n", Program, _(Bugger));
-    _exit (EX_SOFTWARE);
-  }
-
   apply_signal_responder();
-  apply_gtk_theme (CONFIG_FILE);
+  gpanel_instance (&memory);	/* ignoring return pid_t */
 
+  apply_gtk_theme (CONFIG_FILE);
   gtk_set_locale ();
   gtk_main ();			/* main event loop */
 

@@ -377,15 +377,16 @@ item_check_access (ConfigurationNode *node, GlobalPanel *panel, gchar *attr)
 pid_t
 spawn_selected (ConfigurationNode *node, GlobalPanel *panel)
 {
+  pid_t pid = -1;
   const char *cmdline = item_check_access (node, panel, NULL);
-  pid_t pid = 0;
 
-  if (cmdline != NULL)
+  if (cmdline != NULL) {
+    vdebug(2, "%s: cmdline => %s\n", __func__, cmdline);
     pid = dispatch (panel->session, cmdline);
+  }
   else
     gpanel_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
                Program, node->element, _("command not found"));
-
   return pid;
 } /* </spawn_selected> */
 
