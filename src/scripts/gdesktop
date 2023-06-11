@@ -1,0 +1,8 @@
+#!/bin/sh
+##
+# gdesktop - exec gpanel giving the process name => gdesktop
+#
+# 2023-06-10 Generations Linux <bugs@softcraft.org>
+#
+exec gpanel -p gdesktop "$*"
+#/

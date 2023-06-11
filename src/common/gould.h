@@ -20,8 +20,9 @@
 #ifndef _GOULD
 #define _GOULD "/tmp/gould"
 
-#include <libintl.h>
 #include <string.h>
+#include <libintl.h>
+#include <unistd.h>
 
 #define GETTEXT_PACKAGE "gould"
 #define _(string) gettext(string)
@@ -52,8 +53,10 @@ enum {
 };
 
 /* Methods exported by implementation */
-int gould_diagnostics(const char *program);
 const char *timestamp(void);
+pid_t get_process_id(const char *program);
+int gould_diagnostics(const char *program);
+pid_t spawn(const char *program);
 
 #endif
 

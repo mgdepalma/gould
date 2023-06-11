@@ -43,8 +43,8 @@ libgould_SOURCES = \
 	green.c \
 	pager.c \
 	print.c \
-	tasklist.c \
 	systray.c \
+	tasklist.c \
 	xmlconfig.c \
 	xpmglyphs.c \
 	xutil.c \

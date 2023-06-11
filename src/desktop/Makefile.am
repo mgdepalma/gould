@@ -15,8 +15,6 @@ PKG_LDFLAGS = $(ALL_LDFLAGS)
 
 AM_CFLAGS  = $(PKG_CFLAGS) `pkg-config --cflags gtk+-2.0 libxml-2.0`
 AM_LDFLAGS = $(PKG_LDFLAGS) `pkg-config --libs gtk+-2.0 libxml-2.0`
-#AM_CFLAGS  = $(PKG_CFLAGS) `pkg-config --cflags libgtkhtml-3.14 libxml-2.0`
-#AM_LDFLAGS = $(PKG_LDFLAGS) `pkg-config --libs libgtkhtml-3.14 libxml-2.0`
 LIBS = -L../common -lgould -lX11
 
 bin_PROGRAMS = \

@@ -728,38 +728,6 @@ open_session_stream(const char *pathway)
 } /* open_session_stream */
 
 /*
-* get_process_id - get {program} PID or -1, if not running
-*/
-static pid_t
-get_process_id(const char* program)
-{
-  char command[MAX_STRING];
-  static char answer[MAX_STRING];
-
-  pid_t instance = -1;
-  FILE *stream;
-
-  sprintf(command, "pidof %s", program);
-  stream = popen(command, "r");
-
-  if (stream) {
-    const char delim[2] = " ";
-    char *master, *token;
-
-    fgets(answer, MAX_STRING, stream);   /* answer maybe a list */
-    master = strtok(answer, delim);
-
-    for (token = master; token != NULL; ) {
-      token = strtok(NULL, delim);
-      if(token != NULL) master = token;  /* pid is last on the list */
-    }
-    instance = strtoul(master, NULL, 10);
-    pclose(stream);
-  }
-  return instance;
-} /* </get_process_id> */
-
-/*
 * gpanel_initialize
 */
 void

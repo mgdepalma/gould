@@ -64,12 +64,8 @@ pid_t _instance;	/* singleton process ID */
 /**
 * prototypes (forward method declarations)
 */
-static pid_t spawn(const char *cmdline);
-static pid_t get_process_id(const char *program);
-
-int open_stream_socket(const char *sockname);
 int acknowledge(int connection);
-
+int open_stream_socket(const char *sockname);
 void signal_responder(int signum);
 
 
@@ -96,56 +92,6 @@ static void daemonize(void)
   //hostpid_init();
 } /* <daemonize> */
 #endif
-
-/*
-* (private)get_process_id - get {program} PID or -1, if not running  
-*/
-static pid_t
-get_process_id(const char *program)
-{
-  pid_t instance = -1;
-
-  char command[MAX_STRING];
-  static char answer[MAX_STRING];
-  FILE *stream;
-
-  sprintf(command, "pidof %s", program);
-  stream = popen(command, "r");
-
-  if (stream) {
-    const char delim[2] = " ";
-    char *master, *token;
-
-    fgets(answer, MAX_STRING, stream);	/* answer maybe a list */
-    master = strtok(answer, delim);
-
-    for (token = master; token != NULL; ) {
-      token = strtok(NULL, delim);
-      if(token != NULL) master = token;	/* pid is last on the list */
-    }
-    instance = strtoul(master, NULL, 10);
-    fclose (stream);
-  }
-  return instance;
-} /* </get_process_id> */
-
-/*
-* spawn child process - override libgould.so implementation
-*/
-static pid_t
-spawn(const char *cmdline)
-{
-  pid_t pid = fork();
-
-  if (pid == 0) {	/* child process */
-    const static char *shell = "/bin/sh";
-
-    setsid();
-    execlp(shell, shell, "-f", "-c", cmdline, NULL);
-    exit(0);
-  }
-  return pid;
-} /* </spawn> */
 
 /*
 * (private)sessionlog - write to _logstream when debug >= {level}
@@ -310,9 +256,9 @@ interface(const char *program)
     return EX_PROTOCOL;
 
   /* spawn {WINDOWMANAGER}, {DESKTOP}, and (optional){LAUNCHER} */
-  spawn( (manager) ? manager : "twm" );	    /* spawn {WINDOWMANAGER} */
-  spawn( (desktop) ? desktop : "desktop" ); /* spawn desktop [control] panel */
-  if(launcher) spawn( launcher );	    /* spawn application launcher */
+  spawn( (manager) ? manager : "twm" );		/* spawn {WINDOWMANAGER} */
+  spawn( (desktop) ? desktop : "gdesktop" );	/* spawn desktop manager */
+  if(launcher) spawn( launcher );		/* spawn app launcher */
 
   for ( ;; ) {			/* gsession main loop */
     if ((connection = accept(_stream, 0, 0)) < 0)

@@ -36,7 +36,7 @@ extern const char *__progname;
 extern unsigned short debug;	/* must be declared in main program */
 
 /*
- * Private data structures.
+* Private data structures.
 */
 typedef struct _FileMagicPrivate FileMagicPrivate;
 
@@ -60,38 +60,9 @@ static char *distro_[LSB_VERSION + 1] = {
   "LSB_VERSION"
 };
 
-/*
- * Methods (functions) implemention.
+/**
+* Methods (functions) implemention.
 */
-FileMagic
-get_file_magic (const char *pathname)
-{
-  static int maxlen = 0;	/* longest entry */
-
-  FileMagic magic = -1;
-  int idx, fd = open(pathname, O_RDONLY);
-
-  if (maxlen == 0)
-    for (idx = 0; idx < MAX_MAGIC; idx++)
-      maxlen = MAX(maxlen, strlen(sword_[idx].bytes));
-
-  if (fd >= 0) {
-    char buffer[maxlen + 1];
-    int bytes = read(fd, buffer, maxlen);
-
-    if (bytes == maxlen)
-      for (idx = 0; idx < MAX_MAGIC; idx++)
-        if (memcmp(buffer, sword_[idx].bytes, strlen(sword_[idx].bytes)) == 0) {
-          magic = sword_[idx].magic;
-          break;
-        }
-
-    close(fd);
-  }
-
-  return magic;
-} /* </get_file_magic> */
-
 #if GLIB_CHECK_VERSION(2,14,0) == 0
 static void
 _hash_table_add_key (gpointer key, gpointer value, GPtrArray *array)
@@ -137,8 +108,72 @@ g_hash_table_get_values (GHashTable *hash)
 #endif
 
 /*
- * glist_compare
- */
+* get_file_magic
+*/
+FileMagic
+get_file_magic (const char *pathname)
+{
+  static int maxlen = 0;	/* longest entry */
+
+  FileMagic magic = -1;
+  int idx, fd = open(pathname, O_RDONLY);
+
+  if (maxlen == 0)
+    for (idx = 0; idx < MAX_MAGIC; idx++)
+      maxlen = MAX(maxlen, strlen(sword_[idx].bytes));
+
+  if (fd >= 0) {
+    char buffer[maxlen + 1];
+    int bytes = read(fd, buffer, maxlen);
+
+    if (bytes == maxlen)
+      for (idx = 0; idx < MAX_MAGIC; idx++)
+        if (memcmp(buffer, sword_[idx].bytes, strlen(sword_[idx].bytes)) == 0) {
+          magic = sword_[idx].magic;
+          break;
+        }
+
+    close(fd);
+  }
+
+  return magic;
+} /* </get_file_magic> */
+
+/*
+* get_process_id - get {program} PID or -1, if not running  
+*/
+pid_t
+get_process_id(const char *program)
+{
+  pid_t instance = -1;
+
+  char command[MAX_STRING];
+  static char answer[MAX_STRING];
+  FILE *stream;
+
+  sprintf(command, "pidof %s", program);
+  stream = popen(command, "r");
+
+  if (stream) {
+    const char delim[2] = " ";
+    char *master, *token;
+
+    fgets(answer, MAX_STRING, stream);	/* answer maybe a list */
+    master = strtok(answer, delim);
+
+    for (token = master; token != NULL; ) {
+      token = strtok(NULL, delim);
+      if(token != NULL) master = token;	/* pid is last on the list */
+    }
+    instance = strtoul(master, NULL, 10);
+    fclose (stream);
+  }
+  return instance;
+} /* </get_process_id> */
+
+/*
+* glist_compare
+*/
 int
 glist_compare (GList *alist, GList *blist)
 {
@@ -168,8 +203,8 @@ glist_compare (GList *alist, GList *blist)
 } /* </glist_compare> */
 
 /*
- * glist_find
- */
+* glist_find
+*/
 gboolean
 glist_find (GList *list, const char *item)
 {
@@ -186,8 +221,8 @@ glist_find (GList *list, const char *item)
 } /* </glist_find> */
 
 /*
- * path_finder - search for file name from a path list
- */
+* path_finder - search for file name from a path list
+*/
 const gchar *
 path_finder (GList *list, const char *name)
 {
@@ -208,8 +243,8 @@ path_finder (GList *list, const char *name)
 } /* </path_finder_theme> */
 
 /*
- * pidof - find process ID by name
- */
+* pidof - find process ID by name
+*/
 pid_t
 pidof(const char *name, const char *pidfile)
 {
@@ -249,8 +284,8 @@ pidof(const char *name, const char *pidfile)
 }
 
 /*
- * simple_list_find - find a string match from a linked list.
- */
+* simple_list_find - find a string match from a linked list.
+*/
 const char *
 simple_list_find (GList *list, const char *pattern)
 {
@@ -267,8 +302,8 @@ simple_list_find (GList *list, const char *pattern)
 } /* </simple_list_find> */
 
 /*
- * simple_list_free - deallocate all memory from a linked list.
- */
+* simple_list_free - deallocate all memory from a linked list.
+*/
 GList *
 simple_list_free (GList *list)
 {
@@ -280,9 +315,9 @@ simple_list_free (GList *list)
 } /* </simple_list_free> */
 
 /*
- * getprogname
- * setprogname
- */
+* getprogname
+* setprogname
+*/
 const char *
 getprogname (void)
 {
@@ -296,8 +331,8 @@ setprogname (const char *pn)
 } /* </setprogname> */
 
 /*
- * lsb_release yield description of LSB option given
- */
+* lsb_release yield description of LSB option given
+*/
 const char *
 lsb_release (LinuxStandardBase option)
 {
@@ -361,8 +396,8 @@ lsb_release_full (void)
 } /* </lsb_release_full> */
 
 /*
- * get_disk_list look for {hd,sd}* matches in /proc/partitions
- */
+* get_disk_list look for {hd,sd}* matches in /proc/partitions
+*/
 GList *
 get_disk_list (GList *exclude)
 {
@@ -396,8 +431,8 @@ get_disk_list (GList *exclude)
 } /* </get_disk_list> */
 
 /*
- * get_internal_partitions
- */
+* get_internal_partitions
+*/
 GList *
 get_internal_partitions (void)
 {
@@ -412,8 +447,8 @@ get_internal_partitions (void)
 } /* </get_internal_partitions> */
 
 /*
- * get_mounted_devices
- */
+* get_mounted_devices
+*/
 GList *
 get_mounted_devices (GList *exclude)
 {
@@ -446,8 +481,8 @@ get_mounted_devices (GList *exclude)
 } /* </get_mounted_devices> */
 
 /*
- * get_partitions
- */
+* get_partitions
+*/
 GList *
 get_partitions (const char *device)
 {
@@ -479,7 +514,7 @@ get_partitions (const char *device)
 } /* </get_partitions> */
 
 /*
- * get_usb_storage
+* get_usb_storage
 
    $ ls /proc/scsi/usb-storage
    1
@@ -496,7 +531,7 @@ get_partitions (const char *device)
    $ cd /sys/bus/usb/drivers/usb-storage/1-1:1.0/host1/target1:0:0/1:0:0:0
    $ ls block:*
    block:sda
- */
+*/
 GList *
 get_usb_storage (void)
 {
@@ -597,8 +632,8 @@ get_usb_storage (void)
 } /* </get_usb_storage> */
 
 /*
- * get_device_capability
- */
+* get_device_capability
+*/
 int
 get_device_capability (const char *device)
 {
@@ -640,8 +675,8 @@ get_device_capability (const char *device)
 } /* </get_device_capability> */
 
 /*
- * get_username
- */
+* get_username
+*/
 char *
 get_username (gboolean full)
 {
@@ -657,8 +692,58 @@ get_username (gboolean full)
 } /* </get_username> */
 
 /*
- * scale_factor
- */
+* killproc
+* killwait
+*/
+void
+killproc (pid_t *proc, int sig)
+{
+  pid_t pid  = *proc;
+
+  if (pid > 0) {
+    kill(pid, sig);
+    *proc = 0;
+  }
+} /* </killproc> */
+
+void
+killwait (pid_t *proc, int sig)
+{
+  int status = 0;
+  pid_t pid  = *proc;
+
+  if (pid > 0) {
+    kill(pid, sig);
+    wait(&status);
+    *proc = 0;
+  }
+} /* </killwait> */
+
+/*
+* spawn forks child process
+*/
+pid_t
+spawn (const char* cmdline)
+{
+  pid_t pid ;
+#ifdef USE_GLIB_SPAWN
+  gboolean result = g_spawn_command_line_async(cmdline, 0);
+#else
+  if ((pid = fork()) == 0) {                    /* child process */
+    const char *shell = "/bin/sh";
+
+    setsid();
+    execlp(shell, shell, "-f", "-c", cmdline, NULL);
+    exit(0);
+  }
+
+#endif
+  return pid;
+} /* </spawn> */
+
+/*
+* scale_factor
+*/
 float
 scale_factor(float width, float height)
 {
@@ -670,8 +755,8 @@ scale_factor(float width, float height)
 }
 
 /*
- * sudoallowed
- */
+* sudoallowed
+*/
 gboolean
 sudoallowed (const char *command)
 {
@@ -701,8 +786,8 @@ sudoallowed (const char *command)
 } /* </sudoallowed> */
 
 /*
- * vdebug
- */
+* vdebug
+*/
 void
 vdebug (unsigned short level, const char *format, ...)
 {
