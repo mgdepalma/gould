@@ -28,4 +28,8 @@
 #define UNIX_PATH_MAX 108
 #endif
 
+/* Methods implemented by {gould}/src/common/diagnostics.c */
+const char *timestamp(void);
+int gould_diagnostics(const char *program);
+
 #endif

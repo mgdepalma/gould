@@ -180,10 +180,6 @@ main(int argc, char *argv[])
   Program = basename(argv[0]);
   Release = "1.0.1";
 
-  /* Change the process name using Program variable. */
-  strncpy(argv[0], Program, strlen(argv[0]));
-  setprogname (Program = argv[0]);
-
   /* Initialize program data structure */
   initialize (&memory, (argc > 1) ? argv[1] : NULL);
 

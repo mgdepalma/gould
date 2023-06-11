@@ -52,11 +52,5 @@ enum {
   _INVALID,
 };
 
-/* Methods exported by implementation */
-const char *timestamp(void);
-pid_t get_process_id(const char *program);
-int gould_diagnostics(const char *program);
-pid_t spawn(const char *program);
-
 #endif
 

@@ -27,11 +27,10 @@
 #include <stdarg.h>
 #include <string.h>
 #include <signal.h>
-#include <libgen.h>	/* definitions for pattern matching functions */
 #include <sysexits.h>	/* exit status codes for system programs */
-#include <sys/prctl.h>	/* operations on a process or thread */
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <libgen.h>	/* definitions for pattern matching functions */
 #include <unistd.h>
 #include <time.h>
 
@@ -58,7 +57,6 @@ debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
 int _stream = -1;	/* stream socket descriptor */
-
 pid_t _instance;	/* singleton process ID */
 
 /**
@@ -195,7 +193,7 @@ signal_responder(int signum)
 
     default:
       close(_stream);
-      unlink(_GSESSION);
+      remove(_GSESSION);
     
       if (! (signum == SIGINT || signum == SIGTERM)) {
         printf("%s, exiting on signal: %d\n", Program, signum);
@@ -236,7 +234,9 @@ apply_signal_responder(void)
 int
 interface(const char *program)
 {
-  const char *loglevel = getenv("LOGLEVEL");	/* 0 => none */
+  static char logfile[MAX_PATHNAME];
+  const char *loglevel = getenv("LOGLEVEL"); /* 0 => none */
+  const char *errorlog = getenv("ERRORLOG");
 
   const char *desktop  = getenv("DESKTOP");
   const char *launcher = getenv("LAUNCHER");
@@ -246,10 +246,15 @@ interface(const char *program)
   int status = EX_IOERR;	/* socket accept(2) error */
 
   if ((debug = (loglevel) ? atoi(loglevel) : 0)) {
-    static char logfile[MAX_PATHNAME];
     sprintf(logfile, "%s/%s.log", getenv("HOME"), program);
     if (! (_logstream = fopen(logfile, "w"))) perror("cannot open logfile");
     sessionlog(1, "%s started on %s\n", program, timestamp());
+  }
+
+  if (errorlog) {
+    remove (errorlog);
+    int fd = creat (errorlog, 0644);
+    close (fd);
   }
 
   if (open_stream_socket(_GSESSION) != 0)
@@ -310,8 +315,8 @@ main(int argc, char *argv[])
     return EX_UNAVAILABLE;
   }
 
-  _instance = getpid();			/* singleton process ID */
   apply_signal_responder();
+  _instance = getpid();			/* singleton process ID */
 
   return interface (Program);
 } /* </gsession> */

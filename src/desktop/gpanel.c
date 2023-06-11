@@ -38,11 +38,10 @@ const char *Program = "gpanel";	/* (public) published program name    */
 const char *Release = "1.6.6";	/* (public) published program version */
 
 const char *Description =
-"<!-- %s %s is a desktop navigation and control panel.\n"
+"is a desktop navigation and control panel.\n"
 "  The program is developed for Generations Linux and distributed\n"
 "  under the terms and condition of the GNU Public License. It is\n"
-"  a central part of gould (http://www.softcraft.org/gould).\n" 
-"-->\n";
+"  a central part of gould (http://www.softcraft.org/gould)." ;
 
 const char *Usage =
 "usage: %s [-v | -h | -p <name> [-s]\n"
@@ -984,7 +983,7 @@ int
 main(int argc, char *argv[])
 {
   GlobalPanel memory;		/* master data structure (gpanel.h) */
-  char *pretend = NULL;		/* used to change process name */
+  char *alias = NULL;		/* used to change process name */
 
   const char *respawn = getenv("GOULD_RESPAWN");
 
@@ -994,7 +993,7 @@ main(int argc, char *argv[])
   /* disable invalid option messages */
   opterr = 0;
      
-  while ((opt = getopt (argc, argv, "d:hvacnp:s")) != -1) {
+  while ((opt = getopt (argc, argv, "d:hvacnp:so")) != -1) {
   /* while ((opt = getopt_long (argc, argv, opts, longopts, NULL)) != -1) */
     switch (opt) {
       case 'd':
@@ -1008,7 +1007,7 @@ main(int argc, char *argv[])
         _exit (status);
 
       case 'v':
-        printf(Description, Program, Release);
+        printf("<!-- %s %s %s\n -->\n", Program, Release, Description);
         _exit (status);
 
       case 'a':			/* activate logout panel */
@@ -1023,11 +1022,15 @@ main(int argc, char *argv[])
 
       case 'p':			/* set process name */
         _signal = SIGUNUSED;
-        pretend = optarg;
+        alias = optarg;
         break;
       case 's':			/* inert splash screen */
         _signal = SIGUNUSED;
         _silent = TRUE;
+        break;
+      case 'o':			/* _persistent => FALSE */
+        _signal = SIGUNUSED;
+        respawn = "no";
         break;
 
       default:
@@ -1051,7 +1054,7 @@ main(int argc, char *argv[])
   //gtk_disable_setlocale();
 #endif
 
-  if(pretend) prctl(PR_SET_NAME, (unsigned long)pretend, 0, 0, 0);
+  if(alias) prctl(PR_SET_NAME, (unsigned long)alias, 0, 0, 0);
   if(respawn && strcasecmp(respawn, "no") == 0) _persistent = FALSE;
 
   gtk_init (&argc, &argv);	/* initialization of the GTK */

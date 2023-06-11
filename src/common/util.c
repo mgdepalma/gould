@@ -17,23 +17,21 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "util.h"
-#include "gould.h"
-
-#include <pwd.h>
 #include <ctype.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <dirent.h>
 #include <mntent.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <pwd.h>
 
-extern const char *__progname;
-extern unsigned short debug;	/* must be declared in main program */
+#include "gould.h"
+#include "util.h"
+
 
 /*
 * Private data structures.
@@ -313,22 +311,6 @@ simple_list_free (GList *list)
   }
   return NULL;
 } /* </simple_list_free> */
-
-/*
-* getprogname
-* setprogname
-*/
-const char *
-getprogname (void)
-{
-  return __progname;
-} /* </getprogname> */
-
-void
-setprogname (const char *pn)
-{
-  __progname = strdup(basename(pn));
-} /* </setprogname> */
 
 /*
 * lsb_release yield description of LSB option given
@@ -677,10 +659,10 @@ get_device_capability (const char *device)
 /*
 * get_username
 */
-char *
+const char *
 get_username (gboolean full)
 {
-  static char name[MAX_PATHNAME];
+  static char name[MAX_LABEL];
   struct passwd *user = getpwuid(getuid());
 
   if (user == NULL || full == FALSE)
@@ -788,14 +770,13 @@ sudoallowed (const char *command)
 /*
 * vdebug
 */
+extern debug_t debug;	/* must be declared in main program */
+
 void
 vdebug (unsigned short level, const char *format, ...)
 {
   va_list args;
   va_start (args, format);
-
-  if (debug >= level)
-    vprintf (format, args);
-
+  if(debug >= level) vprintf (format, args);
   va_end (args);
 } /* vdebug */

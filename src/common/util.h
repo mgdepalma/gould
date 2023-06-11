@@ -62,28 +62,25 @@ enum _LinuxStandardBase
 /**
  * Public methods (util.c) exported in the implementation.
  */
-FileMagic get_file_magic (const char *pathname);
-
 #if GLIB_CHECK_VERSION(2,14,0) == 0
 GList *g_hash_table_get_keys (GHashTable *hash);
 GList *g_hash_table_get_values (GHashTable *hash);
 #endif
+FileMagic get_file_magic (const char *pathname);
 
-int glist_compare (GList *alist, GList *blist);
 gboolean glist_find (GList *list, const char *item);
-
-const char *path_finder (GList *list, const char *name);
-
-pid_t pidof (const char *name, const char *pidfile);
+gboolean sudoallowed (const char *command);
 
 const char *simple_list_find (GList *list, const char *pattern);
 GList *simple_list_free (GList *list);
 
-const char *getprogname (void);
-void setprogname (const char *progname); 
-
-const char *lsb_release (LinuxStandardBase option);
 const char *lsb_release_full (void);
+const char *lsb_release (LinuxStandardBase option);
+
+const char *path_finder (GList *list, const char *name);
+const char *get_username (gboolean full);
+
+float scale_factor(float width, float height);
 
 GList *get_disk_list (GList *exclude);
 GList *get_internal_partitions (void);
@@ -92,12 +89,11 @@ GList *get_partitions (const char *device);
 GList *get_usb_storage (void);
 
 int get_device_capability (const char *device);
+int glist_compare (GList *alist, GList *blist);
 
-char *get_username (gboolean full);
-
-float scale_factor(float width, float height);
-
-gboolean sudoallowed (const char *command);
+pid_t get_process_id(const char *program);
+pid_t pidof (const char *name, const char *pidfile);
+pid_t spawn(const char *program);
 
 void vdebug (unsigned short level, const char *format, ...);
 

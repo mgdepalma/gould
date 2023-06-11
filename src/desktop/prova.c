@@ -29,10 +29,10 @@
 #include <stdio.h>
 #include <string.h>
 
-const char *Program;		/* (public) published program name */
-const char *Release;		/* (public) published program version */
+const char *Program = "prova";	/* (public) published program name */
+const char *Release = "0.8.1";	/* (public) published program version */
 
-unsigned short debug = 0;	/* (protected) must be present */
+debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 
 /*
 * clean application exit
@@ -207,9 +207,6 @@ main(int argc, char *argv[])
   GtkWidget *frame, *window;
   int idx, width;
 
-  Program = basename(argv[0]);
-  Release = "0.8.1";
-
 #ifdef GETTEXT_PACKAGE
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
@@ -220,15 +217,11 @@ main(int argc, char *argv[])
   gtk_init (&argc, &argv);	/* initialization of the GTK */
   gtk_set_locale ();
 
-  /* Change the process name using Program variable. */
-  strncpy(argv[0], Program, strlen(argv[0]));
-  setprogname (Program = argv[0]);
-
   for (idx = 1; idx < argc; idx++)
     if (strcmp(argv[idx], "-d") == 0)
       debug = (idx < argc-1) ? atoi (argv[++idx]) : 1;
 
-  vdebug (1, "%s started with debug level = %d\n", getprogname(), debug);
+  vdebug (1, "%s started with debug level => %d\n", Program, debug);
 
   /* Allocate 90% of screen width for the gui. */
   screen = gdk_screen_get_default();
