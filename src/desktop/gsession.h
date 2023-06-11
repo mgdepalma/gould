@@ -17,9 +17,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #ifndef _GSESSION
-
 #define _GSESSION "/tmp/gsession"
-#define _GETPID "(:_gsession_:)"
+
+#define _GET_SESSION_PID "(:_gsession_:)"
 
 #include <sys/socket.h>
 #include <sys/un.h>

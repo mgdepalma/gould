@@ -21,6 +21,7 @@
 */
 #include "gould.h"	/* common package declarations */
 #include "gsession.h"
+#include "util.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,11 +30,14 @@
 #include <signal.h>
 #include <sysexits.h>	/* exit status codes for system programs */
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <libgen.h>	/* definitions for pattern matching functions */
 #include <unistd.h>
+#include <fcntl.h>
 #include <time.h>
 
+const char *Desktop = "gpanel";
 const char *Program = "gsession";
 const char *Release = "1.2.2";
 
@@ -57,7 +61,10 @@ debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
 int _stream = -1;	/* stream socket descriptor */
+
 pid_t _instance;	/* singleton process ID */
+pid_t _gdesktop;	/* gdesktop process ID */
+
 
 /**
 * prototypes (forward method declarations)
@@ -70,26 +77,42 @@ void signal_responder(int signum);
 /*
 * daemonize
 */
-#ifdef DAEMONIZE
-static void daemonize(void)
+static void
+daemonize(void)
 {
   pid_t pid = fork();
+  int connection;	/* connection stream socket */
 
   if (pid < 0) {
     perror("fork() failed: %m");
     _exit (EX_OSERR);
   }
 
-  if (pid != 0)		/* not in spawned process - exit */
+  if (pid > 0)		/* not in spawned process - exit */
     _exit (EX_OK);
 
-  if (setsid() < 0) {
+  if (setsid() < 0) {	/* set new session */
     perror("setsid() failed: %m");
     _exit (EX_SOFTWARE);
   }
-  //hostpid_init();
+
+  // Change the current working directory to root.
+  chdir("/");
+
+  // Close stdin. stdout and stderr
+  close(STDIN_FILENO);
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+
+  for ( ;; ) {			/* gsession main loop */
+    if ((connection = accept(_stream, 0, 0)) < 0)
+      perror("accept connection on socket");
+    else {
+      while (acknowledge (connection) > 0) ;
+      close(connection);
+    }
+  }
 } /* <daemonize> */
-#endif
 
 /*
 * (private)sessionlog - write to _logstream when debug >= {level}
@@ -114,10 +137,10 @@ int
 acknowledge(int connection)
 {
   int nbytes;
-  char request[MAX_PATHNAME];
+  char request[MAX_STRING];
 
-  memset(request, 0, MAX_PATHNAME);
-  nbytes = read(connection, request, MAX_PATHNAME);
+  memset(request, 0, MAX_STRING);
+  nbytes = read(connection, request, MAX_STRING);
 
   if (nbytes < 0)
     perror("reading request from stream socket");
@@ -125,12 +148,11 @@ acknowledge(int connection)
     const char *stamp = timestamp();
     request[nbytes] = 0;
 
-    if (strcmp(request, _GETPID) == 0)	/* request => pidof( gsession ) */
-    {
+    if (strcmp(request, _GET_SESSION_PID) == 0) {  /* pidof( Program ) */
       sessionlog(1, "%s pidof( %s ) => %d\n", stamp, Program, _instance);
       sprintf(request, "%d\n", _instance);
     }
-    else {				/* request => spawn( <command> ) */
+    else {					   /* spawn( request ) */
       sessionlog(1, "%s spawn( %s )\n", stamp, request);
       sprintf(request, "%d\n", spawn( request ));
     }
@@ -231,7 +253,7 @@ apply_signal_responder(void)
 /*
 * interface {program} stream socket 
 */
-int
+void
 interface(const char *program)
 {
   static char logfile[MAX_PATHNAME];
@@ -241,9 +263,6 @@ interface(const char *program)
   const char *desktop  = getenv("DESKTOP");
   const char *launcher = getenv("LAUNCHER");
   const char *manager  = getenv("WINDOWMANAGER");
-
-  int connection;		/* connection stream socket */
-  int status = EX_IOERR;	/* socket accept(2) error */
 
   if ((debug = (loglevel) ? atoi(loglevel) : 0)) {
     sprintf(logfile, "%s/%s.log", getenv("HOME"), program);
@@ -258,23 +277,14 @@ interface(const char *program)
   }
 
   if (open_stream_socket(_GSESSION) != 0)
-    return EX_PROTOCOL;
+    _exit (EX_PROTOCOL);
 
   /* spawn {WINDOWMANAGER}, {DESKTOP}, and (optional){LAUNCHER} */
-  spawn( (manager) ? manager : "twm" );		/* spawn {WINDOWMANAGER} */
-  spawn( (desktop) ? desktop : "gdesktop" );	/* spawn desktop manager */
-  if(launcher) spawn( launcher );		/* spawn app launcher */
+  _gdesktop = spawn( (desktop) ? desktop : "gdesktop" );
+  spawn( (manager) ? manager : "twm" );
+  if(launcher) spawn( launcher );
 
-  for ( ;; ) {			/* gsession main loop */
-    if ((connection = accept(_stream, 0, 0)) < 0)
-      perror("accept connection on socket");
-    else {
-      while (acknowledge (connection) > 0) ;
-      close(connection);
-      status = EX_OK;
-    }
-  }
-  return status;
+  daemonize();
 } /* </interface> */
 
 /**
@@ -317,6 +327,7 @@ main(int argc, char *argv[])
 
   apply_signal_responder();
   _instance = getpid();			/* singleton process ID */
+  interface (Program);
 
-  return interface (Program);
+  return EX_OK;
 } /* </gsession> */

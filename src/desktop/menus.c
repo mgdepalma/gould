@@ -160,7 +160,7 @@ finis (GlobalPanel *panel, gboolean logout, gboolean quit)
 
   if (logout) {	
     if (panel->session >= 0) {	/* send SIGTERM to gsession */
-      pid_t pid = dispatch (panel->session, _GETPID);
+      pid_t pid = dispatch (panel->session, _GET_SESSION_PID);
       kill(pid, SIGTERM);
     }
     else {			/* signal {WINDOWMANAGER} */
