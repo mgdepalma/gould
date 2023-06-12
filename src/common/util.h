@@ -21,6 +21,7 @@
 #define UTIL_H
 
 #include <glib.h>
+#include "gould.h"
 
 #define DEV_REMOVABLE 1
 #define DEV_DRIVERFS  2
@@ -74,13 +75,8 @@ gboolean sudoallowed (const char *command);
 const char *simple_list_find (GList *list, const char *pattern);
 GList *simple_list_free (GList *list);
 
-const char *lsb_release_full (void);
-const char *lsb_release (LinuxStandardBase option);
-
 const char *path_finder (GList *list, const char *name);
 const char *get_username (gboolean full);
-
-float scale_factor(float width, float height);
 
 GList *get_disk_list (GList *exclude);
 GList *get_internal_partitions (void);
@@ -88,15 +84,23 @@ GList *get_mounted_devices (GList *exclude);
 GList *get_partitions (const char *device);
 GList *get_usb_storage (void);
 
+const char *lsb_release_full (void);
+const char *lsb_release (LinuxStandardBase option);
+
 int get_device_capability (const char *device);
 int glist_compare (GList *alist, GList *blist);
 
 pid_t get_process_id(const char *program);
-pid_t pidof (const char *name, const char *pidfile);
 pid_t spawn(const char *program);
 
-void vdebug (unsigned short level, const char *format, ...);
+char *pidof(const char *program);
+int killall(const char *program, int signum);
+
+float scale_factor(float width, float height);
+
+void vdebug(debug_t level, const char *format, ...);
 
 G_END_DECLS
 
-#endif /* </UTIL_H */
+#endif /* </UTIL_H> */
+

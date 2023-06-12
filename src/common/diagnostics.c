@@ -19,7 +19,9 @@
 
 #include "gould.h"	/* common package declarations */
 
+#include <ctype.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <execinfo.h>	/* backtrace declarations */
 #include <sys/types.h>
@@ -48,7 +50,7 @@ timestamp(void)
 /*
 * gould_diagnostics
 */
-int
+void
 gould_diagnostics(const char *program)
 {
   void *trace[BACKTRACE_SIZE];
@@ -71,3 +73,25 @@ gould_diagnostics(const char *program)
     }
   }
 } /* </gould_diagnostics> */
+
+/*
+* gould_error - variadic {ERRORLOG} write
+*/
+void
+gould_error(const char *format, ...)
+{
+  const char *errorlog = getenv("ERRORLOG");
+
+  if (errorlog) {
+    FILE *stream = fopen(errorlog, "a");
+
+    if (stream) {
+      va_list args;
+      va_start (args, format);
+      vfprintf (stream, format, args);
+      va_end (args);
+
+      fclose(stream);
+    }
+  }
+} /* </gould_error> */

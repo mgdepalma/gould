@@ -160,8 +160,7 @@ finis (GlobalPanel *panel, gboolean logout, gboolean quit)
 
   if (logout) {	
     if (panel->session >= 0) {	/* send SIGTERM to gsession */
-      pid_t pid = dispatch (panel->session, _GET_SESSION_PID);
-      kill(pid, SIGTERM);
+      killall(gsessionProcess, SIGTERM);
     }
     else {			/* signal {WINDOWMANAGER} */
       Display *display = panel->shared->display;
@@ -265,9 +264,9 @@ screenlock (GtkWidget *button, GlobalPanel *panel)
   const char *mode = saver_getmode();
 
   if (mode)
-    sprintf(command, "%s -mode %s", XLOCK, mode);
+    sprintf(command, "%s -mode %s", _XLOCK_COMMAND, mode);
   else
-    strcpy(command, XLOCK);
+    strcpy(command, _XLOCK_COMMAND);
 
   vdebug (1, "[%s]%s\n", __func__, command);
   exit_cancel(button, panel);

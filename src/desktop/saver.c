@@ -19,6 +19,7 @@
 
 #include "gould.h"      /* common package declarations */
 #include "gpanel.h"
+#include "gsession.h"
 #include "module.h"
 #include "util.h"
 
@@ -148,9 +149,9 @@ action (GtkWidget *widget, GlobalPanel *panel)
   char command[COMMAND_MAX];
 
   if (saver->mode)
-    sprintf(command, "%s -mode %s", XLOCK, saver->mode);
+    sprintf(command, "%s -mode %s", _XLOCK_COMMAND, saver->mode);
   else
-    strcpy(command, XLOCK);
+    strcpy(command, _XLOCK_COMMAND);
 
   system (command);
   */
@@ -417,9 +418,9 @@ screensaver_commands (SaverCommand *command, SaverConfig *saver)
   screensaver_debug ("resume", saver, False);
 
   if (saver->mode)
-    sprintf(command->screenlock, "%s -mode %s", XLOCK, saver->mode);
+    sprintf(command->screenlock, "%s -mode %s", _XLOCK_COMMAND, saver->mode);
   else
-    strcpy(command->screenlock, XLOCK);
+    strcpy(command->screenlock, _XLOCK_COMMAND);
 
   if (saver->lock > saver->time)
     sprintf(command->screensave, "%s -lockdelay %d", command->screenlock,
@@ -428,9 +429,10 @@ screensaver_commands (SaverCommand *command, SaverConfig *saver)
     sprintf(command->screensave, "%s -nolock", command->screenlock);
 
   if (saver->mode)
-    sprintf(command->screenlock, "%s -lockdelay 10 -mode %s",XLOCK,saver->mode);
+    sprintf(command->screenlock, "%s -lockdelay 10 -mode %s",
+					_XLOCK_COMMAND, saver->mode);
   else
-    sprintf(command->screenlock, "%s -lockdelay 10", XLOCK);
+    sprintf(command->screenlock, "%s -lockdelay 10", _XLOCK_COMMAND);
 
   saver->active = (saver->time > 0 || saver->lock> 0) ? TRUE : FALSE;
 } /* </screensaver_commands> */
@@ -463,7 +465,7 @@ screensaver_control (Display *display, GlobalShare *shared, SaverConfig *saver)
                                &type, &format, &count, &bytes,
                                (unsigned char **)&value);
   if (status != Success)
-    printf("%s screensaver_control[1] status => %d\n", XLOCK, status);
+    printf("%s screensaver_control[1] status => %d\n", _XLOCK_COMMAND, status);
 
   if (bytes > 0) {
     status = XGetWindowProperty (display, window, shared->saver,
@@ -471,7 +473,7 @@ screensaver_control (Display *display, GlobalShare *shared, SaverConfig *saver)
                                  &type, &format, &count, &bytes,
                                  (unsigned char **)&value);
     if (status != Success)
-      printf("%s screensaver_control[2] status => %d\n", XLOCK, status);
+      printf("%s screensaver_control[2] status => %d\n",_XLOCK_COMMAND, status);
 
     if (status == Success) {
       char *word = strchr((char*)value, ':');
@@ -517,7 +519,7 @@ screensaver_fullscreen (GtkWidget *button, SaverConfig *saver)
   char command[COMMAND_MAX];
 
   gtk_widget_set_sensitive (GTK_WIDGET(button), FALSE);
-  sprintf(command, "%s -nolock -mode %s", XLOCK, saver->mode);
+  sprintf(command, "%s -nolock -mode %s", _XLOCK_COMMAND, saver->mode);
   system(command);
 
   gtk_widget_set_sensitive (GTK_WIDGET(button), TRUE);
@@ -540,7 +542,7 @@ screensaver_preview (GdkWindow *window, const gchar *mode)
   sprintf(geometry, "%dx%d", width, height);
 
   if (process == 0) { 		/* child process */
-    execlp(XLOCK, XLOCK,
+    execlp(_XLOCK_COMMAND, _XLOCK_COMMAND,
            "-parent", parent,
            "-geometry", geometry,
            "-nolock", "-inwindow",
@@ -619,7 +621,7 @@ saver_configuration_read (Modulus *applet, SaverConfig *saver)
   while ((item = configuration_find (chain, "applet")) != NULL) {
     attrib = configuration_attrib (item, "name");
 
-    if (strcmp(attrib, XLOCK) == 0) {
+    if (strcmp(attrib, _XLOCK_COMMAND) == 0) {
       if ((attrib = configuration_attrib (item, "icon")) != NULL)
         applet->icon = attrib;
 
@@ -672,13 +674,14 @@ saver_settings_apply (Modulus *applet)
 " <settings mode=\"%s\" time=\"%d\" lock=\"%d\" />\n"
 "</applet>\n";
 
-  data = g_strdup_printf (spec, XLOCK, local_.icon,
+  data = g_strdup_printf (spec, _XLOCK_COMMAND, local_.icon,
                           ((saver->mode) ? saver->mode : "blank"),
                           saver->time, saver->lock);
   vdebug (1, "\n%s\n", data);
 
   /* Replace configuration item. */
-  configuration_replace (panel->config, data, "modules", "applet", XLOCK);
+  configuration_replace (panel->config, data, "modules",
+				"applet", _XLOCK_COMMAND);
   g_free (data);
 
   /* Memory was freed when original item was removed, read configuration. */
@@ -1025,14 +1028,14 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
 gboolean
 saver_init (Modulus *applet, GlobalPanel *panel)
 {
-  if (path_finder(panel->path, XLOCK) == NULL) {
+  if (path_finder(panel->path, _XLOCK_COMMAND) == NULL) {
     /* TODO: warn that we did not find the xlock application */
     return False;
   }
 
   /* Modulus structure initialization. */
   applet->data    = panel;
-  applet->name    = XLOCK;
+  applet->name    = _XLOCK_COMMAND;
   applet->icon    = "lock.png";
   applet->place   = PLACE_END;
   applet->space   = MODULI_SPACE_SERVICE | MODULI_SPACE_TASKBAR;

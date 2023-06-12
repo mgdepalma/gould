@@ -94,8 +94,6 @@ GList *moduli_space(GList *moduli,
 void killproc (pid_t *proc, int sig);
 void killwait (pid_t *proc, int sig);
 
-pid_t spawn (const char* cmdline);
-
 G_END_DECLS
 
 #endif /* </MODULE_H */

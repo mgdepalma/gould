@@ -19,7 +19,17 @@
 #ifndef _GSESSION
 #define _GSESSION "/tmp/gsession"
 
+/* special request - get gsession main process ID */
 #define _GET_SESSION_PID "(:_gsession_:)"
+
+#define gsessionProcess  "gsession"  /* gsession published process name */
+#define gdesktopProcess  "gpanel"    /* gdesktop published process name */
+
+#define _GESSION_BACKEND "master"
+#define _GESSION_MONITOR "monitor"
+
+#define _PIDOF_COMMAND   "pidof"
+#define _XLOCK_COMMAND   "xlock"
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -27,9 +37,5 @@
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108
 #endif
+#endif /* </_GSESSION> */
 
-/* Methods implemented by {gould}/src/common/diagnostics.c */
-const char *timestamp(void);
-int gould_diagnostics(const char *program);
-
-#endif

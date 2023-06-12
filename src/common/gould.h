@@ -41,6 +41,7 @@
 #define Authors "Generations Linux (bugs@softcraft.org)"
 //"Generations Linux <bugs@softcraft.org>" <= problem with <>
 
+#define DirentMissing "no such file or directory."
 #define Singleton "another instance of this program is already running."
 
 typedef unsigned short debug_t;
@@ -52,5 +53,11 @@ enum {
   _INVALID,
 };
 
-#endif
+/* Methods implemented by {gould}/src/common/diagnostics.c */
+const char *timestamp(void);
+
+void gould_diagnostics(const char *program);
+void gould_error(const char *format, ...);
+
+#endif /* </_GOULD> */
 

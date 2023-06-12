@@ -200,3 +200,32 @@ moduli_space (GList *moduli, const gchar *path, guint spaces, gpointer data)
   }
   return moduli;
 } /* </moduli_space> */
+
+/*
+* killproc
+* killwait
+*/
+void
+killproc (pid_t *proc, int sig)
+{
+  pid_t pid  = *proc;
+
+  if (pid > 0) {
+    kill(pid, sig);
+    *proc = 0;
+  }
+} /* </killproc> */
+
+void
+killwait (pid_t *proc, int sig)
+{
+  int status = 0;
+  pid_t pid  = *proc;
+
+  if (pid > 0) {
+    kill(pid, sig);
+    wait(&status);
+    *proc = 0;
+  }
+} /* </killwait> */
+

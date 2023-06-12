@@ -21,10 +21,10 @@
 #include "gpanel.h"
 #include "gsession.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
 #include <sysexits.h>		/* exit status codes for system programs */
 #include <sys/prctl.h>		/* operations on a process or thread */
+#include <X11/Xatom.h>
+#include <X11/Xlib.h>
 
 #define SIGUSR3 SIGWINCH	/* SIGWINCH => 28, reserved */
 
@@ -291,7 +291,7 @@ panel_config_settings (GlobalPanel *panel)
 
   PanelIcons *icons = panel->icons = g_new0 (PanelIcons, 1);
 
-  gchar *attrib = g_strdup_printf ("%s:%s", Program, XLOCK);
+  gchar *attrib = g_strdup_printf ("%s:%s", Program, _XLOCK_COMMAND);
   /* gchar **path = g_strsplit (getenv("PATH"), ":", MAX_PATHNAME); */
 
   /* initialize panel->shared for interprocess communication */
@@ -914,7 +914,7 @@ signal_responder (int signum)
       break;
 
     case SIGCHLD:		/* reap children */
-      //DEBUG: while (waitpid(-1, NULL, WNOHANG) > 0) ;
+      while (waitpid(-1, NULL, WNOHANG) > 0) ;
       break;
 
     case SIGTTIN:		/* ignore (until we know better) */

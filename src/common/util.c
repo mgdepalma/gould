@@ -138,69 +138,6 @@ get_file_magic (const char *pathname)
 } /* </get_file_magic> */
 
 /*
-* get_process_id - get {program} PID or -1, if not running  
-*/
-pid_t
-get_process_id(const char *program)
-{
-  pid_t instance = -1;
-
-  char command[MAX_STRING];
-  static char answer[MAX_STRING];
-  FILE *stream;
-
-  sprintf(command, "pidof %s", program);
-  stream = popen(command, "r");
-
-  if (stream) {
-    const char delim[2] = " ";
-    char *master, *token;
-
-    fgets(answer, MAX_STRING, stream);	/* answer maybe a list */
-    master = strtok(answer, delim);
-
-    for (token = master; token != NULL; ) {
-      token = strtok(NULL, delim);
-      if(token != NULL) master = token;	/* pid is last on the list */
-    }
-    instance = strtoul(master, NULL, 10);
-    fclose (stream);
-  }
-  return instance;
-} /* </get_process_id> */
-
-/*
-* glist_compare
-*/
-int
-glist_compare (GList *alist, GList *blist)
-{
-  int result = g_list_length (alist) - g_list_length (blist);
-
-  if (result == 0) {			 /* memory compare */
-    int idx, count = g_list_length (alist);
-
-    gpointer *avector = g_new (gpointer, count);
-    gpointer *bvector = g_new (gpointer, count);
-
-    GList *iter;
-
-    for (idx = 0, iter = alist; iter != NULL; iter = iter->next)
-      avector[idx++] = iter->data;
-
-    for (idx = 0, iter = blist; iter != NULL; iter = iter->next)
-      bvector[idx++] = iter->data;
-
-    result = memcmp (avector, bvector, sizeof (gpointer) * count);
-
-    g_free (avector);
-    g_free (bvector);
-  }
-
-  return result;
-} /* </glist_compare> */
-
-/*
 * glist_find
 */
 gboolean
@@ -219,67 +156,35 @@ glist_find (GList *list, const char *item)
 } /* </glist_find> */
 
 /*
-* path_finder - search for file name from a path list
+* sudoallowed
 */
-const gchar *
-path_finder (GList *list, const char *name)
+gboolean
+sudoallowed (const char *command)
 {
-  static char file[MAX_PATHNAME];
-  char *pathname = NULL;
-  GList *iter;
+  gboolean allowed = FALSE;
+  char *line = g_strdup_printf("sudo -A -l %s 2>&1", command);
+  FILE *stream = popen(line, "r");
 
-  for (iter = list; iter != NULL; iter = iter->next) {
-    sprintf(file, "%s/%s", (char *)iter->data, name);
+  if (stream != NULL) {
+    char text[FILENAME_MAX];
 
-    if (g_file_test(file, G_FILE_TEST_EXISTS)) {
-      pathname = (char *)file;
-      break;
+    if (fgets(text, FILENAME_MAX, stream) != NULL) {
+      if (strncmp(text, command, strlen(command)) == 0)
+        allowed = TRUE;
     }
+
+    /* See if 'sudo -l <command>' come back with (or without) a path. */
+    /* allowed = (count > 1) ? TRUE : FALSE; */
+
+    vdebug (1, "[shutdown]sudo %s is %sallowed.\n",
+            command, (allowed) ? "" : "not ");
+
+    pclose(stream);
   }
 
-  return pathname;
-} /* </path_finder_theme> */
-
-/*
-* pidof - find process ID by name
-*/
-pid_t
-pidof(const char *name, const char *pidfile)
-{
-  FILE *stream = NULL;
-  pid_t pid = 0;	/* pidof init - chances are this is wrong! */
-
-  if (name && strcmp(name, "init") == 0)
-    return 0;
-
-  if (pidfile != NULL) {
-    stream = fopen(pidfile, "r");
-  }
-  else {
-    /* waltz /proc/<pid>/exe to match <name> */
-    pid = -1;				/* TBI */
-  }
-
-  if (stream) {
-    const int bytes = sizeof(double);
-    char line[bytes];
-
-    fgets(line, bytes, stream);
-    fclose(stream);
-
-    if (strlen(line) > 0) {
-      char *procpid;
-
-      line[strlen(line) - 1] = (char)0;         /* chomp newline */
-      procpid = g_strdup_printf("/proc/%s", line);
-
-      if(access(procpid, F_OK) == 0) pid = atoi(line);
-      vdebug(3, "\npidof %s => %d\n", name, pid);
-      g_free (procpid);
-    }
-  }
-  return pid;
-}
+  g_free (line);
+  return allowed;
+} /* </sudoallowed> */
 
 /*
 * simple_list_find - find a string match from a linked list.
@@ -313,69 +218,26 @@ simple_list_free (GList *list)
 } /* </simple_list_free> */
 
 /*
-* lsb_release yield description of LSB option given
+* path_finder - search for file name from a path list
 */
-const char *
-lsb_release (LinuxStandardBase option)
+const gchar *
+path_finder (GList *list, const char *name)
 {
-  static char *_lsb_release = "/etc/lsb-release";
-  static char description[MAX_PATHNAME];
-  char *result = NULL;
+  static char file[MAX_PATHNAME];
+  char *pathname = NULL;
+  GList *iter;
 
-  if (g_file_test(_lsb_release, G_FILE_TEST_EXISTS)) {
-    FILE *stream = fopen(_lsb_release, "r");
+  for (iter = list; iter != NULL; iter = iter->next) {
+    sprintf(file, "%s/%s", (char *)iter->data, name);
 
-    if (stream) {
-      const char *match = distro_[option];
-      char line[MAX_PATHNAME];
-      int len = strlen(match);
-
-      while (fgets(line, MAX_PATHNAME, stream))
-        if (strncmp(line, match, len) == 0) {
-          strcpy(description, &line[len + 2]);		/* go past =" */
-          description[strlen(description) - 2] = '\0';	/* chomp ending " */
-          result = description;
-          break;
-        }
-
-      fclose(stream);
+    if (g_file_test(file, G_FILE_TEST_EXISTS)) {
+      pathname = (char *)file;
+      break;
     }
   }
 
-  return result;
-} /* </lsb_release> */
-
-const char *
-lsb_release_full (void)
-{
-  static char description[MAX_PATHNAME];
-  const char *distro = lsb_release (DISTRIB_DESCRIPTION);
-  char *result = NULL;
-
-  if (distro) {
-    char *distrib = strdup (distro);
-    const char *version = lsb_release (DISTRIB_RELEASE);
-
-    if (version == NULL)
-      strcpy(description, distrib); 
-    else {
-      char *release  = strdup(version);
-      const char *codename = lsb_release (DISTRIB_CODENAME);
-
-      if (codename == NULL)
-        sprintf(description, "%s %s", distrib, release);
-      else
-        sprintf(description, "%s %s (%s)", distrib, release, codename);
-
-      free((void *)release);
-    }
-
-    free((void *)distrib);
-    result = description;
-  }
-
-  return result;
-} /* </lsb_release_full> */
+  return pathname;
+} /* </path_finder_theme> */
 
 /*
 * get_disk_list look for {hd,sd}* matches in /proc/partitions
@@ -614,6 +476,88 @@ get_usb_storage (void)
 } /* </get_usb_storage> */
 
 /*
+* get_username
+*/
+const char *
+get_username (gboolean full)
+{
+  static char name[MAX_LABEL];
+  struct passwd *user = getpwuid(getuid());
+
+  if (user == NULL || full == FALSE)
+    strcpy(name, getenv("LOGNAME"));
+  else
+    strcpy(name, user->pw_gecos);
+  
+  return (char *)name;
+} /* </get_username> */
+
+/*
+* lsb_release yield description of LSB option given
+*/
+const char *
+lsb_release (LinuxStandardBase option)
+{
+  static char *_lsb_release = "/etc/lsb-release";
+  static char description[MAX_PATHNAME];
+  char *result = NULL;
+
+  if (g_file_test(_lsb_release, G_FILE_TEST_EXISTS)) {
+    FILE *stream = fopen(_lsb_release, "r");
+
+    if (stream) {
+      const char *match = distro_[option];
+      char line[MAX_PATHNAME];
+      int len = strlen(match);
+
+      while (fgets(line, MAX_PATHNAME, stream))
+        if (strncmp(line, match, len) == 0) {
+          strcpy(description, &line[len + 2]);		/* go past =" */
+          description[strlen(description) - 2] = '\0';	/* chomp ending " */
+          result = description;
+          break;
+        }
+
+      fclose(stream);
+    }
+  }
+
+  return result;
+} /* </lsb_release> */
+
+const char *
+lsb_release_full (void)
+{
+  static char description[MAX_PATHNAME];
+  const char *distro = lsb_release (DISTRIB_DESCRIPTION);
+  char *result = NULL;
+
+  if (distro) {
+    char *distrib = strdup (distro);
+    const char *version = lsb_release (DISTRIB_RELEASE);
+
+    if (version == NULL)
+      strcpy(description, distrib); 
+    else {
+      char *release  = strdup(version);
+      const char *codename = lsb_release (DISTRIB_CODENAME);
+
+      if (codename == NULL)
+        sprintf(description, "%s %s", distrib, release);
+      else
+        sprintf(description, "%s %s (%s)", distrib, release, codename);
+
+      free((void *)release);
+    }
+
+    free((void *)distrib);
+    result = description;
+  }
+
+  return result;
+} /* </lsb_release_full> */
+
+/*
 * get_device_capability
 */
 int
@@ -657,49 +601,67 @@ get_device_capability (const char *device)
 } /* </get_device_capability> */
 
 /*
-* get_username
+* glist_compare
 */
-const char *
-get_username (gboolean full)
+int
+glist_compare (GList *alist, GList *blist)
 {
-  static char name[MAX_LABEL];
-  struct passwd *user = getpwuid(getuid());
+  int result = g_list_length (alist) - g_list_length (blist);
 
-  if (user == NULL || full == FALSE)
-    strcpy(name, getenv("LOGNAME"));
-  else
-    strcpy(name, user->pw_gecos);
-  
-  return (char *)name;
-} /* </get_username> */
+  if (result == 0) {			 /* memory compare */
+    int idx, count = g_list_length (alist);
+
+    gpointer *avector = g_new (gpointer, count);
+    gpointer *bvector = g_new (gpointer, count);
+
+    GList *iter;
+
+    for (idx = 0, iter = alist; iter != NULL; iter = iter->next)
+      avector[idx++] = iter->data;
+
+    for (idx = 0, iter = blist; iter != NULL; iter = iter->next)
+      bvector[idx++] = iter->data;
+
+    result = memcmp (avector, bvector, sizeof (gpointer) * count);
+
+    g_free (avector);
+    g_free (bvector);
+  }
+
+  return result;
+} /* </glist_compare> */
 
 /*
-* killproc
-* killwait
+* get_process_id - get {program} PID or -1, if not running  
 */
-void
-killproc (pid_t *proc, int sig)
+pid_t
+get_process_id(const char *program)
 {
-  pid_t pid  = *proc;
+  pid_t instance = -1;
 
-  if (pid > 0) {
-    kill(pid, sig);
-    *proc = 0;
+  char command[MAX_STRING];
+  static char answer[MAX_STRING];
+  FILE *stream;
+
+  sprintf(command, "pidof %s", program);
+  stream = popen(command, "r");
+
+  if (stream) {
+    const char delim[2] = " ";
+    char *master, *token;
+
+    fgets(answer, MAX_STRING, stream);	/* answer maybe a list */
+    master = strtok(answer, delim);
+
+    for (token = master; token != NULL; ) {
+      token = strtok(NULL, delim);
+      if(token != NULL) master = token;	/* pid is last on the list */
+    }
+    instance = strtoul(master, NULL, 10);
+    fclose (stream);
   }
-} /* </killproc> */
-
-void
-killwait (pid_t *proc, int sig)
-{
-  int status = 0;
-  pid_t pid  = *proc;
-
-  if (pid > 0) {
-    kill(pid, sig);
-    wait(&status);
-    *proc = 0;
-  }
-} /* </killwait> */
+  return instance;
+} /* </get_process_id> */
 
 /*
 * spawn forks child process
@@ -718,10 +680,60 @@ spawn (const char* cmdline)
     execlp(shell, shell, "-f", "-c", cmdline, NULL);
     exit(0);
   }
-
 #endif
   return pid;
 } /* </spawn> */
+
+/*
+* pidof - find process ID by name
+*/
+char *
+pidof(const char *program)
+{
+  char command[MAX_STRING];
+  static char answer[MAX_STRING];
+
+  char *pidlist = NULL;
+  FILE *stream;
+
+  sprintf(command, "pidof %s", program);
+  stream = popen(command, "r");
+
+  if (stream) {
+    fgets(answer, MAX_STRING, stream);
+
+    if (strlen(answer) > 0) {
+      answer[strlen(answer) - 1] = (char)0;	/* chomp newline */
+      pidlist = answer;
+    }
+    fclose(stream);
+  }
+  return pidlist;
+} /* </pidof> */
+
+/*
+* killall {program} {signum}
+*/
+int
+killall(const char *program, int signum)
+{
+  char *pidlist = pidof (program);
+  pid_t pid, self = getpid();
+  int killed = 0;
+
+  if (pidlist) {
+    const char delim[2] = " ";
+    char *token = strtok(pidlist, delim);
+
+    while (token != NULL) {
+      if ((pid = atoi(token)) != self) { /* will not kill {self} */
+        if(kill(pid, signum) == 0) ++killed;
+      }
+      token = strtok(NULL, delim);
+    }
+  }
+  return killed;
+} /* </killall> */
 
 /*
 * scale_factor
@@ -734,41 +746,10 @@ scale_factor(float width, float height)
   */
   float maxim = (width > height) ? width : height;
   return maxim * 0.99;
-}
+} /* </scale_factor> */
 
 /*
-* sudoallowed
-*/
-gboolean
-sudoallowed (const char *command)
-{
-  gboolean allowed = FALSE;
-  char *line = g_strdup_printf("sudo -A -l %s 2>&1", command);
-  FILE *stream = popen(line, "r");
-
-  if (stream != NULL) {
-    char text[FILENAME_MAX];
-
-    if (fgets(text, FILENAME_MAX, stream) != NULL) {
-      if (strncmp(text, command, strlen(command)) == 0)
-        allowed = TRUE;
-    }
-
-    /* See if 'sudo -l <command>' come back with (or without) a path. */
-    /* allowed = (count > 1) ? TRUE : FALSE; */
-
-    vdebug (1, "[shutdown]sudo %s is %sallowed.\n",
-            command, (allowed) ? "" : "not ");
-
-    pclose(stream);
-  }
-
-  g_free (line);
-  return allowed;
-} /* </sudoallowed> */
-
-/*
-* vdebug
+* vdebug - variadic debug print
 */
 extern debug_t debug;	/* must be declared in main program */
 
@@ -780,3 +761,4 @@ vdebug (unsigned short level, const char *format, ...)
   if(debug >= level) vprintf (format, args);
   va_end (args);
 } /* vdebug */
+

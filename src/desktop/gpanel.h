@@ -35,9 +35,6 @@
 #define SCHEMA_VERSION_CODE   SCHEMA_VERSION(1,2,0)
 #define SCHEMA_VERSION_STRING "1.2"
 
-#define gpanelProcess "desktop"       /* published process name */
-#define XLOCK "xlock"
-
 G_BEGIN_DECLS
 
 /* Desktop shortcut actions. */

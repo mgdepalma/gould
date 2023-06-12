@@ -9,12 +9,10 @@ ALL_LDFLAGS = -Wl,-export-dynamic
 
 PKG_DEFINE  = -D_GNU_SOURCE -DLOCALEDIR=\""$(datadir)/locale"\" 
 PKG_DEFINE += -DCONFIG_FILE=\"@sysconfdir@/X11/@PACKAGE@.conf\"
-
 PKG_CFLAGS  = $(PKG_DEFINE) $(ALL_CFLAGS) -I../common -Wall -g -O -pipe
-PKG_LDFLAGS = $(ALL_LDFLAGS)
 
 AM_CFLAGS  = $(PKG_CFLAGS) `pkg-config --cflags gtk+-2.0 libxml-2.0`
-AM_LDFLAGS = $(PKG_LDFLAGS) `pkg-config --libs gtk+-2.0 libxml-2.0`
+AM_LDFLAGS = $(ALL_LDFLAGS) `pkg-config --libs gtk+-2.0 libxml-2.0`
 LIBS = -L../common -lgould -lX11
 
 bin_PROGRAMS = \

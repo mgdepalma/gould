@@ -29,6 +29,7 @@
 #include <string.h>
 #include <signal.h>
 #include <sysexits.h>	/* exit status codes for system programs */
+#include <sys/prctl.h>	/* operations on a process or thread */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -37,7 +38,6 @@
 #include <fcntl.h>
 #include <time.h>
 
-const char *Desktop = "gpanel";
 const char *Program = "gsession";
 const char *Release = "1.2.2";
 
@@ -61,10 +61,7 @@ debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
 int _stream = -1;	/* stream socket descriptor */
-
 pid_t _instance;	/* singleton process ID */
-pid_t _gdesktop;	/* gdesktop process ID */
-
 
 /**
 * prototypes (forward method declarations)
@@ -72,55 +69,14 @@ pid_t _gdesktop;	/* gdesktop process ID */
 int acknowledge(int connection);
 int open_stream_socket(const char *sockname);
 void signal_responder(int signum);
-
-
-/*
-* daemonize
-*/
-static void
-daemonize(void)
-{
-  pid_t pid = fork();
-  int connection;	/* connection stream socket */
-
-  if (pid < 0) {
-    perror("fork() failed: %m");
-    _exit (EX_OSERR);
-  }
-
-  if (pid > 0)		/* not in spawned process - exit */
-    _exit (EX_OK);
-
-  if (setsid() < 0) {	/* set new session */
-    perror("setsid() failed: %m");
-    _exit (EX_SOFTWARE);
-  }
-
-  // Change the current working directory to root.
-  chdir("/");
-
-  // Close stdin. stdout and stderr
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
-
-  for ( ;; ) {			/* gsession main loop */
-    if ((connection = accept(_stream, 0, 0)) < 0)
-      perror("accept connection on socket");
-    else {
-      while (acknowledge (connection) > 0) ;
-      close(connection);
-    }
-  }
-} /* <daemonize> */
 
 /*
 * (private)sessionlog - write to _logstream when debug >= {level}
 */
 static int
-sessionlog(unsigned short level, const char *format, ...)
+sessionlog(debug_t level, const char *format, ...)
 {
-  if(! _logstream) return -1;	/* sanity check - return if no _logstream */
+  if(! _logstream) return -1;	/* sanity check - if no _logstream, return */
 
   va_list args;
   va_start (args, format);
@@ -129,6 +85,67 @@ sessionlog(unsigned short level, const char *format, ...)
 
   return fflush(_logstream);
 } /* </sessionlog> */
+
+
+/*
+* gsession backend process
+*/
+void
+backend(const char *name)
+{
+  int connection;       /* connection stream socket */
+  pid_t pid = fork();
+
+  if (pid < 0) {
+    perror("fork() failed: %m");
+    _exit (EX_OSERR);
+  }
+
+  if (pid > 0) {        /* not in spawned process */
+    int stat;
+    sleep (5);		/* delay 5 seconds */
+    //waitpid(-1, &stat, 0);
+    waitpid(pid, &stat, 0);
+  }
+
+  if (setsid() < 0) {   /* set new session */
+    perror("setsid() failed: %m");
+    _exit (EX_SOFTWARE);
+  }
+  prctl(PR_SET_NAME, (unsigned long)name, 0, 0);
+
+  close(STDIN_FILENO);	/* close stdin. stdout and stderr */
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+
+  for ( ;; ) {		/* gsession main loop */
+    if ((connection = accept(_stream, 0, 0)) < 0)
+      perror("accept connection on socket");
+    else {
+      while (acknowledge (connection) > 0) ;
+      close(connection);
+    }
+  }
+} /* </backend> */
+
+/*
+* gsession process monitor (unfinished)
+*/
+void
+monitor(const char *program, pid_t process)
+{
+  char procfile[MAX_STRING];
+  sprintf(procfile, "/proc/ds", process);
+
+  if (access(procfile, R_OK) != 0) {
+    printf("%s: %s: %s\n", Program, procfile, _(DirentMissing));
+    sessionlog(1, "%s: %s: %s\n", Program, procfile, _(DirentMissing));
+    gould_error("%s: %s: %s\n", Program, procfile, _(DirentMissing));
+  }
+  else {
+    /* start monitoring */
+  }
+} /* </monitor> */
 
 /*
 * acknowledge - socket stream request delivery
@@ -152,11 +169,25 @@ acknowledge(int connection)
       sessionlog(1, "%s pidof( %s ) => %d\n", stamp, Program, _instance);
       sprintf(request, "%d\n", _instance);
     }
+    else if (strncmp(request, _PIDOF_COMMAND, strlen(_PIDOF_COMMAND)) == 0) {
+      char *pidlist = pidof (&request[strlen(_PIDOF_COMMAND) + 1]);
+      if (pidlist) {
+        sessionlog(1, "%s => %s\n", request, pidlist);
+        strcpy(request, pidlist);
+      }
+      else {
+        sessionlog(1, "%s => not found\n", request);
+        request[0] = 0;
+      }
+    }
     else {					   /* spawn( request ) */
       sessionlog(1, "%s spawn( %s )\n", stamp, request);
       sprintf(request, "%d\n", spawn( request ));
     }
-    write(connection, request, strlen(request));
+
+    if (strlen(request) > 0) {
+      write(connection, request, strlen(request));
+    }
   }
   return nbytes;
 } /* </acknowledge> */
@@ -257,14 +288,17 @@ void
 interface(const char *program)
 {
   static char logfile[MAX_PATHNAME];
-  const char *loglevel = getenv("LOGLEVEL"); /* 0 => none */
+
   const char *errorlog = getenv("ERRORLOG");
+  const char *loglevel = getenv("LOGLEVEL"); /* 0 => none */
 
   const char *desktop  = getenv("DESKTOP");
   const char *launcher = getenv("LAUNCHER");
   const char *manager  = getenv("WINDOWMANAGER");
 
-  if ((debug = (loglevel) ? atoi(loglevel) : 0)) {
+  pid_t gdesktop;			     /* {DESKTOP} process ID */
+
+  if ((debug = (loglevel) ? atoi(loglevel) : 0) > 0) {
     sprintf(logfile, "%s/%s.log", getenv("HOME"), program);
     if (! (_logstream = fopen(logfile, "w"))) perror("cannot open logfile");
     sessionlog(1, "%s started on %s\n", program, timestamp());
@@ -280,11 +314,15 @@ interface(const char *program)
     _exit (EX_PROTOCOL);
 
   /* spawn {WINDOWMANAGER}, {DESKTOP}, and (optional){LAUNCHER} */
-  _gdesktop = spawn( (desktop) ? desktop : "gdesktop" );
+  gdesktop = spawn( (desktop) ? desktop : "gdesktop" );
   spawn( (manager) ? manager : "twm" );
   if(launcher) spawn( launcher );
 
-  daemonize();
+  //monitor ( gdesktopProcess, gdesktop );
+  monitor ( "syslogd", 0xdeadbeef );
+
+  /* gsession::backend *must* be call last.. */
+  backend (_GESSION_BACKEND);
 } /* </interface> */
 
 /**
@@ -294,6 +332,8 @@ int
 main(int argc, char *argv[])
 {
   int opt;
+  char *pidlist;	/* PID(s) of program, if any */
+
   /* disable invalid option messages */
   opterr = 0;
 
@@ -318,16 +358,16 @@ main(int argc, char *argv[])
         return EX_USAGE;
     }
   }
-  _instance = get_process_id (Program); /* see if already running... */
 
-  if (_instance > 0 && _instance != getpid()) {
-    printf("%s: %s (pid => %d)\n", Program, _(Singleton), _instance);
-    return EX_UNAVAILABLE;
+  /* kill leftover gsession, if applicable */
+  if ( (pidlist = pidof (Program)) ) {
+    printf("pidof %s => %s\n", Program, pidlist);
+    killall (Program, SIGTERM);
   }
 
-  apply_signal_responder();
-  _instance = getpid();			/* singleton process ID */
-  interface (Program);
+  apply_signal_responder();	/* trap and handle signals */
+  _instance = getpid();		/* singleton process ID */
+  interface (Program);		/* main loop */
 
   return EX_OK;
 } /* </gsession> */
