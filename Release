@@ -1,0 +1,8 @@
+GTK+ objects ultra light desktop provides 
+
+gould/greeter - gdm/xdm style display manager
+gsession - X Window System session manager
+gpanel - desktop navigation and control panel
+gsnapshop - screen/window/region capture
+gpassword - graphical passwd changer
+gpackage - graphical software package manager for RPM based system

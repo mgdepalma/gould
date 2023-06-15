@@ -22,14 +22,11 @@
 /* special request - get gsession main process ID */
 #define _GET_SESSION_PID "(:_gsession_:)"
 
-#define gsessionProcess  "gsession"  /* gsession published process name */
-#define gdesktopProcess  "gpanel"    /* gdesktop published process name */
+#define GsessionProcess  "gsession"  /* gsession published process name */
+#define GdesktopProcess  "gpanel"    /* gdesktop published process name */
 
 #define _GESSION_BACKEND "master"
-#define _GESSION_MONITOR "monitor"
-
-#define _PIDOF_COMMAND   "pidof"
-#define _XLOCK_COMMAND   "xlock"
+#define _GESSION_MONITOR "anvil"
 
 #include <sys/socket.h>
 #include <sys/un.h>

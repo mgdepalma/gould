@@ -19,7 +19,7 @@
 
 #include "gould.h"      /* common package declarations */
 #include "gpanel.h"
-#include "gsession.h"
+#include "gsession.h"	/* gsessionProcess declaration */
 #include "tasklist.h"
 #include "pager.h"
 #include "xutil.h"
@@ -160,7 +160,7 @@ finis (GlobalPanel *panel, gboolean logout, gboolean quit)
 
   if (logout) {	
     if (panel->session >= 0) {	/* send SIGTERM to gsession */
-      killall(gsessionProcess, SIGTERM);
+      killall (GsessionProcess, SIGTERM);
     }
     else {			/* signal {WINDOWMANAGER} */
       Display *display = panel->shared->display;

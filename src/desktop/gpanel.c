@@ -21,6 +21,7 @@
 #include "gpanel.h"
 #include "gsession.h"
 
+#include <signal.h>
 #include <sysexits.h>		/* exit status codes for system programs */
 #include <sys/prctl.h>		/* operations on a process or thread */
 #include <X11/Xatom.h>
@@ -858,7 +859,7 @@ panel_loader (GlobalPanel *panel)
 /*
 * application unique instance
 */
-pid_t
+void
 gpanel_instance (GlobalPanel *panel)
 {
   memset(panel, 0, sizeof(GlobalPanel));
@@ -868,8 +869,6 @@ gpanel_instance (GlobalPanel *panel)
     _exit (EX_CONFIG);		/* configuration file disappeared */
   }
   _desktop = panel;		/* save GlobalPanel data structure */
-
-  return getpid();
 } /* </gpanel_instance> */
 
 /*
@@ -884,6 +883,21 @@ gpanel_graceful(int signum, gboolean explain)
   gtk_main_quit ();
   _exit (signum);
 } /* </gpanel_graceful> */
+
+/*
+* session_signal_responder - detailed signal handler
+*/
+void
+session_signal_responder(int signum, siginfo_t *siginfo, void *context)
+{
+  pid_t sender = siginfo->si_pid;	// get pid of sender
+
+  if (signum == SIGUSR3)
+    kill (sender, SIGUSR3);	// acknowledge `sender'
+  else
+    gould_error ("%s %s: signal %d, received from process %d\n",
+				timestamp(), Program, signum, sender);
+} /* </session_signal_responder> */
 
 /*
 * signal_responder - signal handler
@@ -950,6 +964,13 @@ signal_responder (int signum)
 static inline void
 apply_signal_responder(void)
 {
+  static struct sigaction anvil;
+  anvil.sa_sigaction = *session_signal_responder;
+  anvil.sa_flags |= SA_SIGINFO;      // get detail information
+
+  if (sigaction(SIGUSR3, &anvil, NULL) != 0) {
+    gould_error ("%s sigaction() returns %d\n", Program, errno);
+  }
   signal(SIGHUP,  signal_responder);	/* 1 action required backdrop */
   signal(SIGINT,  signal_responder);	/* 2 graceful exit <crtl-c> */
   signal(SIGQUIT, signal_responder);	/* 3 graceful exit */
@@ -972,7 +993,6 @@ apply_signal_responder(void)
   signal(SIGTTIN, signal_responder);	/* 21 catch and ignore */
   signal(SIGTTOU, signal_responder);	/* 22 catch and ignore */
   signal(SIGURG,  signal_responder);    /* 23 internal program error */
-  signal(SIGWINCH,signal_responder);	/* 28 SIGUSR3 <reserved> */
   signal(SIGIO,   signal_responder);	/* 29 ignore <reserved> */
 } /* </apply_signal_responder> */
 
@@ -1061,7 +1081,7 @@ main(int argc, char *argv[])
   gtk_set_locale ();
 
   apply_signal_responder();
-  gpanel_instance (&memory);	/* ignoring return pid_t */
+  gpanel_instance (&memory);	/* GlobalPanel initialization */
 
   apply_gtk_theme (CONFIG_FILE);
   gtk_set_locale ();

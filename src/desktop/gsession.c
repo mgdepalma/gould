@@ -38,6 +38,12 @@
 #include <fcntl.h>
 #include <time.h>
 
+#define SIGUSR3 SIGWINCH	/* SIGWINCH => 28, reserved */
+
+#ifndef SIGUNUSED
+#define SIGUNUSED 31
+#endif
+
 const char *Program = "gsession";
 const char *Release = "1.2.2";
 
@@ -58,6 +64,7 @@ const char *Usage =
 "\n";
 
 debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
+pid_t _gdesktop = -1;	/* gdesktop (i.e. what we monitor) process ID */
 
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
 int _stream = -1;	/* stream socket descriptor */
@@ -131,20 +138,34 @@ backend(const char *name)
 /*
 * gsession process monitor (unfinished)
 */
-void
-monitor(const char *program, pid_t process)
+int
+monitor(const char *name)
 {
-  char procfile[MAX_STRING];
-  sprintf(procfile, "/proc/ds", process);
+  pid_t pid = fork();
 
-  if (access(procfile, R_OK) != 0) {
-    printf("%s: %s: %s\n", Program, procfile, _(DirentMissing));
-    sessionlog(1, "%s: %s: %s\n", Program, procfile, _(DirentMissing));
-    gould_error("%s: %s: %s\n", Program, procfile, _(DirentMissing));
+  if (pid  > 0) {	/* not in spawned process */
+    return pid;
   }
-  else {
-    /* start monitoring */
+
+  if (setsid() < 0) {		/* set new session */
+    perror("setsid() failed: %m");
+    _exit (EX_SOFTWARE);
   }
+  prctl(PR_SET_NAME, (unsigned long)name, 0, 0);
+  
+  close(STDIN_FILENO);		/* close stdin. stdout and stderr */
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+
+  /* regularly signal _gdesktop */
+  for ( ;; ) {
+    sessionlog(1, "%s %s (SIGUSR3 -> %d)\n", timestamp(), name, _gdesktop);
+    kill (_gdesktop, SIGUSR3);
+
+    sessionlog(1, "%s %s sleep (10)\n", timestamp(), name);
+    sleep (10);
+  }
+  return 0;
 } /* </monitor> */
 
 /*
@@ -163,31 +184,17 @@ acknowledge(int connection)
     perror("reading request from stream socket");
   else if (nbytes > 0) {
     const char *stamp = timestamp();
-    request[nbytes] = 0;
+    request[nbytes] = 0;	/* trim request to the nbytes read */
 
-    if (strcmp(request, _GET_SESSION_PID) == 0) {  /* pidof( Program ) */
+    if (strcmp(request, _GET_SESSION_PID) == 0) {  /* [main]pidof {Program} */
       sessionlog(1, "%s pidof( %s ) => %d\n", stamp, Program, _instance);
       sprintf(request, "%d\n", _instance);
-    }
-    else if (strncmp(request, _PIDOF_COMMAND, strlen(_PIDOF_COMMAND)) == 0) {
-      char *pidlist = pidof (&request[strlen(_PIDOF_COMMAND) + 1]);
-      if (pidlist) {
-        sessionlog(1, "%s => %s\n", request, pidlist);
-        strcpy(request, pidlist);
-      }
-      else {
-        sessionlog(1, "%s => not found\n", request);
-        request[0] = 0;
-      }
     }
     else {					   /* spawn( request ) */
       sessionlog(1, "%s spawn( %s )\n", stamp, request);
       sprintf(request, "%d\n", spawn( request ));
     }
-
-    if (strlen(request) > 0) {
-      write(connection, request, strlen(request));
-    }
+    write (connection, request, strlen(request));
   }
   return nbytes;
 } /* </acknowledge> */
@@ -244,6 +251,11 @@ signal_responder(int signum)
       sessionlog(1, "%s: caught signal %d, ignoring.\n", __func__, signum);
       break;
 
+    case SIGUSR3:		/* acknowledge from gdesktop process */
+      sessionlog(1, "%s: gdesktop acknowledges\n", timestamp());
+      sleep (10);
+      break;
+
     default:
       close(_stream);
       remove(_GSESSION);
@@ -264,7 +276,7 @@ signal_responder(int signum)
 /*
 * apply_signal_responder
 */
-static inline void
+static void
 apply_signal_responder(void)
 {
   signal(SIGHUP,  signal_responder);	/* 1 TBD reload */
@@ -279,6 +291,7 @@ apply_signal_responder(void)
   signal(SIGTERM, signal_responder);	/* 15 graceful exit on kill */
   signal(SIGCHLD, signal_responder);	/* 17 reap children */
   signal(SIGCONT, signal_responder);	/* 18 cancel request */
+  signal(SIGUSR3, signal_responder);	/* 28 acknowleged */
 } /* </apply_signal_responder> */
 
 /*
@@ -292,11 +305,11 @@ interface(const char *program)
   const char *errorlog = getenv("ERRORLOG");
   const char *loglevel = getenv("LOGLEVEL"); /* 0 => none */
 
+  const char *windowmanager = getenv("WINDOWMANAGER");
+  const char *screensaver  = getenv("SCREENSAVER");
+
   const char *desktop  = getenv("DESKTOP");
   const char *launcher = getenv("LAUNCHER");
-  const char *manager  = getenv("WINDOWMANAGER");
-
-  pid_t gdesktop;			     /* {DESKTOP} process ID */
 
   if ((debug = (loglevel) ? atoi(loglevel) : 0) > 0) {
     sprintf(logfile, "%s/%s.log", getenv("HOME"), program);
@@ -313,16 +326,18 @@ interface(const char *program)
   if (open_stream_socket(_GSESSION) != 0)
     _exit (EX_PROTOCOL);
 
-  /* spawn {WINDOWMANAGER}, {DESKTOP}, and (optional){LAUNCHER} */
-  gdesktop = spawn( (desktop) ? desktop : "gdesktop" );
-  spawn( (manager) ? manager : "twm" );
+  //killall (GdesktopProcess, SIGTERM);
+  /* spawn {WINDOWMANAGER}, {SCREENSAVER}, {DESKTOP}, and {LAUNCHER} */
+  _gdesktop = spawn( (desktop) ? desktop : "gdesktop" );
+  spawn( (windowmanager) ? windowmanager : "twm" );
+  if(screensaver) spawn( screensaver );
   if(launcher) spawn( launcher );
 
-  //monitor ( gdesktopProcess, gdesktop );
-  monitor ( "syslogd", 0xdeadbeef );
+  /* monitor the gdesktop process */
+  monitor( _GESSION_MONITOR );
 
-  /* gsession::backend *must* be call last.. */
-  backend (_GESSION_BACKEND);
+  /* gsession::backend *must* be called last.. */
+  backend( _GESSION_BACKEND );
 } /* </interface> */
 
 /**
@@ -332,7 +347,6 @@ int
 main(int argc, char *argv[])
 {
   int opt;
-  char *pidlist;	/* PID(s) of program, if any */
 
   /* disable invalid option messages */
   opterr = 0;
@@ -359,15 +373,11 @@ main(int argc, char *argv[])
     }
   }
 
-  /* kill leftover gsession, if applicable */
-  if ( (pidlist = pidof (Program)) ) {
-    printf("pidof %s => %s\n", Program, pidlist);
-    killall (Program, SIGTERM);
-  }
-
+  killall (Program, SIGTERM);	/* draconian (but safe) approach */
   apply_signal_responder();	/* trap and handle signals */
+
   _instance = getpid();		/* singleton process ID */
-  interface (Program);		/* main loop */
+  interface (Program);		/* program interface */
 
   return EX_OK;
 } /* </gsession> */
