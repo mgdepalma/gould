@@ -664,6 +664,28 @@ get_process_id(const char *program)
 } /* </get_process_id> */
 
 /*
+* get_process_name - get name of process given a pid
+*/
+char *
+get_process_name(pid_t pid)
+{
+  FILE *stream;
+  char command[MAX_LABEL], name = NULL;
+  static char answer[MAX_LABEL];
+
+  sprintf(command, "ps -p %d -o comm=", pid);
+  stream = popen(command, "r");
+
+  if (stream) {
+    fgets(answer, MAX_LABEL, stream);
+    answer[strlen(answer) - 1] = (char)0; // chomp newline
+    if(strlen(answer) > 0) name = answer;
+    pclose(stream);
+  }
+  return name;
+} /* </get_process_name> */
+
+/*
 * spawn forks child process
 */
 pid_t

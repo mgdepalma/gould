@@ -874,30 +874,16 @@ gpanel_instance (GlobalPanel *panel)
 /*
 * gpanel_graceful - graceful exit
 */
-static inline void
-gpanel_graceful(int signum, gboolean explain)
+static void
+gpanel_graceful(int signum, gboolean verbose)
 {
-  if (explain) {
-    printf("%s, exiting on signal: %d\n", Program, signum);
-  }
-  gtk_main_quit ();
+  sleep (1);		/* quiescence (..let the cables sleep) */
+
+  if(verbose) printf("%s, exiting on signal: %d\n", Program, signum);
+  gtk_main_quit ();	/* innermost invocation of the main loop return */
+
   _exit (signum);
 } /* </gpanel_graceful> */
-
-/*
-* session_signal_responder - detailed signal handler
-*/
-void
-session_signal_responder(int signum, siginfo_t *siginfo, void *context)
-{
-  pid_t sender = siginfo->si_pid;	// get pid of sender
-
-  if (signum == SIGUSR3)
-    kill (sender, SIGUSR3);	// acknowledge `sender'
-  else
-    gould_error ("%s %s: signal %d, received from process %d\n",
-				timestamp(), Program, signum, sender);
-} /* </session_signal_responder> */
 
 /*
 * signal_responder - signal handler
@@ -905,6 +891,8 @@ session_signal_responder(int signum, siginfo_t *siginfo, void *context)
 void
 signal_responder (int signum)
 {
+  gboolean verbose = (debug > 0) ? TRUE : FALSE;
+
   switch (signum) {
     case SIGHUP:		/* action required backdrop (ARB) */
     case SIGCONT:		/* dismiss logout panel and/or ARB */
@@ -920,13 +908,6 @@ signal_responder (int signum)
       desktop_settings (_desktop, DESKTOP_SHORTCUT_CREATE);
       break;
 
-    case SIGUSR3:		/* <reserved> */
-      gtk_widget_show (_desktop->backdrop);
-      gpanel_dialog (150, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
-					Program, _(Bugger), signum);
-      gtk_widget_hide (_desktop->backdrop);
-      break;
-
     case SIGCHLD:		/* reap children */
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
       break;
@@ -939,7 +920,12 @@ signal_responder (int signum)
     case SIGABRT:
     case SIGQUIT:		/* graceful exit */
     case SIGKILL:
-      gpanel_graceful (signum, ((debug > 0) ? TRUE : FALSE));
+      gpanel_graceful (signum, verbose);
+      break;
+
+    case SIGURG:		/* forced restart */
+      gpanel_respawn (_desktop->session);
+      gpanel_graceful (signum, verbose);
       break;
 
     default:
@@ -947,16 +933,33 @@ signal_responder (int signum)
         gould_diagnostics (Program );
         vdebug(2, "%s: caught signal %d.\n", __func__, signum);
 
-        gpanel_dialog (200, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
-					Program, _(Bugger), signum);
+        gtk_widget_show (_desktop->backdrop);
+        gpanel_dialog (150, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
+						Program, _(Bugger), signum);
+        gtk_widget_hide (_desktop->backdrop);
+
         if (_persistent) {
           vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
           gpanel_respawn (_desktop->session);
         }
-        gpanel_graceful (signum, TRUE);
+        gpanel_graceful (signum, verbose);
       }
   }
 } /* </signal_responder> */
+
+/*
+* session_signal_responder - signal handler for SIGUSR3
+*/
+static void
+session_signal_responder(int signum, siginfo_t *siginfo, void *context)
+{
+  pid_t sender = siginfo->si_pid; // get pid of sender
+
+  if (signum == SIGUSR3)
+    kill (sender, SIGUSR3);	  // acknowledge `sender'
+  else
+    signal_responder (signum);
+} /* </session_signal_responder> */
 
 /*
 * apply_signal_responder
@@ -965,11 +968,12 @@ static inline void
 apply_signal_responder(void)
 {
   static struct sigaction anvil;
+
   anvil.sa_sigaction = *session_signal_responder;
-  anvil.sa_flags |= SA_SIGINFO;      // get detail information
+  anvil.sa_flags |= SA_SIGINFO;		/* get detail information */
 
   if (sigaction(SIGUSR3, &anvil, NULL) != 0) {
-    gould_error ("%s sigaction() returns %d\n", Program, errno);
+    gould_error ("%s sigaction() failed, errno => %d.\n", Program, errno);
   }
   signal(SIGHUP,  signal_responder);	/* 1 action required backdrop */
   signal(SIGINT,  signal_responder);	/* 2 graceful exit <crtl-c> */
@@ -992,7 +996,7 @@ apply_signal_responder(void)
   signal(SIGTSTP, signal_responder);	/* 20 ignore <crtl-z> */
   signal(SIGTTIN, signal_responder);	/* 21 catch and ignore */
   signal(SIGTTOU, signal_responder);	/* 22 catch and ignore */
-  signal(SIGURG,  signal_responder);    /* 23 internal program error */
+  signal(SIGURG,  signal_responder);    /* 23 respawn */
   signal(SIGIO,   signal_responder);	/* 29 ignore <reserved> */
 } /* </apply_signal_responder> */
 
@@ -1003,13 +1007,20 @@ int
 main(int argc, char *argv[])
 {
   GlobalPanel memory;		/* master data structure (gpanel.h) */
-  char *alias = NULL;		/* used to change process name */
 
-  const char *respawn = getenv("GOULD_RESPAWN");
+  const char *genviron = getenv("GOULD_ENVIRON");
+  const char *grespawn = getenv("GOULD_RESPAWN");
+
+  char *alias = NULL;		/* used to change process name */
+  char *quiet;			/* check {GOULD_ENVIRON} for "no-splash" */
 
   int status = EX_OK;
   int opt;
 
+  if (genviron) {
+    quiet = strstr(genviron, "no-splash");
+    if(quiet) _silent = TRUE;
+  }
   /* disable invalid option messages */
   opterr = 0;
      
@@ -1050,7 +1061,7 @@ main(int argc, char *argv[])
         break;
       case 'o':			/* _persistent => FALSE */
         _signal = SIGUNUSED;
-        respawn = "no";
+        grespawn = "no";
         break;
 
       default:
@@ -1075,7 +1086,7 @@ main(int argc, char *argv[])
 #endif
 
   if(alias) prctl(PR_SET_NAME, (unsigned long)alias, 0, 0, 0);
-  if(respawn && strcasecmp(respawn, "no") == 0) _persistent = FALSE;
+  if(grespawn && strcasecmp(grespawn, "no") == 0) _persistent = FALSE;
 
   gtk_init (&argc, &argv);	/* initialization of the GTK */
   gtk_set_locale ();

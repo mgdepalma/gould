@@ -93,7 +93,9 @@ int glist_compare (GList *alist, GList *blist);
 pid_t get_process_id(const char *program);
 pid_t spawn(const char *program);
 
+char *get_process_name(pid_t pid);
 char *pidof(const char *program);
+
 int killall(const char *program, int signum);
 
 float scale_factor(float width, float height);

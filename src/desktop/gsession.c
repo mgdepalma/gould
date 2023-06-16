@@ -63,12 +63,17 @@ const char *Usage =
 "There can only be one instance running per display.\n"
 "\n";
 
+/* (protected) session monitor variables */
+const char *_monitor_environ = "GOULD_ENVIRON=no-splash";
+const int _monitor_seconds_interval = 5;
+
 debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
+
 pid_t _gdesktop = -1;	/* gdesktop (i.e. what we monitor) process ID */
+pid_t _instance;	/* singleton process ID */
 
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
 int _stream = -1;	/* stream socket descriptor */
-pid_t _instance;	/* singleton process ID */
 
 /**
 * prototypes (forward method declarations)
@@ -78,45 +83,52 @@ int open_stream_socket(const char *sockname);
 void signal_responder(int signum);
 
 /*
-* (private)sessionlog - write to _logstream when debug >= {level}
+* (private)sessionlog - write when debug >= {level}
 */
 static int
 sessionlog(debug_t level, const char *format, ...)
 {
-  if(! _logstream) return -1;	/* sanity check - if no _logstream, return */
+  int nbytes = 0;
 
-  va_list args;
-  va_start (args, format);
-  if(debug >= level) vfprintf(_logstream, format, args);
-  va_end (args);
+  if (debug >= level) {
+    va_list args;
+    va_start (args, format);
 
-  return fflush(_logstream);
+    if (_logstream) {
+      nbytes = vfprintf(_logstream, format, args);
+      fflush(_logstream);
+    }
+    else {
+      nbytes = vprintf(format, args);
+    }
+    va_end (args);
+  }
+  return nbytes;
 } /* </sessionlog> */
-
 
 /*
-* gsession backend process
+* gsession backend process thread
 */
-void
-backend(const char *name)
+int
+session_backend(const char *name)
 {
   int connection;       /* connection stream socket */
   pid_t pid = fork();
 
   if (pid < 0) {
-    perror("fork() failed: %m");
+    perror("session_backend: fork() failed.");
     _exit (EX_OSERR);
   }
 
   if (pid > 0) {        /* not in spawned process */
     int stat;
-    sleep (5);		/* delay 5 seconds */
-    //waitpid(-1, &stat, 0);
+    sessionlog(1, "%s [%s] pid => %d\n", timestamp(), name, pid);
     waitpid(pid, &stat, 0);
+    return pid;
   }
 
   if (setsid() < 0) {   /* set new session */
-    perror("setsid() failed: %m");
+    perror("session_backend: setsid() failed.");
     _exit (EX_SOFTWARE);
   }
   prctl(PR_SET_NAME, (unsigned long)name, 0, 0);
@@ -133,40 +145,67 @@ backend(const char *name)
       close(connection);
     }
   }
-} /* </backend> */
+  return 0;
+} /* </session_backend> */
 
 /*
-* gsession process monitor (unfinished)
+* gsession monitor process thread
 */
 int
-monitor(const char *name)
+session_monitor(const char *name)
 {
+  char procfile[MAX_LABEL];
   pid_t pid = fork();
 
-  if (pid  > 0) {	/* not in spawned process */
+  if (pid < 0) {
+    perror("session_monitor: fork() failed.");
+    _exit (EX_OSERR);
+  }
+
+  if (pid > 0) {	/* not in spawned process */
+    sessionlog(1, "%s [%s] pid => %d\n", timestamp(), name, pid);
     return pid;
   }
 
-  if (setsid() < 0) {		/* set new session */
-    perror("setsid() failed: %m");
+  if (setsid() < 0) {	/* set new session */
+    perror("session_monitor: setsid() failed.");
     _exit (EX_SOFTWARE);
   }
   prctl(PR_SET_NAME, (unsigned long)name, 0, 0);
   
-  close(STDIN_FILENO);		/* close stdin. stdout and stderr */
+  close(STDIN_FILENO);	/* close stdin. stdout and stderr */
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
   /* regularly signal _gdesktop */
-  for ( ;; ) {
-    sessionlog(1, "%s %s (SIGUSR3 -> %d)\n", timestamp(), name, _gdesktop);
-    kill (_gdesktop, SIGUSR3);
+  sprintf(procfile, "/proc/%d", _gdesktop);
 
-    sessionlog(1, "%s %s sleep (10)\n", timestamp(), name);
-    sleep (10);
+  for ( ;; ) {
+    if (access(procfile, R_OK) == 0) {
+      sessionlog(2, "%s %s (SIGUSR3 -> %d)\n", timestamp(), name, _gdesktop);
+      kill (_gdesktop, SIGUSR3);
+    }
+    else {
+      kill (_instance, SIGHUP);
+      _gdesktop = get_process_id (GdesktopProcess);
+      sprintf(procfile, "/proc/%d", _gdesktop);
+    }
+    sleep (_monitor_seconds_interval);
+    signal(SIGHUP, signal_responder);
   }
   return 0;
-} /* </monitor> */
+} /* </session_monitor> */
+
+/*
+* session_spawn - spawn wrapper that uses sessionlog
+*/
+static pid_t
+session_spawn(const char *command)
+{
+  pid_t pid = spawn (command);
+  sessionlog(1, "%s [%s] pid => %d\n", timestamp(), command, pid);
+  return pid;
+} /* </session_spawn> */
 
 /*
 * acknowledge - socket stream request delivery
@@ -237,13 +276,23 @@ open_stream_socket(const char *sockname)
 void
 signal_responder(int signum)
 {
+  pid_t pid = getpid();
+  const char *desktop = getenv("DESKTOP");
+
   switch (signum) {
-    case SIGHUP:
-    case SIGCONT:
+    case SIGHUP:		/* spawn {DESKTOP} */
+      if (pid == _instance) {
+        signal(SIGHUP, SIG_IGN);
+        putenv (_monitor_environ);
+        session_spawn( (desktop) ? desktop : "gdesktop" );
+      }
       break;
 
     case SIGCHLD:		/* reap children */
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
+      break;
+
+    case SIGCONT:
       break;
 
     case SIGTTIN:
@@ -252,24 +301,27 @@ signal_responder(int signum)
       break;
 
     case SIGUSR3:		/* acknowledge from gdesktop process */
-      sessionlog(1, "%s: gdesktop acknowledges\n", timestamp());
-      sleep (10);
+      sessionlog(2, "%s gdesktop acknowledges\n", timestamp());
+      sleep (_monitor_seconds_interval);
       break;
 
     default:
-      close(_stream);
-      remove(_GSESSION);
+      if (pid == _instance) {
+        close(_stream);
+        remove(_GSESSION);
     
-      if (! (signum == SIGINT || signum == SIGTERM)) {
-        printf("%s, exiting on signal: %d\n", Program, signum);
-        gould_diagnostics (Program);
-      }
-
-      if (debug) {
+        if (! (signum == SIGINT || signum == SIGTERM)) {
+          printf("%s, exiting on signal: %d\n", Program, signum);
+          gould_diagnostics (Program);
+        }
         sessionlog(1, "%s ended on %s\n", Program, timestamp());
-        fclose(_logstream);
+        if(_logstream) fclose(_logstream);
+
+        killall(_GESSION_BACKEND, SIGTERM);
+        killall(_GESSION_MONITOR, SIGTERM);
+
+        _exit (signum);
       }
-      _exit (signum);
   }
 } /* </signal_responder> */
 
@@ -279,7 +331,7 @@ signal_responder(int signum)
 static void
 apply_signal_responder(void)
 {
-  signal(SIGHUP,  signal_responder);	/* 1 TBD reload */
+  signal(SIGHUP,  signal_responder);	/* 1 spawn {DESKTOP} */
   signal(SIGINT,  signal_responder);	/* 2 Ctrl+C received */
   signal(SIGQUIT, signal_responder);	/* 3 internal program error */
   signal(SIGILL,  signal_responder);	/* 4 internal program error */
@@ -326,18 +378,18 @@ interface(const char *program)
   if (open_stream_socket(_GSESSION) != 0)
     _exit (EX_PROTOCOL);
 
-  //killall (GdesktopProcess, SIGTERM);
   /* spawn {WINDOWMANAGER}, {SCREENSAVER}, {DESKTOP}, and {LAUNCHER} */
-  _gdesktop = spawn( (desktop) ? desktop : "gdesktop" );
-  spawn( (windowmanager) ? windowmanager : "twm" );
-  if(screensaver) spawn( screensaver );
-  if(launcher) spawn( launcher );
+  _gdesktop = session_spawn( (desktop) ? desktop : "gdesktop" );
+  session_spawn( (windowmanager) ? windowmanager : "twm" );
+
+  if(screensaver) session_spawn( screensaver );
+  if(launcher) session_spawn( launcher );
 
   /* monitor the gdesktop process */
-  monitor( _GESSION_MONITOR );
+  session_monitor( _GESSION_MONITOR );
 
   /* gsession::backend *must* be called last.. */
-  backend( _GESSION_BACKEND );
+  session_backend( _GESSION_BACKEND );
 } /* </interface> */
 
 /**
@@ -373,10 +425,19 @@ main(int argc, char *argv[])
     }
   }
 
-  killall (Program, SIGTERM);	/* draconian (but safe) approach */
-  apply_signal_responder();	/* trap and handle signals */
+
+  killall(_GESSION_BACKEND, SIGTERM);
+  killall(_GESSION_MONITOR, SIGTERM);
+  sleep (2);
+
+  killall(_GESSION_BACKEND, SIGKILL);
+  killall(_GESSION_MONITOR, SIGKILL);
+
+  killall (Program, SIGTERM);	/* draconian approach */
+  killall (Program, SIGKILL);
 
   _instance = getpid();		/* singleton process ID */
+  apply_signal_responder();	/* trap and handle signals */
   interface (Program);		/* program interface */
 
   return EX_OK;
