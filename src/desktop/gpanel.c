@@ -751,7 +751,7 @@ gpanel_initialize (GlobalPanel *panel)
 
     if (instance > 0) {
       if ((kill(instance, _signal)) == -1) {
-        g_printerr("%s: %s\n", Program, _(Singleton));
+        g_printerr("%s: %s (pid => %d)\n", Program, _(Singleton), instance);
       }
     }
     _exit (_RUNNING);

@@ -414,6 +414,7 @@ int
 main(int argc, char *argv[])
 {
   int opt;
+  pid_t pid = get_process_id (Program);
 
   /* disable invalid option messages */
   opterr = 0;
@@ -439,11 +440,15 @@ main(int argc, char *argv[])
         return EX_USAGE;
     }
   }
+  _instance = getpid();		 /* singleton process ID */
 
+  if (pid > 0 && pid != _instance) {
+    printf("%s: %s (pid => %d)\n", Program, _(Singleton), pid);
+    _exit (_RUNNING);
+  }
   session_graceful (SIGTERM, _SIGTERM_GRACETIME);
   session_graceful (SIGKILL, 0); /* draconian approach */
 
-  _instance = getpid();		 /* singleton process ID */
   apply_signal_responder();	 /* trap and handle signals */
   interface (Program);		 /* program interface */
 
