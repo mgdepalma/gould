@@ -208,6 +208,17 @@ session_spawn(const char *command)
 } /* </session_spawn> */
 
 /*
+* session_graceful - signal _GSESSION_{BACKEND,MONITOR} to exit
+*/
+static void
+session_graceful(int signum, int seconds)
+{
+  killall (_GSESSION_BACKEND, signum);
+  killall (_GSESSION_MONITOR, signum);
+  if(seconds > 0) sleep (seconds);
+} /* </session_graceful> */
+
+/*
 * acknowledge - socket stream request delivery
 */
 int
@@ -288,6 +299,10 @@ signal_responder(int signum)
       }
       break;
 
+    case SIGTERM:
+      if(pid != _instance) _exit (EX_OK);
+      break;
+
     case SIGCHLD:		/* reap children */
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
       break;
@@ -317,8 +332,8 @@ signal_responder(int signum)
         sessionlog(1, "%s ended on %s\n", Program, timestamp());
         if(_logstream) fclose(_logstream);
 
-        killall(_GESSION_BACKEND, SIGTERM);
-        killall(_GESSION_MONITOR, SIGTERM);
+        session_graceful (SIGTERM, 2);
+        session_graceful (SIGKILL, 0);
 
         _exit (signum);
       }
@@ -386,10 +401,10 @@ interface(const char *program)
   if(launcher) session_spawn( launcher );
 
   /* monitor the gdesktop process */
-  session_monitor( _GESSION_MONITOR );
+  session_monitor( _GSESSION_MONITOR );
 
   /* gsession::backend *must* be called last.. */
-  session_backend( _GESSION_BACKEND );
+  session_backend( _GSESSION_BACKEND );
 } /* </interface> */
 
 /**
@@ -425,20 +440,12 @@ main(int argc, char *argv[])
     }
   }
 
+  session_graceful (SIGTERM, _SIGTERM_GRACETIME);
+  session_graceful (SIGKILL, 0); /* draconian approach */
 
-  killall(_GESSION_BACKEND, SIGTERM);
-  killall(_GESSION_MONITOR, SIGTERM);
-  sleep (2);
-
-  killall(_GESSION_BACKEND, SIGKILL);
-  killall(_GESSION_MONITOR, SIGKILL);
-
-  killall (Program, SIGTERM);	/* draconian approach */
-  killall (Program, SIGKILL);
-
-  _instance = getpid();		/* singleton process ID */
-  apply_signal_responder();	/* trap and handle signals */
-  interface (Program);		/* program interface */
+  _instance = getpid();		 /* singleton process ID */
+  apply_signal_responder();	 /* trap and handle signals */
+  interface (Program);		 /* program interface */
 
   return EX_OK;
 } /* </gsession> */

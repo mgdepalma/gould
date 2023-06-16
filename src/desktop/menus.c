@@ -160,6 +160,8 @@ finis (GlobalPanel *panel, gboolean logout, gboolean quit)
 
   if (logout) {	
     if (panel->session >= 0) {	/* send SIGTERM to gsession */
+      killall (_GSESSION_BACKEND, SIGTERM);
+      killall (_GSESSION_MONITOR, SIGTERM);
       killall (GsessionProcess, SIGTERM);
     }
     else {			/* signal {WINDOWMANAGER} */
