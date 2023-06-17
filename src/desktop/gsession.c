@@ -211,11 +211,29 @@ session_spawn(const char *command)
 * session_graceful - signal _GSESSION_{BACKEND,MONITOR} to exit
 */
 static void
-session_graceful(int signum, int seconds)
+session_graceful(int signum, ...)
 {
-  killall (_GSESSION_BACKEND, signum);
-  killall (_GSESSION_MONITOR, signum);
-  if(seconds > 0) sleep (seconds);
+  if (signum == SIGUNUSED) {	// prepare main program for exit
+    close(_stream);
+    remove(_GSESSION);
+    sessionlog(1, "%s ended on %s\n", Program, timestamp());
+    if(_logstream) fclose(_logstream);
+  }
+  else {
+    int seconds = 0;
+    void *data = NULL;
+
+    killall (_GSESSION_BACKEND, signum);
+    killall (_GSESSION_MONITOR, signum);
+
+    va_list ptr;
+    va_start(ptr, signum);
+    seconds = va_arg(ptr, int);
+    data = va_arg(ptr, void*);	// data => 0, at the end of va_list
+    if(data == 0) seconds = 0;
+    if(seconds > 0) sleep (seconds);
+    va_end(ptr);
+  }
 } /* </session_graceful> */
 
 /*
@@ -300,7 +318,7 @@ signal_responder(int signum)
       break;
 
     case SIGTERM:
-      if(pid != _instance) _exit (EX_OK);
+      (pid == _instance) ? session_graceful (SIGUNUSED) : _exit (EX_OK);
       break;
 
     case SIGCHLD:		/* reap children */
@@ -322,18 +340,13 @@ signal_responder(int signum)
 
     default:
       if (pid == _instance) {
-        close(_stream);
-        remove(_GSESSION);
-    
         if (! (signum == SIGINT || signum == SIGTERM)) {
           printf("%s, exiting on signal: %d\n", Program, signum);
           gould_diagnostics (Program);
         }
-        sessionlog(1, "%s ended on %s\n", Program, timestamp());
-        if(_logstream) fclose(_logstream);
-
-        session_graceful (SIGTERM, 2);
-        session_graceful (SIGKILL, 0);
+        session_graceful (SIGUNUSED);
+        session_graceful (SIGTERM, _SIGTERM_GRACETIME);
+        session_graceful (SIGKILL);
 
         _exit (signum);
       }
@@ -447,7 +460,7 @@ main(int argc, char *argv[])
     _exit (_RUNNING);
   }
   session_graceful (SIGTERM, _SIGTERM_GRACETIME);
-  session_graceful (SIGKILL, 0); /* draconian approach */
+  session_graceful (SIGKILL);	/* draconian approach */
 
   apply_signal_responder();	 /* trap and handle signals */
   interface (Program);		 /* program interface */
