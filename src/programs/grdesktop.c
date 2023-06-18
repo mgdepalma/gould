@@ -273,10 +273,6 @@ main(int argc, char *argv[])
   Program = basename(argv[0]);
   Release = "1.0";
 
-  /* Change the process name using Program variable. */
-  strncpy(argv[0], Program, strlen(argv[0]));
-  setprogname (Program = argv[0]);
-
   /* Create a new top level window */
   window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
 

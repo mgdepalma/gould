@@ -21,7 +21,7 @@
 #define INTERFACE_H
 
 #include "genesis.h"
-#include "window.h"
+#include "gwindow.h"
 #include "xutil.h"
 
 #include <ctype.h>

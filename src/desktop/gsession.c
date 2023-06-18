@@ -63,14 +63,15 @@ const char *Usage =
 "There can only be one instance running per display.\n"
 "\n";
 
+#define SessionMonitorCount 4
 /* (protected) session monitor variables */
-const char *_monitor_environ = "GOULD_ENVIRON=no-splash";
+SessionMonitor _master[SessionMonitorCount];
+
+char *_monitor_environ = "GOULD_ENVIRON=no-splash";
 const int _monitor_seconds_interval = 5;
 
-debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
-
-pid_t _gdesktop = -1;	/* gdesktop (i.e. what we monitor) process ID */
 pid_t _instance;	/* singleton process ID */
+debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
 int _stream = -1;	/* stream socket descriptor */
@@ -80,6 +81,7 @@ int _stream = -1;	/* stream socket descriptor */
 */
 int acknowledge(int connection);
 int open_stream_socket(const char *sockname);
+pid_t session_spawn(const char *command);
 void signal_responder(int signum);
 
 /*
@@ -154,8 +156,9 @@ session_backend(const char *name)
 int
 session_monitor(const char *name)
 {
-  char procfile[MAX_LABEL];
   pid_t pid = fork();
+  char procfile[MAX_LABEL];
+  int idx;
 
   if (pid < 0) {
     perror("session_monitor: fork() failed.");
@@ -177,21 +180,25 @@ session_monitor(const char *name)
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-  /* regularly signal _gdesktop */
-  sprintf(procfile, "/proc/%d", _gdesktop);
-
-  for ( ;; ) {
-    if (access(procfile, R_OK) == 0) {
-      sessionlog(2, "%s %s (SIGUSR3 -> %d)\n", timestamp(), name, _gdesktop);
-      kill (_gdesktop, SIGUSR3);
+  for (idx = 0; idx < SessionMonitorCount; idx++)
+    if (_master[idx].program) {
+      _master[idx].process = session_spawn (_master[idx].program);
     }
-    else {
-      kill (_instance, SIGHUP);
-      _gdesktop = get_process_id (GdesktopProcess);
-      sprintf(procfile, "/proc/%d", _gdesktop);
+
+  /* regularly check SessionMonitor _master[].process */
+  for ( ;; ) {
+    for (idx = 0; idx < SessionMonitorCount; idx++) {
+      if (_master[idx].program) {
+        sprintf(procfile, "/proc/%d", _master[idx].process);
+
+        if (access(procfile, R_OK) != 0) {
+          putenv (_monitor_environ);
+          pid = session_spawn (_master[idx].program);
+          _master[idx].process = pid;
+        }
+      }
     }
     sleep (_monitor_seconds_interval);
-    signal(SIGHUP, signal_responder);
   }
   return 0;
 } /* </session_monitor> */
@@ -199,7 +206,7 @@ session_monitor(const char *name)
 /*
 * session_spawn - spawn wrapper that uses sessionlog
 */
-static pid_t
+pid_t
 session_spawn(const char *command)
 {
   pid_t pid = spawn (command);
@@ -306,17 +313,8 @@ void
 signal_responder(int signum)
 {
   pid_t pid = getpid();
-  const char *desktop = getenv("DESKTOP");
 
   switch (signum) {
-    case SIGHUP:		/* spawn {DESKTOP} */
-      if (pid == _instance) {
-        signal(SIGHUP, SIG_IGN);
-        putenv (_monitor_environ);
-        session_spawn( (desktop) ? desktop : "gdesktop" );
-      }
-      break;
-
     case SIGTERM:
       (pid == _instance) ? session_graceful (SIGUNUSED) : _exit (EX_OK);
       break;
@@ -359,7 +357,7 @@ signal_responder(int signum)
 static void
 apply_signal_responder(void)
 {
-  signal(SIGHUP,  signal_responder);	/* 1 spawn {DESKTOP} */
+  signal(SIGHUP,  signal_responder);	/* 1 spawn SessionMonitor[%m] */
   signal(SIGINT,  signal_responder);	/* 2 Ctrl+C received */
   signal(SIGQUIT, signal_responder);	/* 3 internal program error */
   signal(SIGILL,  signal_responder);	/* 4 internal program error */
@@ -407,11 +405,18 @@ interface(const char *program)
     _exit (EX_PROTOCOL);
 
   /* spawn {WINDOWMANAGER}, {SCREENSAVER}, {DESKTOP}, and {LAUNCHER} */
-  _gdesktop = session_spawn( (desktop) ? desktop : "gdesktop" );
-  session_spawn( (windowmanager) ? windowmanager : "twm" );
+  _master[0].program = (desktop) ? desktop : "gdesktop";
+  _master[1].program = (windowmanager) ? windowmanager : "twm";
+  _master[2].program = screensaver;
+  _master[3].program = launcher;
 
-  if(screensaver) session_spawn( screensaver );
-  if(launcher) session_spawn( launcher );
+#ifdef NEVER
+  for (int idx = 0; idx < SessionMonitorCount; idx++) {
+    if (_master[idx].program) {
+      _master[idx].process = session_spawn (_master[idx].program);
+    }
+  }
+#endif
 
   /* monitor the gdesktop process */
   session_monitor( _GSESSION_MONITOR );

@@ -25,7 +25,7 @@
 #include <gdk/gdkx.h>
 
 #include "dialog.h"
-#include "window.h"
+#include "gwindow.h"
 #include "xpmglyphs.h"
 
 G_BEGIN_DECLS

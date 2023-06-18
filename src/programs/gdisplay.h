@@ -25,13 +25,14 @@
 #include "dialog.h"
 #include "filechooser.h"
 #include "xpmglyphs.h"
-#include "window.h"
+#include "gwindow.h"
 #include "util.h"
 
 #include <math.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sysexits.h>	/* exit status codes for system programs */
 #include <unistd.h>
 #include <gtk/gtk.h>
 

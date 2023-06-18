@@ -601,7 +601,7 @@ gpackage_about (void)
   gtk_widget_show (button);
 
   description = g_strdup_printf (
-                  "<span font_desc=\"Arial 16\">%s %s</span>", getprogname(),
+                  "<span font_desc=\"Arial 16\">%s %s</span>", Program,
                   _("is a software package manager for RPM based systems.")
                 );
 

@@ -62,7 +62,7 @@ GlobalData *global_;		/* global program data singleton */
 void
 finis (GtkWidget *widget, gpointer data)
 {
-  if (strcmp(getprogname(), GENESIS) == 0 && logout_) {
+  if (strcmp(Program, GENESIS) == 0 && logout_) {
     Window window = DefaultRootWindow (gdk_display);
     unsigned char *data = get_xprop_name (window, "_OPENBOX_PID");
 
@@ -448,7 +448,7 @@ interactive (int argc, char *argv[])
   gtk_window_set_icon (window, xpm_pixbuf(ICON_GENESIS, NULL));
 
   if (distro == NULL)				/* should never happen */
-    gtk_window_set_title (window, getprogname());
+    gtk_window_set_title (window, Program);
   else {
     gchar *text = g_strdup_printf ("%s %s", distro, _("installer"));
     gtk_window_set_title (window, text);

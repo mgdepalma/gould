@@ -23,32 +23,42 @@
 extern char *get_current_dir_name(void);
 #endif
 
-static GlobalDisplay *global;	/* (protected) encapsulated program data */
-gboolean debug = FALSE;		/* (protected) must be present */
+const char *Program = "gdisplay"; /* (public) published program name */
+const char *Release = "1.2";	  /* (public) published program version */
 
-const char *Program;		/* (public) published program name */
-const char *Release;		/* (public) published program version */
-const char *Information =
-"is a gtk-based simple image viewing utility and directory browser.\n"
-"The image selected can be used to set the screen background and save\n"
-"the setting in $HOME/.config/desktop used by Generations Linux.\n"
+const char *Description =
+"is a gtk-based simple image viewing utility.\n"
 "\n"
-"The program is developed for Generations Linux and distributed\n"
-"under the terms and condition of the GNU Public License.\n";
+"  The image selected can be used to set the screen background and save\n"
+"  the setting in $HOME/.config/desktop (used by Generations Linux).\n"
+"\n"
+"  The program is developed for Generations Linux and distributed\n"
+"  under the terms and condition of the GNU Public License. It is\n"
+"  part of gould (http://www.softcraft.org/gould).";
+
+const char *Usage =
+"usage: %s [-v | -h]\n"
+"\n"
+"\t-v print version information\n"
+"\t-h print help usage (what you are reading)\n"
+"\n";
+
+static GlobalDisplay *global;	  /* (protected) encapsulated program data */
+gboolean debug = FALSE;		  /* (protected) must be present */
 
 /*
- * (private) about
- */
+* (private) about
+*/
 static gboolean
 about (GtkWidget *instance, GtkWidget *parent)
 {
-  notice(parent, ICON_SNAPSHOT, "\n%s %s %s", Program, Release, Information);
+  notice(parent, ICON_SNAPSHOT, "\n%s %s %s", Program, Release, Description);
   return FALSE;
 } /* </about> */
 
 /*
- * clean application exit
- */
+* clean application exit
+*/
 static void
 finis (GtkWidget *instance, gpointer data)
 {
@@ -56,8 +66,8 @@ finis (GtkWidget *instance, gpointer data)
 } /* </finis> */
 
 /*
- * refresh view of the canvas area
- */
+* refresh view of the canvas area
+*/
 static void
 refresh (GtkWidget *canvas, gpointer data)
 {
@@ -83,8 +93,8 @@ refresh (GtkWidget *canvas, gpointer data)
 } /* </refresh> */
 
 /*
- * (private) agent callback function
- */
+* (private) agent callback function
+*/
 static gboolean
 agent (FileChooserDatum *datum)
 {
@@ -98,8 +108,8 @@ agent (FileChooserDatum *datum)
 } /* </agent> */
 
 /*
- * (private) changemode callback function
- */
+* (private) changemode callback function
+*/
 static gboolean
 changemode(GtkWidget *button, gpointer data)
 {
@@ -135,9 +145,9 @@ changemode(GtkWidget *button, gpointer data)
 } /* </changemode> */
 
 /*
- * (private) prevfile
- * (private) nextfile
- */
+* (private) prevfile
+* (private) nextfile
+*/
 static gboolean
 prevfile(GtkWidget *button, FileChooser *chooser)
 {
@@ -164,8 +174,8 @@ nextfile(GtkWidget *button, FileChooser *chooser)
 } /* </nextfile> */
 
 /*
- * (private) configsave
- */
+* (private) configsave
+*/
 static gboolean
 configsave(GtkWidget *widget, gpointer data)
 {
@@ -218,8 +228,8 @@ configsave(GtkWidget *widget, gpointer data)
 } /* </configsave> */
 
 /*
- * (private) set background callback
- */
+* (private) set background callback
+*/
 static gboolean
 setbg (GtkWidget *widget, gpointer data)
 {
@@ -238,8 +248,8 @@ setbg (GtkWidget *widget, gpointer data)
 } /* </setbg> */
 
 /*
- * (private) update_chooser
- */
+* (private) update_chooser
+*/
 static gboolean
 update_chooser (GlobalDisplay *display)
 {
@@ -252,8 +262,8 @@ update_chooser (GlobalDisplay *display)
 } /* </update_chooser> */
 
 /*
- * interface - construct user interface
- */
+* interface - construct user interface
+*/
 static GtkWidget*
 interface (GtkWidget *window)
 {
@@ -380,8 +390,8 @@ interface (GtkWidget *window)
 } /* </interface> */
 
 /*
- * initialize
- */
+* initialize
+*/
 static void
 initialize (GlobalDisplay *display, char *pathname)
 {
@@ -472,14 +482,36 @@ initialize (GlobalDisplay *display, char *pathname)
 } /* </initialize> */
 
 /*
- * main - main program implementation
- */
+* main - gdisplay main program
+*/
 int
 main(int argc, char *argv[])
 {
   struct _GlobalDisplay memory;	/* see, gdisplay.h */
+
   GtkWidget *window;		/* main window     */
   GtkWidget *layout;		/* user interface  */
+
+  int opt;
+  /* disable invalid option messages */
+  opterr = 0;
+
+  while ((opt = getopt (argc, argv, "hv")) != -1) {
+    switch (opt) {
+      case 'h':
+        printf(Usage, Program);
+        return EX_OK;
+        break;
+
+      case 'v':
+        printf("<!-- %s %s %s\n -->\n", Program, Release, Description);
+        return EX_OK;
+
+      default:
+        printf("%s: invalid option, use -h for help usage.\n", Program);
+        return EX_USAGE;
+    }
+  }
 
 #ifdef GETTEXT_PACKAGE
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
@@ -490,13 +522,6 @@ main(int argc, char *argv[])
 
   gtk_init (&argc, &argv);	/* initialization of the GTK */
   gtk_set_locale ();
-
-  Program = basename(argv[0]);
-  Release = "1.1";
-
-  /* Change the process name using Program variable. */
-  strncpy(argv[0], Program, strlen(argv[0]));
-  setprogname (Program = argv[0]);
 
   /* Initialize program data structure */
   initialize (&memory, (argc > 1) ? argv[1] : NULL);
@@ -534,4 +559,4 @@ main(int argc, char *argv[])
   gtk_main ();
     
   return Success;
-} /* </main> */
+} /* </gdisplay> */

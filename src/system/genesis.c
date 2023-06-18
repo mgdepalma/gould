@@ -22,20 +22,21 @@
 #include "interface.h"
 
 #include <ctype.h>
-#include <unistd.h>
 #include <dirent.h>
+#include <sysexits.h>	/* exit status codes for system programs */
+#include <unistd.h>
 
 /*
  * Protected data structures.
 */
-gboolean logout_ = FALSE;	/* applies only to interactive mode */
-gboolean development_ = FALSE;	/* TRUE => development, FALSE => production */
-unsigned short debug = 0;	/* must be declared in main program */
+gboolean logout_ = FALSE;	 /* applies only to interactive mode */
+gboolean development_ = FALSE;	 /* TRUE => development, FALSE => production */
+unsigned short debug = 0;	 /* must be declared in main program */
 
-const char *Program;		/* published program name */
-const char *Release;		/* program release version */
+const char *Program = "genesis"; /* published program name */
+const char *Release = "0.4.9";	 /* program release version */
 
-const char *Schema = "depot";	/* XML configuration schema */
+const char *Schema = "depot";	 /* XML configuration schema */
 const char *ConfigurationHeader =
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<%s>\n"
@@ -410,32 +411,28 @@ write_installation_script (Depot *global, const char *catalog, FILE *stream)
 int
 main(int argc, char* argv[])
 {
+  Depot *global;		/* instance of Depot class */
+
   const char *catalog = NULL;	/* default: no catalog given */
   const char *xmlfile = NULL;	/* default: no xmlfile given */
 
   gboolean generate = FALSE;	/* default: no script emitted */
-
-  Depot *global;		/* instance of Depot class */
-  int    flag;			/* getopt() selection */
+  int opt;			/* getopt() selection */
 
   setlocale(LC_CTYPE, "");	/* set locale for other languages */
-  Program = basename(argv[0]);	/* strip leading path for Progname */
-  Release = "0.4.8";
 
-  /* Change the process name using Program variable. */
-  strncpy(argv[0], Program, strlen(argv[0]));
-  setprogname (Program = argv[0]);
-  opterr = 0;			/* disable invalid option messages */
+  /* disable invalid option messages */
+  opterr = 0;
 
-  while ((flag = getopt (argc, argv, "hVv:ald:c:g")) != -1)
-    switch (flag) {
+  while ((opt = getopt (argc, argv, "hVv:ald:c:g")) != -1)
+    switch (opt) {
       case 'h':
         printf(Usage, License, Program);
-        exit(0);
+        return EX_OK;
 
       case 'V':
         printf("%s version %s %s\n", Program, Release, License);
-        exit(0);
+        return EX_OK;
 
       case 'a':
         development_ = TRUE;
@@ -463,7 +460,7 @@ main(int argc, char* argv[])
           debug = 1;
         else {
           printf("%s: invalid option, use -h for help usage.\n", Program);
-          exit(1);
+          return EX_USAGE;
         }
     }
 

@@ -21,6 +21,8 @@ gsession
 
 noinst_PROGRAMS = \
 gscreen \
+glauncher \
+gcommand \
 prova
 
 # additional LDFLAGS needed by gpanel

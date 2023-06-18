@@ -27,8 +27,8 @@
 #include "filechooser.h"
 #include "xpmglyphs.h"
 #include "grabber.h"
+#include "gwindow.h"
 #include "dialog.h"
-#include "window.h"
 
 G_BEGIN_DECLS
 

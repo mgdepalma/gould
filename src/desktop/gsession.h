@@ -25,10 +25,18 @@
 #define GsessionProcess    "gsession"	/* gsession published process name */
 #define GdesktopProcess    "gpanel"	/* gdesktop published process name */
 
-#define _GSESSION_BACKEND  "master"
-#define _GSESSION_MONITOR  "anvil"
+#define _GSESSION_BACKEND  "master"	/* gsession dispatch process */
+#define _GSESSION_MONITOR  "anvil"	/* gsession monitor process */
 
 #define _SIGTERM_GRACETIME 1		/* SIGTERM gracetime in seconds */
+
+typedef struct _SessionMonitor SessionMonitor;
+
+struct _SessionMonitor			/* array helper for process monitor */
+{
+  const char *program;
+  pid_t process;
+};
 
 #include <sys/socket.h>
 #include <sys/un.h>
