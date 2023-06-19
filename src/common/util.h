@@ -20,8 +20,10 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <glib.h>
 #include "gould.h"
+
+#include <stdbool.h>
+#include <glib.h>
 
 #define DEV_REMOVABLE 1
 #define DEV_DRIVERFS  2
@@ -69,14 +71,14 @@ GList *g_hash_table_get_values (GHashTable *hash);
 #endif
 FileMagic get_file_magic (const char *pathname);
 
-gboolean glist_find (GList *list, const char *item);
-gboolean sudoallowed (const char *command);
+bool glist_find (GList *list, const char *item);
+bool sudoallowed (const char *command);
 
 const char *simple_list_find (GList *list, const char *pattern);
 GList *simple_list_free (GList *list);
 
 const char *path_finder (GList *list, const char *name);
-const char *get_username (gboolean full);
+const char *get_username (bool full);
 
 GList *get_disk_list (GList *exclude);
 GList *get_internal_partitions (void);

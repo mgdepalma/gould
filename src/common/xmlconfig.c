@@ -397,7 +397,7 @@ configuration_read_attributes (xmlTextReaderPtr reader)
 /*
  * configuration_read
  */
-static gboolean xmlerror_ = FALSE;
+static bool xmlerror_ = false;
 
 static void
 configuration_read_error (void *context, const char *format, ...)
@@ -405,12 +405,12 @@ configuration_read_error (void *context, const char *format, ...)
   va_list args;
   va_start (args, format);
   vfprintf (stderr, format, args);
-  xmlerror_ = TRUE;
+  xmlerror_ = true;
   va_end (args);
 } /* </configuration_read_error> */
 
 ConfigurationNode *
-configuration_read (const gchar *data, const gchar *schema, gboolean memory)
+configuration_read (const gchar *data, const gchar *schema, bool memory)
 {
   ConfigurationNode *config = NULL;
   ConfigurationNode *item, *node = NULL;
@@ -433,7 +433,7 @@ configuration_read (const gchar *data, const gchar *schema, gboolean memory)
     /* Set the xmlGenericErrorFunc handler. */
     xmlSetGenericErrorFunc (0, (xmlGenericErrorFunc)configuration_read_error);
 
-    if (memory == FALSE)	/* we are reading from a file */
+    if (memory == false)	/* we are reading from a file */
       if (strcmp((char *)xmlTextReaderConstName(reader), schema)) {
         fprintf(stderr, "[configuration_read]%s: %s\n",
                           _("invalid or corrupted XML schema"), data);
@@ -484,7 +484,7 @@ configuration_read (const gchar *data, const gchar *schema, gboolean memory)
 
       if (xmlerror_) {			/* configuration_read_error called */
         xmlFreeTextReader(reader);	/* free the XML text reader */
-        xmlerror_ = FALSE;
+        xmlerror_ = false;
         return NULL;			/* FIXME: free up memory */
       }
     }
@@ -499,11 +499,11 @@ configuration_read (const gchar *data, const gchar *schema, gboolean memory)
   }
 
   if (config != NULL) {	/* Pass 2: Add XML_READER_TYPE_END_ELEMENT as needed */
-    gboolean missing;
+    bool missing;
 
     for (item = config; item != NULL; item = item->next) {
       node = item->next;
-      missing = FALSE;	/* start assuming no addition needed */
+      missing = false;	/* start assuming no addition needed */
 
       if (node && item->type == XML_READER_TYPE_ELEMENT) {
         if (node->type != XML_READER_TYPE_END_ELEMENT)
@@ -513,7 +513,7 @@ configuration_read (const gchar *data, const gchar *schema, gboolean memory)
       }
 
       if (item->back == NULL && item->next == NULL)
-        missing = TRUE;
+        missing = true;
 
       if (missing) {
         node = g_new0(ConfigurationNode, 1);
@@ -530,7 +530,6 @@ configuration_read (const gchar *data, const gchar *schema, gboolean memory)
       }
     }
   }
-
   return config;
 } /* </configuration_read> */
 
@@ -569,7 +568,7 @@ configuration_replace (ConfigurationNode *config, gchar *data,
   }
 
    /* Create new item and insert into configuration cache. */
-  item = configuration_read (data, NULL, TRUE);
+  item = configuration_read (data, NULL, true);
   configuration_insert (item, site, site->depth);
 
   g_free (trailer);

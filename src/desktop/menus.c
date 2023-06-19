@@ -79,8 +79,8 @@ saveconfig (GlobalPanel *panel)
       fclose(stream);
 
       if (lstat(newconfig, &info) == 0 && info.st_size != 0) {
-        if (configuration_read (newconfig, Schema, FALSE) != NULL) {
-          gboolean delta = (bytes != info.st_size) ? TRUE : FALSE;
+        if (configuration_read (newconfig, Schema, false) != NULL) {
+          bool delta = (bytes != info.st_size) ? true : false;
 
           if (bytes == info.st_size) { /* compare old and new configurations */
             char *oldbytes = malloc(bytes);
@@ -143,11 +143,11 @@ saveconfig (GlobalPanel *panel)
  * (private) finis
  */
 static void
-finis (GlobalPanel *panel, gboolean logout, gboolean quit)
+finis (GlobalPanel *panel, bool logout, bool quit)
 {
   GList   *iter;		/* plugin modules iterator */
   Modulus *applet;		/* plugin module instance */
-  int      status = Success;
+  int status = Success;
 
   /* Invoke module_close() on every module. */
   for (iter = panel->moduli; iter != NULL; iter = iter->next) {
@@ -280,7 +280,7 @@ screenlock (GtkWidget *button, GlobalPanel *panel)
 * (protected) startmenu - position menu consistently
 */
 void
-startmenu (GtkMenu *menu, gint *x, gint *y, gboolean *pushin, gpointer data)
+startmenu (GtkMenu *menu, gint *x, gint *y, bool *pushin, gpointer data)
 {
   GlobalPanel *panel = data;
   GtkRequisition requisition;
@@ -444,7 +444,7 @@ void
 shutdown_panel (GlobalPanel *panel, int sig)
 {
   PanelLogout *logout = panel->logout;
-  gboolean allowed = sudoallowed("/sbin/shutdown");
+  bool allowed = sudoallowed("/sbin/shutdown");
 
   gtk_widget_set_sensitive (logout->shutdown, allowed);
   gtk_widget_set_sensitive (logout->reboot, allowed);
@@ -472,7 +472,7 @@ reconstruct (GlobalPanel *panel)
   GList    *iter;             /* plugin modules iterator */
   Modulus  *applet;           /* plugin module instance */
   Modulus  *splash = NULL;    /* splash plugin module */
-  gboolean enable;            /* splash plugin enable */
+  bool	   enable;            /* splash plugin enable */
 
   /* See if the splash screen plugin is available. */
   for (iter = panel->moduli; iter != NULL; iter = iter->next) {
@@ -481,11 +481,10 @@ reconstruct (GlobalPanel *panel)
     if (strcmp(applet->name, "splash") == 0) {
       splash = applet;
       enable = splash->enable;	/* save splash plugin enable */
-      splash->enable = FALSE;
+      splash->enable = false;
       break;
     }
   }
-
   restart (panel);		/* reconstruct panel interface */
 
   if (splash != NULL)		/* restore splash plugin enable */
@@ -525,7 +524,7 @@ shutdown_dialog_new (GlobalPanel *panel)
   FILE *stream;
   gchar *caption;
   gchar text[FILENAME_MAX];
-  gboolean resume = FALSE;
+  bool resume = false;
 
   GtkWidget *dialog, *frame, *layout, *layer, *label, *image, *button;
   const gchar *icon = icon_path_finder (panel->icons, "shutdown.png");
@@ -631,7 +630,7 @@ shutdown_dialog_new (GlobalPanel *panel)
     char line[MAX_PATHNAME];
     fgets(line, MAX_PATHNAME, stream);
     resume = strstr(line, "resume=") != NULL;
-    if (resume == FALSE) resume = strstr(line, "restore=") != NULL;
+    if (resume == false) resume = strstr(line, "restore=") != NULL;
     fclose(stream);
   }
 

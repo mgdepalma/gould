@@ -20,6 +20,7 @@
 #ifndef SYSTRAY_H
 #define SYSTRAY_H
 
+#include <stdbool.h>
 #include <gtk/gtkwidget.h>
 #include <gdk/gdkx.h>
 
@@ -95,7 +96,7 @@ GType systray_get_type (void) G_GNUC_CONST;
 
 Systray *systray_new (void);
 
-gboolean systray_check_running_screen (GdkScreen *screen);
+bool systray_check_running_screen (GdkScreen *screen);
 
 void systray_connect (Systray *manager, GdkScreen *screen, GtkWidget *tray);
 void systray_disconnect (Systray *manager);

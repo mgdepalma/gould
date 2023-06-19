@@ -21,6 +21,7 @@
 #define WINDOW_H
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -29,10 +30,10 @@
 
 G_BEGIN_DECLS
 
-/**
- * Public methods (window.c) exported in the implementation.
- */
-gboolean apply_gtk_theme (const char *confile);
+/*
+* Public methods (gwindow.c) exported in the implementation.
+*/
+bool apply_gtk_theme (const char *confile);
 
 GdkColormap *colormap_from_pixmap (GdkPixmap *pixmap);
 
@@ -54,7 +55,7 @@ GdkPixbuf *pixbuf_new_from_path_scaled (GList *paths, const gchar *file,
 
 GdkPixbuf *pixbuf_scale (GdkPixbuf *pixbuf, gint width, gint height);
 
-gboolean redraw_pixbuf (GtkWidget *canvas, GdkPixbuf *pixbuf);
+bool redraw_pixbuf (GtkWidget *canvas, GdkPixbuf *pixbuf);
 
 GError *set_background_pixbuf (GdkWindow *window, GdkPixbuf *pixbuf);
 GError *set_background (GdkWindow *window, const gchar *pathname);

@@ -115,7 +115,7 @@ add_filetypes(GtkWidget **list)
 void
 set_file_type(GtkWidget *dialog, gpointer value)
 {
-  static gboolean program = TRUE;
+  static bool program = true;
   FileChooser *chooser = story.chooser;
 
   story.imgtype = GPOINTER_TO_INT(value);  /* get the file type from 'value' */
@@ -136,7 +136,7 @@ set_file_type(GtkWidget *dialog, gpointer value)
         gtk_entry_set_text (GTK_ENTRY(chooser->name), savename);
       }
       else {
-        program = FALSE;
+        program = false;
       }
     }
   }
@@ -338,12 +338,12 @@ print_orientation(GtkWidget *button, gpointer value)
 {
   switch (GPOINTER_TO_INT (value)) {
     case PRINT_LANDSCAPE:
-      printer.landscape = TRUE;
+      printer.landscape = true;
       unimplemented(printer.parent, _("Landscape"));
       break;
 
     case PRINT_PORTRAIT:
-      printer.landscape = FALSE;
+      printer.landscape = false;
       break;
   }
 } /* </print_orientation> */
@@ -351,10 +351,10 @@ print_orientation(GtkWidget *button, gpointer value)
 /*
  * (private) create file chooser callback method
  */
-static gboolean
+static bool
 printdialog_callback(GtkWidget *button, PrintDialog *print)
 {
-  gboolean status = TRUE;
+  bool status = true;
 
   if (print->callback)	/* callback can veto status */
     status = (*print->callback) (print);
@@ -364,7 +364,6 @@ printdialog_callback(GtkWidget *button, PrintDialog *print)
   if (status) {
     gtk_widget_hide (print->dialog);
   }
-
   return status;
 } /* </printdialog_callback> */
 
@@ -498,16 +497,16 @@ printdialog_new (GtkWidget *parent, GtkFunction agent)
 /*
  * (private) create file chooser callback method
  */
-static gboolean
+static bool
 savedialog_callback(GtkWidget *button, SaveDialog *save)
 {
   //SaveDialog *save = (SaveDialog *)data;
   const gchar *outfile = filechooser_get_selected_name (save->chooser);
-  gboolean status = TRUE;
+  bool status = true;
   struct stat info;
 
   if (lstat(outfile, &info) == 0 && S_ISDIR(info.st_mode))
-    status = FALSE;
+    status = false;
   else if ( (status = (*save->callback) (save)) )
     gtk_widget_hide (save->dialog);
 

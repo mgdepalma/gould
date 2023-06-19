@@ -32,7 +32,7 @@ typedef struct _TasklistConfig TasklistConfig;
 
 struct _PagerConfig
 {
-  gboolean enable;		/* enable (or not) pager */
+  bool enable;			/* enable (or not) pager */
 
   guint workspaces;		/* number of virtual desktops */
   guint rows;			/* number of pager rows */
@@ -43,8 +43,8 @@ struct _PagerConfig
 
 struct _TasklistConfig
 {
-  gboolean enable;		/* enable (or not) tasklist */
-  gboolean allspaces;
+  bool enable;			/* enable (or not) tasklist */
+  bool allspaces;
   TasklistGroupingType grouping;
 };
 
@@ -79,7 +79,7 @@ taskbar_config (GlobalPanel *panel)
   /* Initial fallback values for pager and tasklist. */
   pager_data->rows = 1;
 
-  tasklist_data->allspaces = TRUE;
+  tasklist_data->allspaces = true;
   tasklist_data->grouping  = TASKLIST_ALWAYS_GROUP;
 
   /* Initialize private data structure singleton. */
@@ -211,7 +211,7 @@ pager_configuration_read (Modulus *applet, PagerConfig *config)
 
 
   /* Configuration for the pager applet. */
-  config->enable     = TRUE;		/* fallback setting */
+  config->enable     = true;		/* fallback setting */
   config->order      = PLACE_END;
   config->workspaces = green_get_workspace_count (panel->green);
 
@@ -221,7 +221,7 @@ pager_configuration_read (Modulus *applet, PagerConfig *config)
     if (strcmp(attrib, applet->name) == 0) {
       if ((attrib = configuration_attrib (item, "enable")) != NULL)
         if (strcmp(attrib, "off") == 0 || strcmp(attrib, "no") == 0)
-          config->enable = FALSE;
+          config->enable = false;
 
       if ((attrib = configuration_attrib (item, "icon")) != NULL)
         applet->icon = attrib;
@@ -272,7 +272,7 @@ pager_settings_apply (Modulus *applet)
   PagerConfig *config = local_.pager_data;
 
   const char *spec;
-  gboolean moved = (config->order != local_.pager_cache.order);
+  bool moved = (config->order != local_.pager_cache.order);
   gchar *data;
 
   /* Save configuration settings from singleton cache settings. */
@@ -355,7 +355,7 @@ pager_enable (GtkWidget *button, Modulus *applet)
     PanelSetting *settings = panel->settings;
 
     /* Register callbacks for apply and cancel. */
-    settings_save_enable (settings, TRUE);
+    settings_save_enable (settings, true);
     settings_set_agents (settings,
                          (gpointer)pager_settings_apply,
                          (gpointer)pager_settings_cancel,
@@ -375,7 +375,7 @@ pager_workspaces (GtkRange *range, Modulus *applet)
   GlobalPanel *panel = applet->data;
   PanelSetting *settings = panel->settings;
 
-  settings_save_enable (settings, TRUE);
+  settings_save_enable (settings, true);
   settings_set_agents (settings,
                        (gpointer)pager_settings_apply,
                        (gpointer)pager_settings_cancel,
@@ -390,7 +390,7 @@ pager_rows (GtkRange *range, Modulus *applet)
   GlobalPanel *panel = applet->data;
   PanelSetting *settings = panel->settings;
 
-  settings_save_enable (settings, TRUE);
+  settings_save_enable (settings, true);
   settings_set_agents (settings,
                        (gpointer)pager_settings_apply,
                        (gpointer)pager_settings_cancel,
@@ -410,7 +410,7 @@ pager_place_after (GtkWidget *button, Modulus *applet)
     GlobalPanel *panel = applet->data;
     PanelSetting *settings = panel->settings;
 
-    settings_save_enable (settings, TRUE);
+    settings_save_enable (settings, true);
     settings_set_agents (settings,
                          (gpointer)pager_settings_apply,
                          (gpointer)pager_settings_cancel,
@@ -427,7 +427,7 @@ pager_place_before (GtkWidget *button, Modulus *applet)
     GlobalPanel *panel = applet->data;
     PanelSetting *settings = panel->settings;
 
-    settings_save_enable (settings, TRUE);
+    settings_save_enable (settings, true);
     settings_set_agents (settings,
                          (gpointer)pager_settings_apply,
                          (gpointer)pager_settings_cancel,
@@ -640,7 +640,7 @@ tasklist_configuration_read (Modulus *applet, TasklistConfig *config)
 
 
   /* Configuration for the tasklist applet. */
-  config->enable = TRUE;		/* fallback setting */
+  config->enable = true;		/* fallback setting */
 
   while ((item = configuration_find (chain, "applet")) != NULL) {
     attrib = configuration_attrib (item, "name");
@@ -651,7 +651,7 @@ tasklist_configuration_read (Modulus *applet, TasklistConfig *config)
 
       if ((attrib = configuration_attrib (item, "enable")) != NULL)
         if (strcmp(attrib, "off") == 0 || strcmp(attrib, "no") == 0)
-          config->enable = FALSE;
+          config->enable = false;
 
       if ((item = configuration_find (item, "settings")) != NULL) {
         if ((attrib = configuration_attrib (item, "allspaces")) != NULL)
@@ -753,7 +753,7 @@ tasklist_enable (GtkWidget *button, Modulus *applet)
     PanelSetting *settings = panel->settings;
 
     /* Register callbacks for apply and cancel. */
-    settings_save_enable (settings, TRUE);
+    settings_save_enable (settings, true);
     settings_set_agents (settings,
                          (gpointer)tasklist_settings_apply,
                          (gpointer)tasklist_settings_cancel,
@@ -777,7 +777,7 @@ tasklist_allspaces (GtkWidget *button, Modulus *applet)
     PanelSetting *settings = panel->settings;
 
     /* Register callbacks for apply and cancel. */
-    settings_save_enable (settings, TRUE);
+    settings_save_enable (settings, true);
     settings_set_agents (settings,
                          (gpointer)tasklist_settings_apply,
                          (gpointer)tasklist_settings_cancel,
@@ -797,7 +797,7 @@ tasklist_grouping (GtkComboBox *options, Modulus *applet)
     PanelSetting *settings = panel->settings;
 
     /* Register callbacks for apply and cancel. */
-    settings_save_enable (settings, TRUE);
+    settings_save_enable (settings, true);
     settings_set_agents (settings,
                          (gpointer)tasklist_settings_apply,
                          (gpointer)tasklist_settings_cancel,

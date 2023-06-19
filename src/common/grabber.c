@@ -75,7 +75,7 @@ grab_window(Display *display, Window root)
   int status;
 
 
-  status = XGrabPointer(display, root, FALSE,
+  status = XGrabPointer(display, root, false,
                         ButtonPressMask|ButtonReleaseMask, GrabModeSync,
                         GrabModeAsync, root, cursor, CurrentTime);
 
@@ -84,7 +84,7 @@ grab_window(Display *display, Window root)
     return None;
   }
 
-  while (TRUE) {
+  while (true) {
     XAllowEvents(display, SyncPointer, CurrentTime);
     XWindowEvent(display, root, ButtonPressMask|ButtonReleaseMask, &event);
 
@@ -155,7 +155,7 @@ grab_rectangle(Display *display, Window root, XRectangle *xrect)
   ry = y < rooty ? y : rooty
 
   /* loop to let the user drag a rectangle */
-  while (TRUE) {
+  while (true) {
     XNextEvent(display, &event);
     switch(event.type) {
       case ButtonRelease:
@@ -175,7 +175,7 @@ grab_rectangle(Display *display, Window root, XRectangle *xrect)
         xrect->width  = rw;
         xrect->height = rh;
         XUngrabPointer(display, CurrentTime);
-	XSync(display, FALSE);
+	XSync(display, false);
         return True;
       case MotionNotify:
         if (drawn) {
@@ -256,7 +256,7 @@ grab_pointer_sleep (unsigned int seconds)
   Cursor cursor = XCreateFontCursor(display, XC_watch);
   Window root = gdk_x11_get_default_root_xwindow();
 
-  int status = XGrabPointer(display, root, FALSE,
+  int status = XGrabPointer(display, root, false,
                             ButtonPressMask|ButtonReleaseMask, GrabModeSync,
                             GrabModeAsync, root, cursor, CurrentTime);
   sleep (seconds);
@@ -268,7 +268,7 @@ grab_pointer_sleep (unsigned int seconds)
  * capture method implementation
  */
 GdkPixbuf *
-capture(gint mode, gboolean decorations)
+capture(gint mode, bool decorations)
 {
   Display *display = GDK_WINDOW_XDISPLAY( GDK_ROOT_PARENT() );
   Window root      = gdk_x11_get_default_root_xwindow();

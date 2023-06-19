@@ -31,7 +31,7 @@ G_BEGIN_DECLS
 /**
  * Data structures declaration.
  */
-typedef gboolean (*WindowFilter)(Window xid, int desktop);
+typedef bool (*WindowFilter)(Window xid, int desktop);
 
 typedef struct _XWindowState XWindowState;
 typedef struct _XWindowType  XWindowType;
@@ -90,12 +90,12 @@ _x_error_trap_pop (const char *format, ...)
 /**
  * Public methods (xutil.c) exported in the implementation.
  */
-gboolean WindowArraysEqual (Window *a, int a_len, Window *b, int b_len);
-gboolean WindowGListEqual (GList *alist, GList *blist);
+bool WindowArraysEqual (Window *a, int a_len, Window *b, int b_len);
+bool WindowGListEqual (GList *alist, GList *blist);
 
-gboolean WindowDesktopFilter (Window xid, int desktop);
-gboolean WindowTaskbarFilter (Window xid, int desktop);
-gboolean WindowPagerFilter (Window xid, int desktop);
+bool WindowDesktopFilter (Window xid, int desktop);
+bool WindowTaskbarFilter (Window xid, int desktop);
+bool WindowPagerFilter (Window xid, int desktop);
 
 Atom get_atom_property (const char *name);
 Atom* get_atom_list (Window xid, Atom prop, int *count);
@@ -117,7 +117,7 @@ int get_window_desktop (Window xid);
 
 const gchar *get_window_class (Window xid);
 
-gboolean get_window_geometry (Window xid, GdkRectangle *geometry);
+bool get_window_geometry (Window xid, GdkRectangle *geometry);
 
 GdkPixbuf *get_window_icon (Window xid);
 GdkPixbuf *get_window_icon_scaled (Window xid, int width, int height);
@@ -127,8 +127,8 @@ const gchar *get_window_name (Window xid);
 
 Pixmap get_window_pixmap (Window xid);
 
-gboolean get_window_state (Window xid, XWindowState *xws);
-gboolean get_window_type (Window xid, XWindowType *xwt);
+bool get_window_state (Window xid, XWindowState *xws);
+bool get_window_type (Window xid, XWindowType *xwt);
 
 void *get_xprop_atom (Window xid, Atom prop, Atom type, int *count);
 int   get_xprop_cardinal (Window xid, const char *name);

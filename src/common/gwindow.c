@@ -33,12 +33,12 @@ extern unsigned short debug;	/* must be declared in main program */
 /*
  * apply_gould_theme
  */
-gboolean
+bool
 apply_gtk_theme (const char *confile)
 {
   GKeyFile *config = g_key_file_new();
-  gboolean done = g_key_file_load_from_file(config, confile,
-                                            G_KEY_FILE_KEEP_COMMENTS, NULL);
+  bool done = g_key_file_load_from_file(config, confile,
+                                          G_KEY_FILE_KEEP_COMMENTS, NULL);
   if (done) {
     char *theme = g_key_file_get_string(config, "display", "gtk_theme", NULL);
 
@@ -48,10 +48,9 @@ apply_gtk_theme (const char *confile)
       g_free (theme);
     }
     else {
-      done = FALSE;
+      done = false;
     }
   }
-
   return done;
 } /* apply_gould_theme */
 
@@ -215,11 +214,11 @@ pixbuf_scale (GdkPixbuf *pixbuf, gint width, gint height)
 /*
  * redraw_pixbuf - redraw GdkPixbuf of a canvas drawing area
  */
-gboolean
+bool
 redraw_pixbuf (GtkWidget *canvas, GdkPixbuf *image)
 {
+  bool vote = false;
   gint xsize, ysize;
-  gboolean vote = FALSE;
 
   g_return_val_if_fail (GDK_IS_DRAWABLE(canvas->window), FALSE);
 
@@ -229,7 +228,7 @@ redraw_pixbuf (GtkWidget *canvas, GdkPixbuf *image)
 
   if (image) {
     GdkPixbuf *pixbuf;
-    gboolean   scaled;	/* we may create a new scaled pixbuf */
+    bool scaled;	/* we may create a new scaled pixbuf */
 
     gint width  = gdk_pixbuf_get_width (image);
     gint height = gdk_pixbuf_get_height (image);
@@ -244,11 +243,11 @@ redraw_pixbuf (GtkWidget *canvas, GdkPixbuf *image)
       width  = (float)width / factor;
       height = (float)height / factor;
       pixbuf = pixbuf_scale (image, width, height);
-      scaled = TRUE;
+      scaled = true;
     }
     else {
       pixbuf = image;
-      scaled = FALSE;
+      scaled = false;
     }
 
     /* Adjust image (x,y) start coordinates. */
@@ -263,7 +262,7 @@ redraw_pixbuf (GtkWidget *canvas, GdkPixbuf *image)
     if (scaled)
       g_object_unref (pixbuf);
 
-    vote = TRUE;
+    vote = true;
   }
   return vote;
 } /* </redraw_pixbuf> */

@@ -58,7 +58,7 @@ static DesktopPanel desktop_;	/* private global structure singleton */
 /*
 * (private) configsave
 */
-static gboolean
+static bool
 configsave(DesktopPanel *desktop)
 {
   FILE *stream;
@@ -74,7 +74,7 @@ configsave(DesktopPanel *desktop)
     /* Allocate memory space for desktop->resource */
     if ((buffer = calloc(count, sizeof (char *))) == NULL) {
       fclose(stream);
-      return FALSE;
+      return false;
     }
     fseek(stream, 0L, SEEK_SET);
 
@@ -87,13 +87,13 @@ configsave(DesktopPanel *desktop)
 
   /* [Re]open desktop->resource for writing. */
   if ((stream = fopen(desktop->resource, "w"))) {
-    gboolean insert = TRUE;
+    bool insert = true;
     gchar *pathname = filechooser_get_selected_name (desktop->chooser);
 
     for (idx=0; idx < count; idx++) {
       if (strncmp(buffer[idx], "BACKGROUND=", 11) == 0) {
         fprintf(stream, "BACKGROUND=\"%s\"\n", pathname);
-        insert = FALSE;
+        insert = false;
       }
       else {
         fputs(buffer[idx], stream);
@@ -112,8 +112,7 @@ configsave(DesktopPanel *desktop)
     for (idx=0; idx < count; idx++) free(buffer[idx]);
     free(buffer);
   }
-
-  return TRUE;
+  return true;
 } /* </configsave> */
 
 /*
@@ -131,7 +130,7 @@ setbg (const gchar *pathname)
 * setbg_settings_cancel
 * setbg_settings_close
 */
-gboolean
+bool
 setbg_settings_apply (Modulus *applet)
 {
   DesktopPanel *desktop = &desktop_;
@@ -143,10 +142,10 @@ setbg_settings_apply (Modulus *applet)
     /* configsave (desktop); */
     strcpy(desktop->pathname, pathname);
   }
-  return TRUE;
+  return true;
 } /* </setbg_settings_apply> */
 
-gboolean
+bool
 setbg_settings_cancel (Modulus *applet)
 {
   DesktopPanel *desktop = &desktop_;
@@ -170,10 +169,10 @@ setbg_settings_cancel (Modulus *applet)
 
   setbg_refresh (desktop->canvas, NULL, NULL);
 
-  return TRUE;
+  return true;
 } /* </setbg_settings_cancel> */
 
-gboolean
+bool
 setbg_settings_close (Modulus *applet)
 {
   GlobalPanel *panel = (GlobalPanel *)applet->data;
@@ -181,7 +180,7 @@ setbg_settings_close (Modulus *applet)
   settings_set_agents (panel->settings, NULL, NULL, NULL);
   configsave (&desktop_);
 
-  return TRUE;
+  return true;
 } /* </setbg_settings_close> */
 
 /*
@@ -224,7 +223,7 @@ setbg_refresh (GtkWidget *canvas, GdkEventExpose *ev, gpointer data)
 /*
 * (private) setbg_selection callback function
 */
-static gboolean
+static bool
 setbg_selection (FileChooserDatum *datum)
 {
   const gchar *file = datum->file;
@@ -233,7 +232,7 @@ setbg_selection (FileChooserDatum *datum)
   if (lstat(file, &info) == 0 && S_ISREG(info.st_mode))
     setbg_refresh(desktop_.canvas, NULL, NULL);
 
-  return TRUE;
+  return true;
 } /* </setbg_selection> */
 
 /*
@@ -241,7 +240,7 @@ setbg_selection (FileChooserDatum *datum)
 * (private) nextfile
 * (private) origfile
 */
-static gboolean
+static bool
 prevfile(GtkWidget *button, FileChooser *chooser)
 {
   int index = filechooser_get_cursor (chooser);
@@ -250,10 +249,10 @@ prevfile(GtkWidget *button, FileChooser *chooser)
     filechooser_set_cursor (chooser, --index);
     setbg_refresh(desktop_.canvas, NULL, NULL);
   }
-  return TRUE;
+  return true;
 } /* </prevfile> */
 
-static gboolean
+static bool
 nextfile(GtkWidget *button, FileChooser *chooser)
 {
   int index = filechooser_get_cursor (chooser);
@@ -263,10 +262,10 @@ nextfile(GtkWidget *button, FileChooser *chooser)
     filechooser_set_cursor (chooser, ++index);
     setbg_refresh(desktop_.canvas, NULL, NULL);
   }
-  return TRUE;
+  return true;
 } /* </nextfile> */
 
-static gboolean
+static bool
 origfile(GtkWidget *button, Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
@@ -274,7 +273,7 @@ origfile(GtkWidget *button, Modulus *applet)
   setbg_settings_cancel (applet);
   settings_save_enable (panel->settings, FALSE);
 
-  return TRUE;
+  return true;
 } /* </origfile> */
 
 /*

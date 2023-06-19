@@ -217,7 +217,7 @@ settings_key_press (GtkWidget *window, GdkEventKey *event, GlobalPanel *panel)
 * settings_set_agents
 */
 void
-settings_save_enable (PanelSetting *settings, gboolean state)
+settings_save_enable (PanelSetting *settings, bool state)
 {
   gtk_widget_set_sensitive (settings->apply, state);
   gtk_widget_set_sensitive (settings->cancel, state);
@@ -1371,7 +1371,7 @@ settings_menu_insert (GtkWidget *button, GdkEventButton *ev, GlobalPanel *panel)
 "</item>\n";
 
     gchar *spec = g_strdup_printf (stub, "New Item", "item.png", "gpanel");
-    ConfigurationNode *node = configuration_read (spec, NULL, TRUE);
+    ConfigurationNode *node = configuration_read (spec, NULL, true);
     ConfigurationNode *site = item->node;
 
     /* Reflect changes in menueditor_.cache */
@@ -1697,7 +1697,7 @@ settings_menu_itemtype (GtkComboBox *combo, GlobalPanel *panel)
       nest = site->depth;
 
     configuration_remove (node);
-    node = configuration_read (spec, NULL, TRUE);
+    node = configuration_read (spec, NULL, true);
     configuration_insert (node, site, nest);
 
     /* Reflect changes in the interface. */

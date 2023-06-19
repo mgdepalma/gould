@@ -93,7 +93,7 @@ agent(GtkIconView *iconview, FileChooser *self)
   const gchar *curdir;
   gchar *name, pathname[FILENAME_MAX];
   struct stat info;
-  gboolean action;
+  bool action;
 
   /* Compose pathname with self->curdir and the selected icon. */
   curdir = gtk_label_get_text (GTK_LABEL(self->path));
@@ -410,8 +410,8 @@ filechooser_new (const gchar *dirname)
 /*
  * filechooser_update
  */
-gboolean
-filechooser_update (FileChooser *self, const gchar *path, gboolean clearname)
+bool
+filechooser_update (FileChooser *self, const gchar *path, bool clearname)
 {
   gchar *name;
   gchar pathname[FILENAME_MAX];
@@ -425,12 +425,12 @@ filechooser_update (FileChooser *self, const gchar *path, gboolean clearname)
 
 
   if (lstat(path, &info) != 0)	/* make sure we can read the directory */
-    return FALSE;
+    return false;
 
   if ( S_ISLNK(info.st_mode) ) {
     char symlink[FILENAME_MAX];
     int mark = readlink(path, symlink, FILENAME_MAX);
-    if (mark <= 0) return FALSE;
+    if (mark <= 0) return false;
 
     /* readlink does not append terminating (char)0 */
     symlink[mark] = (char)0;
@@ -495,7 +495,7 @@ filechooser_update (FileChooser *self, const gchar *path, gboolean clearname)
   if (GDK_IS_WINDOW(window))
     gdk_window_set_cursor (window, (self->iconbox)->cursor);
 
-  return TRUE;
+  return true;
 } /* </filechooser_update> */
 
 /*

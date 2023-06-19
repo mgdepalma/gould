@@ -20,6 +20,7 @@
 #ifndef GREEN_H
 #define GREEN_H
 
+#include <stdbool.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 

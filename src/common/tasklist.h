@@ -68,8 +68,8 @@ GType tasklist_get_type (void) G_GNUC_CONST;
 
 void tasklist_set_button_relief (Tasklist *tasklist, GtkReliefStyle relief);
 void tasklist_set_grouping (Tasklist *tasklist, TasklistGroupingType grouping);
-void tasklist_set_include_all_workspaces (Tasklist *tasklist, gboolean all);
 void tasklist_set_orientation (Tasklist *tasklist, GtkOrientation orien);
+void tasklist_set_include_all_workspaces (Tasklist *tasklist, bool all);
 
 Tasklist *tasklist_new (Green *screen);
 

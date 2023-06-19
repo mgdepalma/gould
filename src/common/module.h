@@ -22,6 +22,7 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -73,8 +74,8 @@ struct _modulus
   void (*module_open) (Modulus *self);  /* [optional] */
   void (*module_close)(Modulus *self);  /* [optional] */
 
-  gboolean enable;		/* [internal] governs how to enable */
   gpointer data;		/* usually assigned to program global */
+  bool enable;			/* [internal] governs how to enable */
 };
 
 /* Methods exported by implementation */

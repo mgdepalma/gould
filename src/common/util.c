@@ -140,15 +140,15 @@ get_file_magic (const char *pathname)
 /*
 * glist_find
 */
-gboolean
+bool
 glist_find (GList *list, const char *item)
 {
   GList *iter;
-  gboolean result = FALSE;
+  bool result = false;
 
   for (iter = list; iter; iter = iter->next)
     if (strcmp((char*)iter->data, item) == 0) {
-      result = TRUE;
+      result = true;
       break;
     }
 
@@ -158,10 +158,10 @@ glist_find (GList *list, const char *item)
 /*
 * sudoallowed
 */
-gboolean
+bool
 sudoallowed (const char *command)
 {
-  gboolean allowed = FALSE;
+  bool allowed = false;
   char *line = g_strdup_printf("sudo -A -l %s 2>&1", command);
   FILE *stream = popen(line, "r");
 
@@ -170,19 +170,19 @@ sudoallowed (const char *command)
 
     if (fgets(text, FILENAME_MAX, stream) != NULL) {
       if (strncmp(text, command, strlen(command)) == 0)
-        allowed = TRUE;
+        allowed = true;
     }
 
     /* See if 'sudo -l <command>' come back with (or without) a path. */
-    /* allowed = (count > 1) ? TRUE : FALSE; */
+    /* allowed = (count > 1) ? true : false; */
 
     vdebug (1, "[shutdown]sudo %s is %sallowed.\n",
             command, (allowed) ? "" : "not ");
 
     pclose(stream);
   }
-
   g_free (line);
+
   return allowed;
 } /* </sudoallowed> */
 
@@ -479,12 +479,12 @@ get_usb_storage (void)
 * get_username
 */
 const char *
-get_username (gboolean full)
+get_username (bool full)
 {
   static char name[MAX_LABEL];
   struct passwd *user = getpwuid(getuid());
 
-  if (user == NULL || full == FALSE)
+  if (user == NULL || full == false)
     strcpy(name, getenv("LOGNAME"));
   else
     strcpy(name, user->pw_gecos);

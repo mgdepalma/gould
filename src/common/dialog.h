@@ -22,6 +22,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -74,7 +75,7 @@ struct _print_dialog {
   GtkWidget *outfile;		/* print to file switch  */
 
   FileType imagetype;		/* image file type       */
-  gboolean landscape;		/* landscape orientation */
+  bool landscape;		/* landscape orientation */
   int device;			/* print device          */
   int paper;			/* PaperSize index       */
 };

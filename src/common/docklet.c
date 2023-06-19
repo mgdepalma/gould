@@ -36,12 +36,12 @@ static GtkObjectClass *parent = NULL;	/* see, docklet_class_init() */
  * docklet_button_event - handler for button-press-event
  * docklet_config_event - handler for configure-event
  */
-static gboolean
+static bool
 docklet_button_event (GtkWidget *widget,
                       GdkEventButton *event,
                       Docklet *instance)
 {
-  gboolean fire = TRUE;		/* invoke (or not) instance->agent */
+  bool fire = true;		/* invoke (or not) instance->agent */
 
   g_return_val_if_fail (GTK_IS_WIDGET (widget), FALSE);
 
@@ -53,7 +53,7 @@ docklet_button_event (GtkWidget *widget,
                                     event->x_root,
                                     event->y_root,
                                     event->time);
-        instance->moved = TRUE;
+        instance->moved = true;
         fire = FALSE;
       }
     }
@@ -64,11 +64,10 @@ docklet_button_event (GtkWidget *widget,
       (*instance->agent) (instance->datum);
     }
   }
-
-  return FALSE;
+  return false;
 } /* </docklet_button_event> */
 
-static gboolean
+static bool
 docklet_config_event (GtkWidget *widget, GdkEvent *event, Docklet *instance)
 {
   g_return_val_if_fail (GTK_IS_WIDGET (widget), FALSE);
@@ -77,19 +76,18 @@ docklet_config_event (GtkWidget *widget, GdkEvent *event, Docklet *instance)
   if (instance->agent && instance->moved) {
     instance->datum->event = event;
     (*instance->agent) (instance->datum);
-    instance->moved = FALSE;
+    instance->moved = false;
   }
-
-  return FALSE;
+  return false;
 } /* </docklet_config_event> */
 
 #if 0 /* experimental code */
-static gboolean
+static bool
 docklet_expose_event (GtkWidget *widget,
                       GdkEventExpose *event,
                       Docklet *instance)
 {
-  return TRUE;
+  return true;
 }
 #endif
 
@@ -139,11 +137,11 @@ docklet_get_type (void)
 /*
  * docklet_refresh
  */
-gboolean
+bool
 docklet_refresh (GtkWidget *canvas, GdkEventExpose *event, Docklet *instance)
 {
   redraw_pixbuf(canvas, instance->render);
-  return TRUE;
+  return true;
 } /* </docklet_refresh> */
 
 /*

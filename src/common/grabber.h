@@ -21,10 +21,12 @@
 #define GRABBER_H
 
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
+
+#include <X11/cursorfont.h>
 #include <gtk/gtk.h>
 #include <gdk/gdkx.h>
-#include <X11/cursorfont.h>
 
 #define GRAB_SCREEN  0
 #define GRAB_WINDOW  1
@@ -41,7 +43,7 @@ Window  grab_window(Display *display, Window root);
 int     grab_rectangle(Display *display, Window root, XRectangle *xrect);
 
 GdkPixbuf *grab_pixbuf(Window xid, XRectangle *xrect);
-GdkPixbuf *capture(gint mode, gboolean decorations);
+GdkPixbuf *capture(gint mode, bool decorations);
 
 void grab_pointer_sleep (unsigned int seconds);
 

@@ -18,8 +18,8 @@
  */
 
 #include "gould.h"
-#include "xutil.h"
 #include "systray.h"
+#include "xutil.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -67,7 +67,7 @@ static gpointer parent_class_;			/* parent class instance */
 static guint signals_[TRAY_MAX_SIGNAL];		/* systemtray signals */
 
 /* Method implementation prototypes forward declarations. */
-static gboolean systray_manage (Systray *manager, GdkScreen *screen);
+static bool systray_manage (Systray *manager, GdkScreen *screen);
 
 static void systray_unmanage (Systray *manager);
 
@@ -346,7 +346,7 @@ pending_message_free (PendingMessage *message)
 /*
 * systray_plug_removed
 */
-static gboolean
+static bool
 systray_plug_removed (GtkSocket *socket, Systray *manager)
 {
   Window *window;
@@ -358,7 +358,7 @@ systray_plug_removed (GtkSocket *socket, Systray *manager)
   g_signal_emit (manager, signals_[TRAY_ICON_REMOVED], 0, socket);
   vdebug (5, "system tray signal => ICON_REMOVED\n");
 
-  return FALSE;		    /* return FALSE which destroys the socket */
+  return false;		    /* return false which destroys the socket */
 } /* </systray_plug_removed> */
 
 /*
@@ -595,15 +595,16 @@ systray_set_orientation_property (Systray *manager)
 /*
 * systray_manage - manage system tray
 */
-static gboolean
+static bool
 systray_manage (Systray *manager, GdkScreen *screen)
 {
-  Display    *display;
-  GtkWidget  *invisible;
-  Screen     *xscreen;
-  Window      xwindow;
-  char       *selection_atom_name;
-  guint32     timestamp;
+  char *selection_atom_name;
+  guint32 timestamp;
+
+  Display   *display;
+  GtkWidget *invisible;
+  Screen    *xscreen;
+  Window    xwindow;
 
   g_return_val_if_fail (IS_SYSTRAY (manager), FALSE);
   g_return_val_if_fail (manager->screen == NULL, FALSE);
@@ -657,12 +658,12 @@ systray_manage (Systray *manager, GdkScreen *screen)
     gdk_window_add_filter (invisible->window, systray_window_filter, manager);
 
     _x_error_trap_pop ("systray_manage\n", xwindow);
-    return TRUE;
+    return true;
   }
   else {
     gtk_widget_destroy (invisible);
     _x_error_trap_pop ("systray_manage\n", xwindow);
-    return FALSE;
+    return false;
   }
 } /* </systray_manage> */
 
@@ -734,7 +735,7 @@ systray_new (void)
 /*
 * systray_check_running_screen - see if another client has systemtray.
 */
-gboolean
+bool
 systray_check_running_screen (GdkScreen *screen)
 {
   GdkDisplay *display = gdk_screen_get_display (screen);
@@ -749,7 +750,7 @@ systray_check_running_screen (GdkScreen *screen)
   result = XGetSelectionOwner (GDK_DISPLAY_XDISPLAY (display), xatom);
   error = _x_error_trap_pop ("systray_check_running_screen");
 
-  return (result != None) ? TRUE : FALSE;
+  return (result != None) ? true : false;
 } /* </systray_check_running_screen> */
 
 /*

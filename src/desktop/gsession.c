@@ -404,19 +404,11 @@ interface(const char *program)
   if (open_stream_socket(_GSESSION) != 0)
     _exit (EX_PROTOCOL);
 
-  /* spawn {WINDOWMANAGER}, {SCREENSAVER}, {DESKTOP}, and {LAUNCHER} */
+  /* {DESKTOP}, {WINDOWMANAGER}, {SCREENSAVER}, and {LAUNCHER} */
   _master[0].program = (desktop) ? desktop : "gdesktop";
   _master[1].program = (windowmanager) ? windowmanager : "twm";
   _master[2].program = screensaver;
   _master[3].program = launcher;
-
-#ifdef NEVER
-  for (int idx = 0; idx < SessionMonitorCount; idx++) {
-    if (_master[idx].program) {
-      _master[idx].process = session_spawn (_master[idx].program);
-    }
-  }
-#endif
 
   /* monitor the gdesktop process */
   session_monitor( _GSESSION_MONITOR );

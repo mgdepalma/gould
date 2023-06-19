@@ -23,10 +23,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
-#include <glib-object.h>
-
 #include "green.h"
-#include "xutil.h"
 
 G_BEGIN_DECLS
 
@@ -80,8 +77,7 @@ void green_window_activate (GreenWindow *window, Time stamp);
 void green_window_change_workspace (GreenWindow *window, int desktop);
 
 void green_window_change_state (GreenWindow *window,
-                                gboolean enable,
-                                const char *prop);
+                                bool enable, const char *prop);
 
 void green_window_close (GreenWindow *window);
 void green_window_minimize (GreenWindow *window);

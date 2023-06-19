@@ -20,6 +20,7 @@
 #ifndef DOCKLET_H
 #define DOCKLET_H
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -50,8 +51,8 @@ struct _Docklet
   gulong buttonHandler;	/* tag identifing the button-press-event callback */
   gulong windowHandler;	/* tag identifing the configure-event callback */
 
-  gboolean editable;	/* governs if editable (false => launch only) */
-  gboolean moved;	/* used to flag position change */
+  bool editable;	/* governs if editable (false => launch only) */
+  bool moved;		/* used to flag position change */
 
   GtkOrientation place;	/* GTK_ORIENTATION of text */
   GtkVisibility visa;	/* governs using a frame layout */

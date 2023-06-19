@@ -30,6 +30,7 @@
 #include "util.h"
 
 #include <signal.h>
+#include <stdbool.h>
 #include <sysexits.h>
 
 #define SCHEMA_VERSION_CODE   SCHEMA_VERSION(1,2,0)
@@ -100,7 +101,7 @@ struct _GlobalPanel
   GtkOrientation orientation;	/* GTK_ORIENTATION_{HORIZONTAL, VERTICAL} */
   GtkPositionType place;	/* GTK_POS_{TOP, BOTTOM, LEFT, RIGHT} */
 
-  gboolean visible;		/* controls if the panel is visible */
+  bool visible;			/* controls if the panel is visible */
 
   guint thickness;		/* thickness of the panel bar */
   guint margin;			/* margin at each end */
@@ -137,7 +138,7 @@ struct _PanelDesktop
   GtkWidget *hint;		/* action hints */
 
   const gchar *icon;		/* default icon image pathname */
-  gboolean active;		/* TRUE if desktop panel is active*/
+  bool active;			/* TRUE if desktop panel is active*/
   gint iconsize;		/* fixed icon width and height */
 
   gint xpos, ypos;		/* coordinates for new shortcut */
@@ -187,7 +188,7 @@ struct _PanelTaskbar
 void taskbar_config (GlobalPanel *panel);
 void taskbar_initialize (GlobalPanel *panel, GtkWidget *layout);
 
-void desktop_config (GlobalPanel *panel, gboolean once);
+void desktop_config (GlobalPanel *panel, bool once);
 void desktop_shortcut (Docklet *docklet, ConfigurationNode *node);
 void desktop_settings (GlobalPanel *panel, DesktopAction act);
 
@@ -225,7 +226,7 @@ void tasklist_init (Modulus *applet, GlobalPanel *panel);
 void tasklist_open (Modulus *applet);
 void tasklist_close (Modulus *applet);
 
-gboolean saver_init (Modulus *applet, GlobalPanel *panel);
+bool saver_init (Modulus *applet, GlobalPanel *panel);
 void saver_open (Modulus *applet);
 void saver_close (Modulus *applet);
 const char *saver_getmode (void);
@@ -241,7 +242,7 @@ GtkWidget *settings_menu_new (Modulus *applet);
 void settings_new (GlobalPanel *panel);
 
 void settings_activate (GlobalPanel *panel);
-void settings_save_enable (PanelSetting *settings, gboolean state);
+void settings_save_enable (PanelSetting *settings, bool state);
 void settings_set_agents (PanelSetting *settings,
                           GtkFunction apply_cb,
                           GtkFunction cancel_cb,
@@ -251,7 +252,7 @@ GtkWidget *setbg_settings_new (Modulus *applet, GlobalPanel *panel);
 GtkWidget *shutdown_dialog_new (GlobalPanel *panel);
 
 void
-startmenu (GtkMenu *menu, gint *x, gint *y, gboolean *pushin, gpointer data);
+startmenu (GtkMenu *menu, gint *x, gint *y, bool *pushin, gpointer data);
 
 pid_t session_request (int stream, const char *command);
 pid_t spawn_selected (ConfigurationNode *node, GlobalPanel *panel);

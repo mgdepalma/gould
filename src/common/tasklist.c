@@ -82,7 +82,7 @@ typedef struct
   GdkPixbuf *screenshot;
   GdkPixbuf *screenshot_faded;
 
-  gboolean button_toggle;	/* TRUE => programmatic toggle */
+  bool button_toggle;		/* true => programmatic toggle */
 
   gdouble glow_start_time;
   guint   glow_button;
@@ -92,7 +92,7 @@ struct _TasklistPrivate {
   Green *green;			/* GREEN instance acted upon */
 
   TasklistGroupingType grouping;
-  gboolean include_all_workspaces;
+  bool include_all_workspaces;
   GtkOrientation orientation;
   GtkReliefStyle relief;
 
@@ -164,7 +164,7 @@ tasklist_item_pixbuf_glow (TasklistItem *item, gdouble factor)
   return destination;
 } /* </tasklist_item_pixbuf_glow> */
 
-static gboolean
+static bool
 tasklist_item_button_glow (TasklistItem *item)
 {
   GTimeVal tv;
@@ -173,7 +173,7 @@ tasklist_item_button_glow (TasklistItem *item)
   gfloat fade_opacity, loop_time;
 
   if (item->screenshot == NULL)
-    return TRUE;
+    return true;
 
   g_get_current_time (&tv);
   now = (tv.tv_sec * (1.0 * G_USEC_PER_SEC) + tv.tv_usec) / G_USEC_PER_SEC;
@@ -190,7 +190,7 @@ tasklist_item_button_glow (TasklistItem *item)
 
   glowing_screenshot = tasklist_item_pixbuf_glow (item, glow_factor);
   if (glowing_screenshot == NULL)
-    return TRUE;
+    return true;
 
   gdk_draw_pixbuf (item->button->window,
                    item->button->style->fg_gc[GTK_WIDGET_STATE (item->button)],
@@ -203,7 +203,7 @@ tasklist_item_button_glow (TasklistItem *item)
                    GDK_RGB_DITHER_NORMAL, 0, 0);
   gdk_pixbuf_unref (glowing_screenshot);
 
-  return TRUE;
+  return true;
 } /* </tasklist_item_button_glow > */
 
 static void
@@ -364,7 +364,7 @@ tasklist_item_cleanup_screenshots (TasklistItem *item)
 /*
  * tasklist_item_expose
  */
-static gboolean
+static bool
 tasklist_item_expose (GtkWidget *widget,
                       GdkEventExpose *event,
                       TasklistItem *item)
@@ -415,8 +415,7 @@ tasklist_item_expose (GtkWidget *widget,
     case TASK_STARTUP_SEQUENCE:
       break;
   }
-
-  return FALSE;
+  return false;
 } /* </tasklist_item_expose> */
 
 /*
@@ -445,7 +444,7 @@ tasklist_item_activate_window (TasklistItem *item, guint32 stamp)
  * tasklist_item_is_active
  */
 const gchar *
-tasklist_item_get_text (TasklistItem *item, Green *green, gboolean winame)
+tasklist_item_get_text (TasklistItem *item, Green *green, bool winame)
 {
   const gchar *name, *text = NULL;
 
@@ -469,10 +468,10 @@ tasklist_item_get_text (TasklistItem *item, Green *green, gboolean winame)
   return text;
 } /* </tasklist_item_get_text> */
 
-gboolean
+bool
 tasklist_item_is_active (TasklistItem *item, Window active)
 {
-  gboolean value = FALSE;
+  bool value = false;
 
   if (item->type == TASK_WINDOW)
     value = green_window_get_xid (item->window) == active;
@@ -486,7 +485,6 @@ tasklist_item_is_active (TasklistItem *item, Window active)
         break;
       }
   }
-
   return value;
 } /* </tasklist_item_is_active */
 
@@ -528,11 +526,11 @@ tasklist_item_activate_menu (GtkMenuItem *menuitem, TasklistItem *item)
 } /* </tasklist_item_activate_menu> */
 
 static void
-tasklist_item_position_menu (GtkMenu   *menu,
-                             gint      *xpos,
-                             gint      *ypos,
-                             gboolean  *pushin,
-                             gpointer   data)
+tasklist_item_position_menu (GtkMenu  *menu,
+                             gint     *xpos,
+                             gint     *ypos,
+                             bool     *pushin,
+                             gpointer data)
 {
   GtkWidget *widget = GTK_WIDGET (data);
   GtkRequisition requisition;
@@ -558,7 +556,7 @@ tasklist_item_position_menu (GtkMenu   *menu,
 
   *xpos = menu_xpos;
   *ypos = menu_ypos;
-  *pushin = TRUE;
+  *pushin = true;
 } /* </tasklist_item_position_menu> */
 
 /*
@@ -840,7 +838,7 @@ tasklist_item_members_menu (TasklistItem *item)
  * tasklist_item_button_press
  * tasklist_item_button_toggled
  */
-static gboolean
+static bool
 tasklist_item_button_press (GtkWidget *widget,
                             GdkEventButton *event,
                             TasklistItem *item)
@@ -861,23 +859,22 @@ tasklist_item_button_press (GtkWidget *widget,
     case TASK_STARTUP_SEQUENCE:
       break;
   }
-
-  return FALSE;
+  return false;
 } /* </tasklist_item_button_press> */
 
-static gboolean
+static bool
 tasklist_item_button_toggled (GtkToggleButton *button, TasklistItem *item)
 {
   g_return_val_if_fail (GTK_IS_TOGGLE_BUTTON (button), FALSE);
 
   if (item->button_toggle) /* gtk_toggle_button_set_active() called by code */
-    return TRUE;
+    return true;
 
   item->button_toggle = TRUE;
   gtk_toggle_button_set_active (button, !gtk_toggle_button_get_active (button));
   item->button_toggle = FALSE;
 
-  return FALSE;
+  return false;
 } /* </tasklist_item_button_toggled> */
 
 /*
@@ -1009,11 +1006,11 @@ tasklist_item_update (TasklistItem *item, const char *event)
   if ((text = (gchar *)tasklist_item_get_text (item, priv->green, FALSE))) {
     PangoFontDescription *fontdesc = pango_font_description_new ();
     XWindowState *state = green_window_get_state (item->window);
-    gboolean attention = FALSE;
+    bool attention = false;
 
 #ifdef _NET_WM_STATE_DEMANDS_ATTENTION_PROPERLY_HANDLED
     if (state && state->demands_attention)
-      attention = TRUE;
+      attention = true;
     else if (item->type == TASK_CLASS_GROUP) {
       GList *iter, *list = green_get_group_list (priv->green, item->window);
 
@@ -1022,7 +1019,7 @@ tasklist_item_update (TasklistItem *item, const char *event)
           state = green_window_get_state (iter->data);
 
           if (state && state->demands_attention) {
-            attention = TRUE;
+            attention = true;
             break;
           }
         }
@@ -1209,9 +1206,9 @@ tasklist_widget_expose (GtkWidget *widget, GdkEventExpose *event)
  */
 static void
 tasklist_container_forall (GtkContainer *container,
-                           gboolean      internals,
-                           GtkCallback   callback,
-                           gpointer      data)
+                           bool         internals,
+                           GtkCallback  callback,
+                           gpointer     data)
 {
   Tasklist *tasklist = GREEN_TASKLIST (container);
   TasklistPrivate *priv = tasklist->priv;
@@ -1266,12 +1263,12 @@ tasklist_container_remove (GtkContainer *container, GtkWidget *widget)
  * tasklist_idle_agent
  * tasklist_idle_cancel
  */
-static gboolean
+static bool
 tasklist_idle_act (Tasklist *tasklist)
 {
   tasklist->priv->agent = 0;      /* reentrancy guard */
   tasklist_update_lists (tasklist);
-  return FALSE;
+  return false;
 } /* </tasklist_idle_act> */
 
 static void
@@ -1373,7 +1370,7 @@ tasklist_construct_visible_list (Tasklist *tasklist, int desktop)
 
       if (list && g_list_length (list) > 1) {
         GList *member, *part;
-        gboolean append = TRUE;
+        bool append = true;
 
         for (member = list; member != NULL; member = member->next) {
           item = g_hash_table_lookup (priv->winhash, member->data);
@@ -1382,7 +1379,7 @@ tasklist_construct_visible_list (Tasklist *tasklist, int desktop)
           if (append) /* check presence of item in priv->visible list */
             for (part = priv->visible; part != NULL; part = part->next)
               if (((TasklistItem *)part->data)->window == item->window) {
-                append = FALSE;
+                append = false;
                 break;
               }
         }
@@ -1576,14 +1573,14 @@ static void
 tasklist_window_workspace_changed (GreenWindow *window, Tasklist *tasklist)
 {
   int desktop = green_get_active_workspace (tasklist->priv->green);
-  gboolean update = (desktop == green_window_get_desktop (window));
+  bool update = (desktop == green_window_get_desktop (window));
 
-  if (update == FALSE) {
+  if (update == false) {
     GList *iter;
 
     for (iter = tasklist->priv->visible; iter != NULL; iter = iter->next)
       if (((TasklistItem *)iter->data)->window == window) {
-        update = TRUE;
+        update = true;
       }
   }
 
@@ -1847,7 +1844,7 @@ tasklist_set_grouping (Tasklist *tasklist, TasklistGroupingType grouping)
 } /* </tasklist_set_grouping> */
 
 void
-tasklist_set_include_all_workspaces (Tasklist *tasklist, gboolean include_all)
+tasklist_set_include_all_workspaces (Tasklist *tasklist, bool include_all)
 {
   g_return_if_fail (IS_GREEN_TASKLIST (tasklist));
 

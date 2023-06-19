@@ -21,6 +21,7 @@
 #define FILECHOOSER_H
 
 #include <dirent.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -61,9 +62,9 @@ struct _FileChooser
   GtkWidget *actuator;		/* icon button on the left */
   GtkWidget *name;		/* current file name */
 
-  gboolean clearname;		/* clear name on directory change */
-  gboolean showhidden;		/* show hidden files (TRUE | FALSE) */
-  gboolean showthumbs;		/* show thumbnails (TRUE | FALSE) */
+  bool clearname;		/* clear name on directory change */
+  bool showhidden;		/* show hidden files (TRUE | FALSE) */
+  bool showthumbs;		/* show thumbnails (TRUE | FALSE) */
 
   unsigned short thumbsize;	/* 32 => 32x32, 48 => 48x48, ... */
 
@@ -111,9 +112,9 @@ void         filechooser_set_cursor (FileChooser *obj, int index);
 
 void         filechooser_set_name (FileChooser *self, const gchar *name);
 
-gboolean     filechooser_update (FileChooser *obj,
+bool         filechooser_update (FileChooser *obj,
                                  const gchar *path,
-                                 gboolean clearname);
+                                 bool clearname);
 
 void         filechooser_set_callback (FileChooser *obj,
                                        GtkFunction callback,

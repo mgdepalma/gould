@@ -73,7 +73,7 @@ struct _GreenWindowPrivate
 
   Green        *green;          /* Green object instance */
 
-  gboolean update[LAST_PROPERTY];
+  bool	update[LAST_PROPERTY];
   guint agent;			/* update handler */
 };
 
@@ -82,11 +82,11 @@ static guint signals_[LAST_SIGNAL] = { 0 };
 
 
 /*
- * green_window_update_icon
- * green_window_update_name
- * green_window_update_state
- * green_window_update_workspace
- */
+* green_window_update_icon
+* green_window_update_name
+* green_window_update_state
+* green_window_update_workspace
+*/
 static void
 green_window_update_icon (GreenWindow *window)
 {
@@ -163,8 +163,8 @@ green_window_update_workspace (GreenWindow *window)
 } /* </green_window_update_workspace> */
 
 /*
- * green_window_update
- */
+* green_window_update
+*/
 static void
 green_window_update (GreenWindow *window)
 {
@@ -175,10 +175,10 @@ green_window_update (GreenWindow *window)
 } /* </green_window_update> */
 
 /*
- * green_window_idle_act
- * green_window_idle_agent
- * green_window_idle_cancel
- */
+* green_window_idle_act
+* green_window_idle_agent
+* green_window_idle_cancel
+*/
 static gboolean
 green_window_idle_act (GreenWindow *window)
 {
@@ -205,9 +205,9 @@ green_window_idle_cancel (GreenWindow *window)
   }
 } /* </green_window_idle_cancel> */
 
-/**
- * GreenWindow and GreenWindowClass construction
- */
+/*
+* GreenWindow and GreenWindowClass construction
+*/
 static void
 green_window_init (GreenWindow *window)
 {
@@ -322,24 +322,24 @@ void
 green_window_property_notify (GreenWindow *window, XEvent *xevent)
 {
   Atom atom = xevent->xproperty.atom;
-  gboolean *update_ = window->priv->update;
+  bool *update_ = window->priv->update;
 
   if (atom == get_atom_property ("_NET_WM_ICON")) {
-    update_[NET_WM_ICON] = TRUE;
+    update_[NET_WM_ICON] = true;
     green_window_idle_agent (window);
   }
   else if (atom == XA_WM_NAME ||
            atom == get_atom_property ("_NET_WM_NAME") ||
            atom == get_atom_property ("_NET_WM_VISIBLE_NAME")) {
-    update_[NET_WM_NAME] = TRUE;
+    update_[NET_WM_NAME] = true;
     green_window_idle_agent (window);
   }
   else if (atom == get_atom_property ("_NET_WM_STATE")) {
-    update_[NET_WM_STATE] = TRUE;
+    update_[NET_WM_STATE] = true;
     green_window_idle_agent (window);
   }
   else if (atom == get_atom_property ("_NET_WM_DESKTOP")) {
-    update_[NET_WM_DESKTOP] = TRUE;
+    update_[NET_WM_DESKTOP] = true;
     green_window_idle_agent (window);
   }
 } /* </green_window_property_notify> */
@@ -428,9 +428,7 @@ green_window_change_workspace (GreenWindow *window, int desktop)
 } /* </green_window_change_workspace> */
 
 void
-green_window_change_state (GreenWindow *window,
-                           gboolean enable,
-                           const char *prop)
+green_window_change_state (GreenWindow *window, bool enable, const char *prop)
 {
   Screen *screen = green_get_screen (window->priv->green);
   Window xwindow = window->priv->xid;

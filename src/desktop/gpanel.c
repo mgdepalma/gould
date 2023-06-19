@@ -21,7 +21,6 @@
 #include "gpanel.h"
 #include "gsession.h"
 
-#include <signal.h>
 #include <sysexits.h>		/* exit status codes for system programs */
 #include <sys/prctl.h>		/* operations on a process or thread */
 #include <X11/Xatom.h>
@@ -73,10 +72,10 @@ const char *ConfigurationHeader =
 const char *Bugger  = "internal program error";
 const char *Schema  = "panel";	/* (public) XML configuration schema */
 
-debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
+debug_t debug = 0;	 /* debug verbosity (0 => none) {must be declared} */
 
-gboolean _persistent = TRUE;	/* getenv("GOULD_RESPAWN") => {yes,no} */
-gboolean _silent = FALSE;	/* show splash screen (or not) */
+bool _persistent = true; /* getenv("GOULD_RESPAWN") => {yes,no} */
+bool _silent = false;	 /* show splash screen (or not) */
 
 int _signal = SIGUSR1;	 	/* what to signal [default] */
 int _stream = -1;	 	/* stream socket descriptor */
@@ -98,7 +97,7 @@ configuration_new (const char *resource)
     reference = "/usr/share/gould/panel";
 
   if (access(reference, R_OK) == 0) {
-    if ((config = configuration_read (reference, Schema, FALSE))) {
+    if ((config = configuration_read (reference, Schema, false))) {
       if (resource != NULL) {
         FILE *stream = fopen(resource, "w");
 
@@ -154,7 +153,7 @@ check_configuration_version (GlobalPanel *panel, SchemaVersion *version)
 " </item>\n"
 "</quicklaunch>\n";
 
-    clone = configuration_read (spec, NULL, TRUE);
+    clone = configuration_read (spec, NULL, true);
     chain = configuration_find (panel->config, "modules");
 
     configuration_insert (clone, chain->back, 1);
@@ -230,7 +229,7 @@ applets_builtin (GlobalPanel *panel)
     if (applet->place == 0 && (applet->space & MODULI_SPACE_TASKBAR))
       applet->place = PLACE_START;
 
-    applet->enable = TRUE;
+    applet->enable = true;
   }
 
   return list;
@@ -444,7 +443,7 @@ panel_config_moduli (GlobalPanel *panel, GList *builtin, GList *plugins)
   applet = panel->xlock = g_new0 (Modulus, 1);
   applet->module_close = saver_close;
   applet->module_open = saver_open;
-  applet->enable = TRUE;
+  applet->enable = true;
 
   if (saver_init (applet, panel)) 	/* sanity check.. */
     list = g_list_append (list, applet);
@@ -468,7 +467,7 @@ panel_config_moduli (GlobalPanel *panel, GList *builtin, GList *plugins)
           applet->space = MODULI_SPACE_TASKBAR;
           applet->module_open = panel_quicklaunch_open;
           applet->label = exec->element;
-          applet->enable = TRUE;
+          applet->enable = true;
 
           list = g_list_append (list, applet);
         }
@@ -577,7 +576,7 @@ applets_loadable (GlobalPanel *panel, guint space)
     if (applet->place == 0 && (applet->space & MODULI_SPACE_TASKBAR))
       applet->place = PLACE_END;
 
-    applet->enable = TRUE;
+    applet->enable = true;
   }
 
   return moduli;
@@ -635,7 +634,7 @@ settings_initialize (GlobalPanel *panel)
   ConfigurationNode *node = configuration_find (panel->config, "menu");
   const gchar *value = configuration_attrib (node, "iconsize");
 
-  desktop_config (panel, TRUE);	/* PanelDesktop initialization */
+  desktop_config (panel, true);	/* PanelDesktop initialization */
   settings_new (panel);		/* PanelSetting initialization */
 
   /* Initialize structures for start menu. */
@@ -658,7 +657,7 @@ settings_initialize (GlobalPanel *panel)
 GtkWidget *
 interface (GlobalPanel *panel)
 {
-  static gboolean once = TRUE;	/* one time initialization */
+  static bool once = true;	/* one time initialization */
 
   GtkWidget *layout;		/* user interface layout */
   GtkWidget *space;		/* margin space */
@@ -666,24 +665,24 @@ interface (GlobalPanel *panel)
 
   /* Adjust orientation of taskbar. */
   if (panel->orientation == GTK_ORIENTATION_HORIZONTAL)
-    layout = gtk_hbox_new (FALSE, 1);
+    layout = gtk_hbox_new (false, 1);
   else
-    layout = gtk_vbox_new (FALSE, 1);
+    layout = gtk_vbox_new (false, 1);
 
   /* Spacing at both ends of the layout box. */
   if (panel->indent > 0) {
     space = gtk_label_new ("");
-    gtk_box_pack_start (GTK_BOX(layout), space, FALSE, FALSE, panel->indent);
+    gtk_box_pack_start (GTK_BOX(layout), space, false, false, panel->indent);
     gtk_widget_show (space);
 
     space = gtk_label_new ("");
-    gtk_box_pack_end (GTK_BOX(layout), space, FALSE, FALSE, panel->indent);
+    gtk_box_pack_end (GTK_BOX(layout), space, false, false, panel->indent);
     gtk_widget_show (space);
   }
 
   if (once) {			/* one time initialization */
     settings_initialize (panel);
-    once = FALSE;
+    once = false;
   }
 
   /* Activate all modules from panel->moduli */
@@ -695,11 +694,11 @@ interface (GlobalPanel *panel)
 /*
 * selfexclude - WindowFilter to exclude self from GREEN window lists
 */
-static gboolean
+static bool
 selfexclude (Window xid, int desktop)
 {
   const gchar *wname = get_window_name (xid);
-  return (wname) ? strcmp(wname, (char *)Program) == 0 : TRUE;
+  return (wname) ? strcmp(wname, (char *)Program) == 0 : true;
 } /* </selfexclude> */
 
 /*
@@ -774,7 +773,7 @@ gpanel_initialize (GlobalPanel *panel)
 
   /* read and cache user configuration file */
   if (access(panel->resource, R_OK) == 0)
-    panel->config = configuration_read (panel->resource, Schema, FALSE);
+    panel->config = configuration_read (panel->resource, Schema, false);
 
   /* check for missing or corrupt configuration file */
   if (panel->config != NULL)
@@ -809,7 +808,7 @@ panel_constructor (GlobalPanel *panel)
                                               panel->width, panel->height,
                                               panel->xpos, panel->ypos);
 
-  gtk_window_set_keep_below (GTK_WINDOW(widget), TRUE);
+  gtk_window_set_keep_below (GTK_WINDOW(widget), true);
   if (panel->visible) gtk_widget_show (widget);
 
   /* Give the layout box a nicer look. */
@@ -844,11 +843,11 @@ panel_loader (GlobalPanel *panel)
 
   if (panel->config) {
     const char *value = configuration_attrib (panel->config, "visible");
-    panel->visible = TRUE;	/* unless otherwise, assume visible */
+    panel->visible = true;	/* unless otherwise, assume visible */
 
     if (value)
       if (strcmp(value, "false") == 0 || strcmp(value, "no") == 0)
-        panel->visible = FALSE;
+        panel->visible = false;
 
     panel_constructor (panel);
     status = EX_OK;
@@ -875,7 +874,7 @@ gpanel_instance (GlobalPanel *panel)
 * gpanel_graceful - graceful exit
 */
 static void
-gpanel_graceful(int signum, gboolean verbose)
+gpanel_graceful(int signum, bool verbose)
 {
   sleep (1);		/* quiescence (..let the cables sleep) */
 
@@ -891,7 +890,7 @@ gpanel_graceful(int signum, gboolean verbose)
 void
 signal_responder (int signum)
 {
-  gboolean verbose = (debug > 0) ? TRUE : FALSE;
+  bool verbose = (debug > 0) ? true : false;
 
   switch (signum) {
     case SIGHUP:		/* action required backdrop (ARB) */
@@ -917,7 +916,6 @@ signal_responder (int signum)
       break;
 
     case SIGINT:
-    case SIGABRT:
     case SIGQUIT:		/* graceful exit */
     case SIGKILL:
       gpanel_graceful (signum, verbose);
@@ -1019,7 +1017,7 @@ main(int argc, char *argv[])
 
   if (genviron) {
     quiet = strstr(genviron, "no-splash");
-    if(quiet) _silent = TRUE;
+    if(quiet) _silent = true;
   }
   /* disable invalid option messages */
   opterr = 0;
@@ -1057,9 +1055,9 @@ main(int argc, char *argv[])
         break;
       case 's':			/* inert splash screen */
         _signal = SIGUNUSED;
-        _silent = TRUE;
+        _silent = true;
         break;
-      case 'o':			/* _persistent => FALSE */
+      case 'o':			/* _persistent => false */
         _signal = SIGUNUSED;
         grespawn = "no";
         break;
@@ -1086,7 +1084,7 @@ main(int argc, char *argv[])
 #endif
 
   if(alias) prctl(PR_SET_NAME, (unsigned long)alias, 0, 0, 0);
-  if(grespawn && strcasecmp(grespawn, "no") == 0) _persistent = FALSE;
+  if(grespawn && strcasecmp(grespawn, "no") == 0) _persistent = false;
 
   gtk_init (&argc, &argv);	/* initialization of the GTK */
   gtk_set_locale ();

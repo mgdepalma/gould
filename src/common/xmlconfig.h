@@ -21,6 +21,7 @@
 #define XML_CONFIG_H
 
 #include <fcntl.h>
+#include <stdbool.h>
 #include <libxml/xmlreader.h>
 #include <string.h>
 #include <glib.h>
@@ -93,7 +94,7 @@ ConfigurationNode *configuration_clone (ConfigurationNode *node);
 
 ConfigurationNode *configuration_read (const gchar *data,
                                        const gchar *schema,
-                                       gboolean  memory);
+                                       bool  memory);
 
 void configuration_replace (ConfigurationNode *config, gchar *data,
                             const char *header, const char *section,

@@ -100,7 +100,7 @@ desktop_move (ConfigurationNode *node, gint xpos, gint ypos)
 * (private) desktop_filer_apply
 * (private) desktop_filer_cancel
 */
-static gboolean
+static bool
 desktop_filer_apply (GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
@@ -112,32 +112,32 @@ desktop_filer_apply (GtkWidget *button, GlobalPanel *panel)
   if (desktop->chooser_apply)	/* if specified invoke additional callback */
     (*desktop->chooser_apply) (panel);
 
-  return TRUE;
+  return true;
 } /* </desktop_filer_apply> */
 
-static gboolean
+static bool
 desktop_filer_cancel (GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
   gtk_widget_hide (desktop->filer);
-  return TRUE;
+  return true;
 } /* </desktop_filer_cancel> */
 
 /*
 * (private) desktop_filer_refresh
 * (private) desktop_filer_repaint
 */
-gboolean
+bool
 desktop_filer_refresh (GtkWidget *canvas,
                        GdkEventExpose *event,
                        GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
   redraw_pixbuf (canvas, desktop->render);
-  return TRUE;
+  return true;
 } /* </desktop_filer_refresh> */
 
-static gboolean
+static bool
 desktop_filer_repaint (FileChooserDatum *datum)
 {
   GlobalPanel *panel = datum->user;
@@ -151,15 +151,14 @@ desktop_filer_repaint (FileChooserDatum *datum)
     desktop->render = pixbuf_new_from_file_scaled (file, iconsize, iconsize);
     desktop_filer_refresh (desktop->canvas, NULL, panel);
   }
-
-  return TRUE;
+  return true;
 } /* </desktop_filer_repaint> */
 
 /*
 * (private) desktop_setting_apply
 * (private) desktop_setting_cancel
 */
-static gboolean
+static bool
 desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
@@ -168,7 +167,7 @@ desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
 
   /* Dismiss the desktop->window interface. */
   gtk_widget_hide (desktop->window);
-  desktop->active = FALSE;
+  desktop->active = false;
 
   /* Handle the user specified action. */
   if (action == DESKTOP_SHORTCUT_DELETE) {
@@ -227,7 +226,7 @@ desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
 
 
       /* Calculate where to place and form the XML. */
-      desktop_config (panel, FALSE);
+      desktop_config (panel, false);
 
       xpos = desktop->xpos;
       ypos = desktop->ypos + desktop->step;
@@ -243,7 +242,7 @@ desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
         }
         else {
           g_free (spec);
-          return FALSE;
+          return false;
         }
       }
 
@@ -262,26 +261,26 @@ desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
   return TRUE;
 } /* </desktop_setting_apply> */
 
-static gboolean
+static bool
 desktop_setting_cancel (GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
 
   gtk_widget_hide (desktop->window);
-  desktop->active = FALSE;
+  desktop->active = false;
 
-  return TRUE;
+  return true;
 } /* </desktop_setting_cancel> */
 
 /*
 * (private) desktop_setting_iconview
 */
-static gboolean
+static bool
 desktop_setting_iconview (GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
   gtk_widget_show (desktop->filer);
-  return TRUE;
+  return true;
 } /* </desktop_setting_iconview> */
 
 /*
@@ -546,7 +545,7 @@ desktop_shortcut (Docklet *docklet, ConfigurationNode *node)
 /*
 * (private) desktop_shortcut_callback - callback agent for Docklet events
 */
-static gboolean
+static bool
 desktop_shortcut_callback (DockletDatum *datum)
 {
   ConfigurationNode *node = (ConfigurationNode *)datum->payload;
@@ -565,7 +564,7 @@ desktop_shortcut_callback (DockletDatum *datum)
     GdkEventConfigure *box = (GdkEventConfigure *)event;
     desktop_move (node, box->x, box->y);
   }
-  return FALSE;
+  return false;
 } /* </desktop_shortcut_callback> */
 
 /*
@@ -705,7 +704,7 @@ configuration_write (chain, "<%s>\n", stdout);
 * desktop_config - add gtk_event_box_new() to the interface layout
 */
 void
-desktop_config (GlobalPanel *panel, gboolean once)
+desktop_config (GlobalPanel *panel, bool once)
 {
   const gchar *icon;
 

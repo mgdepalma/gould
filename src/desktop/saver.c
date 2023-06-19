@@ -25,8 +25,8 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
-
 #include <gdk/gdkkeysyms.h>
+#include <dirent.h>
 
 #define CREATION_DELAY 30	/* should be >10 and <min(45,(LOCK_MINS*30)) */
 #define COMMAND_MAX    128	/* command line max length */
@@ -76,6 +76,7 @@ struct _SaverConfig
   const gchar *mode;		/* screen save/lock mode */
   guint time;			/* screen save in minutes */
   guint lock;			/* screen lock in minutes */
+  int index;			/* _xscreensaver_modes_directory index */
 };
 
 struct _SaverPrivate		/* private global structure */
@@ -96,28 +97,16 @@ struct _SaverPrivate		/* private global structure */
   pid_t preview;		/* saver preview process ID */
 };
 
+#define _xscreensaver_maximum 256
+#define _xscreensaver_modes_directory "/usr/libexec/xscreensaver"
+
+#define _xscreensaver_command "xscreensaver-command"
+#define _xscreensaver_config  ".xscreensaver"
+
+static char *modes_[_xscreensaver_maximum];
 static SaverPrivate local_;	/* private global structure singleton */
 
-static char *modes_[] = {
-"blank",
-"atlantis",
-"atunnels",
-"bouboule",
-"drift",
-"gears",
-"laser",
-"matrix",
-"petal",
-"pipes",
-"pyro",
-"qix",
-"spline",
-"swarm",
-"random",
-NULL
-};
-
-/* Implementation prototypes forward declarations. */
+/* implementation prototypes forward declarations */
 static void events_select (Display *display, Window window, Bool substructure);
 static void queue_append (SaverQueue *queue, Window window);
 static void queue_process (SaverQueue *queue, time_t age);
@@ -144,17 +133,6 @@ _X_ERROR_TRAP_PUSH ()
 static void
 action (GtkWidget *widget, GlobalPanel *panel)
 {
-  /*
-  SaverConfig *saver = local_.saver;
-  char command[COMMAND_MAX];
-
-  if (saver->mode)
-    sprintf(command, "%s -mode %s", _XLOCK_COMMAND, saver->mode);
-  else
-    strcpy(command, _XLOCK_COMMAND);
-
-  system (command);
-  */
   shutdown_panel (panel, SIGTERM);
 } /* </action> */
 
@@ -312,7 +290,7 @@ queue_process (SaverQueue *queue, time_t age)
     SaverQueueItem *current = queue->head;
 
     while (current && current->creationtime + age < now) {
-      events_select (queue->display, current->window, False);
+      events_select (queue->display, current->window, false);
       queue->head = current->next;
       free (current);
       current = queue->head;
@@ -375,7 +353,7 @@ query_pointer (SaverQueue *queue)
     root = DefaultRootWindow (display);
     saved.xpos = saved.ypos = -1;
     saved.mask = 0;
-    once = False;
+    once = false;
   }
 
   if (!XQueryPointer (display, root, &root, &window, &xpos, &ypos,
@@ -413,28 +391,15 @@ screensaver_debug (const char *reason, SaverConfig *saver, gboolean minutes)
 * Initialize the commands for screensaver and screenlock.
 */
 void
-screensaver_commands (SaverCommand *command, SaverConfig *saver)
+screensaver_commands (SaverCommand *command, SaverConfig *config)
 {
-  screensaver_debug ("resume", saver, False);
+  screensaver_debug ("resume", config, false);
 
-  if (saver->mode)
-    sprintf(command->screenlock, "%s -mode %s", _XLOCK_COMMAND, saver->mode);
-  else
-    strcpy(command->screenlock, _XLOCK_COMMAND);
+  sprintf(command->screenlock, "%s --activate", _xscreensaver_command);
+  sprintf(command->screensave, "%s --select %d", _xscreensaver_command,
+						config->index);
 
-  if (saver->lock > saver->time)
-    sprintf(command->screensave, "%s -lockdelay %d", command->screenlock,
-                                             (saver->lock - saver->time));
-  else
-    sprintf(command->screensave, "%s -nolock", command->screenlock);
-
-  if (saver->mode)
-    sprintf(command->screenlock, "%s -lockdelay 10 -mode %s",
-					_XLOCK_COMMAND, saver->mode);
-  else
-    sprintf(command->screenlock, "%s -lockdelay 10", _XLOCK_COMMAND);
-
-  saver->active = (saver->time > 0 || saver->lock> 0) ? TRUE : FALSE;
+  config->active = (config->time > 0 || config->lock > 0) ? true : false;
 } /* </screensaver_commands> */
 
 /*
@@ -857,6 +822,34 @@ sendlock (GtkEntry *entry, GdkEventKey *event, GlobalPanel *panel)
 } /* </sendlock> */
 
 /*
+* populate_modes - populate modes_ from {dirname}
+*/
+static int
+populate_modes(const char *dirname, const int maxcount)
+{
+  /* populate modes_ */
+  DIR *dir = opendir (dirname);
+  int mark = 0;
+
+  if (dir) {
+    struct dirent **list;
+    int count = scandir(dirname, &list, NULL, alphasort);
+    char *name;
+
+    for (int idx = 0; idx < count; idx++) {
+      name = list[idx]->d_name;
+      if(name[0] == '.') continue;
+
+      modes_[mark++] = name;
+      if(mark == maxcount - 1) break;
+    }
+    modes_[mark] = (char*)0;
+    closedir (dir);
+  }
+  return mark;
+} /* </populate_modes> */
+
+/*
 * saver_settings provides configuration pages
 */
 GtkWidget *
@@ -870,7 +863,7 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
   SaverConfig *saver  = local_.saver;
   SaverConfig *saver_ = &local_.cache;
   gchar *caption = g_strdup_printf ("%s [%s]", _(applet->label), _("plugin"));
-  int idx, mark = 0;
+  int idx, count, mark = 0;
 
   /* Initialize private data structure singleton. */
   memcpy(&local_.cache, saver, sizeof(SaverConfig));
@@ -941,8 +934,12 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX (slot), widget, FALSE, FALSE, 0);
   gtk_widget_show (widget);
 
-  for (idx = 0; modes_[idx] != NULL; idx++)
+  count = populate_modes(_xscreensaver_modes_directory, _xscreensaver_maximum);
+
+  for (idx = 0; idx < count; idx++) {
     gtk_combo_box_append_text (GTK_COMBO_BOX(widget), modes_[idx]);
+    vdebug(3, "[%d] %s\n", idx, modes_[idx]);
+  }
 
   if (saver->mode)
     for (idx = 0; modes_[idx] != NULL; idx++)
@@ -1025,12 +1022,12 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
 /*
 * saver_init screen saver module initialization
 */
-gboolean
+bool
 saver_init (Modulus *applet, GlobalPanel *panel)
 {
   if (path_finder(panel->path, _XLOCK_COMMAND) == NULL) {
     /* TODO: warn that we did not find the xlock application */
-    return False;
+    return false;
   }
 
   /* Modulus structure initialization. */
@@ -1059,7 +1056,7 @@ saver_init (Modulus *applet, GlobalPanel *panel)
 );
   applet->settings = saver_settings (applet, panel);
 
-  return True;
+  return true;
 } /* </saver_init> */
 
 /*
