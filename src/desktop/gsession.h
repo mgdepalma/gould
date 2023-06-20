@@ -28,6 +28,11 @@
 #define _GSESSION_BACKEND  "master"	/* gsession dispatch process */
 #define _GSESSION_MONITOR  "anvil"	/* gsession monitor process */
 
+#define _WINDOWMANAGER	   0		/* SessionMonitor[<tag>] */
+#define _DESKTOP	   1
+#define _LAUNCHER	   2
+#define _SCREENSAVER	   3
+
 #define _SIGTERM_GRACETIME 1		/* SIGTERM gracetime in seconds */
 
 typedef struct _SessionMonitor SessionMonitor;

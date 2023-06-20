@@ -70,11 +70,12 @@ SessionMonitor _master[SessionMonitorCount];
 char *_monitor_environ = "GOULD_ENVIRON=no-splash";
 const int _monitor_seconds_interval = 5;
 
-pid_t _instance;	/* singleton process ID */
 debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
+int _indice = -1;	/* unresponsive _master[idx].process */
 int _stream = -1;	/* stream socket descriptor */
+pid_t _instance;	/* singleton process ID */
 
 /**
 * prototypes (forward method declarations)
@@ -86,6 +87,7 @@ void signal_responder(int signum);
 
 /*
 * (private)sessionlog - write when debug >= {level}
+* (private)sessionlog_stamp - sessionlog with timestamp()
 */
 static int
 sessionlog(debug_t level, const char *format, ...)
@@ -108,6 +110,19 @@ sessionlog(debug_t level, const char *format, ...)
   return nbytes;
 } /* </sessionlog> */
 
+static int
+sessionlog_stamp(debug_t level, const char *format, ...)
+{
+  char message[MAX_STRING];
+
+  va_list args;
+  va_start (args, format);
+  vsprintf(message, format, args);
+  va_end (args);
+
+  return sessionlog(debug, "%s %s", timestamp(), message);
+} /* </sessionlog_stamp> */
+
 /*
 * gsession backend process thread
 */
@@ -124,7 +139,7 @@ session_backend(const char *name)
 
   if (pid > 0) {        /* not in spawned process */
     int stat;
-    sessionlog(1, "%s [%s] pid => %d\n", timestamp(), name, pid);
+    sessionlog_stamp(1, "[%s] pid => %d\n", name, pid);
     waitpid(pid, &stat, 0);
     return pid;
   }
@@ -166,7 +181,7 @@ session_monitor(const char *name)
   }
 
   if (pid > 0) {	/* not in spawned process */
-    sessionlog(1, "%s [%s] pid => %d\n", timestamp(), name, pid);
+    sessionlog_stamp(1, "[%s] pid => %d\n", name, pid);
     return pid;
   }
 
@@ -180,11 +195,6 @@ session_monitor(const char *name)
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-  for (idx = 0; idx < SessionMonitorCount; idx++)
-    if (_master[idx].program) {
-      _master[idx].process = session_spawn (_master[idx].program);
-    }
-
   /* regularly check SessionMonitor _master[].process */
   for ( ;; ) {
     for (idx = 0; idx < SessionMonitorCount; idx++) {
@@ -192,9 +202,9 @@ session_monitor(const char *name)
         sprintf(procfile, "/proc/%d", _master[idx].process);
 
         if (access(procfile, R_OK) != 0) {
-          putenv (_monitor_environ);
-          pid = session_spawn (_master[idx].program);
-          _master[idx].process = pid;
+          _indice = idx; /* {DESKTOP, WINDOWMANAGER, SCREENSAVER, LAUNCHER} */
+          sessionlog_stamp(1, "%s SIGALRM _master[%d]\n", Program, _indice);
+          signal(SIGALRM, signal_responder);
         }
       }
     }
@@ -210,7 +220,7 @@ pid_t
 session_spawn(const char *command)
 {
   pid_t pid = spawn (command);
-  sessionlog(1, "%s [%s] pid => %d\n", timestamp(), command, pid);
+  sessionlog_stamp(1, "[%s] pid => %d\n", command, pid);
   return pid;
 } /* </session_spawn> */
 
@@ -258,15 +268,14 @@ acknowledge(int connection)
   if (nbytes < 0)
     perror("reading request from stream socket");
   else if (nbytes > 0) {
-    const char *stamp = timestamp();
     request[nbytes] = 0;	/* trim request to the nbytes read */
 
     if (strcmp(request, _GET_SESSION_PID) == 0) {  /* [main]pidof {Program} */
-      sessionlog(1, "%s pidof( %s ) => %d\n", stamp, Program, _instance);
+      sessionlog_stamp(1, "pidof %s => %d\n", Program, _instance);
       sprintf(request, "%d\n", _instance);
     }
     else {					   /* spawn( request ) */
-      sessionlog(1, "%s spawn( %s )\n", stamp, request);
+      sessionlog_stamp(1, "spawn( %s )\n", request);
       sprintf(request, "%d\n", spawn( request ));
     }
     write (connection, request, strlen(request));
@@ -315,33 +324,50 @@ signal_responder(int signum)
   pid_t pid = getpid();
 
   switch (signum) {
-    case SIGTERM:
-      (pid == _instance) ? session_graceful (SIGUNUSED) : _exit (EX_OK);
+    case SIGALRM:
+      if (pid == _instance) {
+        putenv (_monitor_environ);
+        sessionlog_stamp("%s SIGALRM, _master[%d].program => %s\n",
+				__func__, _indice, _master[_indice].program);
+
+        if (_master[_indice].program) {
+          pid = session_spawn (_master[_indice].program);
+          sleep (_monitor_seconds_interval);
+          _master[_indice].process = pid;
+        }
+      }
       break;
 
     case SIGCHLD:		/* reap children */
+      sessionlog_stamp(1, "%s: received SIGCHLD, pid => %d\n",Program, pid);
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
+      sleep (_monitor_seconds_interval);
       break;
 
-    case SIGCONT:
+    case SIGTERM:
+      sessionlog_stamp(1, "%s: received SIGTERM, pid => %d\n", Program, pid);
+      (pid == _instance) ? session_graceful (SIGUNUSED) : _exit (EX_OK);
       break;
 
     case SIGTTIN:
     case SIGTTOU:
-      sessionlog(1, "%s: caught signal %d, ignoring.\n", __func__, signum);
+      sessionlog_stamp(1,"%s: caught signal %d, ignoring.\n", Program, signum);
       break;
 
     case SIGUSR3:		/* acknowledge from gdesktop process */
-      sessionlog(2, "%s gdesktop acknowledges\n", timestamp());
+      sessionlog_stamp(2, "%s gdesktop acknowledges\n", timestamp());
       sleep (_monitor_seconds_interval);
       break;
 
     default:
+      sessionlog_stamp(1,"%s: signal => %d, pid => %d\n",Program, signum, pid);
+
       if (pid == _instance) {
-        if (! (signum == SIGINT || signum == SIGTERM)) {
+        if (signum == SIGINT || signum == SIGTERM)
           printf("%s, exiting on signal: %d\n", Program, signum);
-          gould_diagnostics (Program);
-        }
+        else
+          gould_diagnostics ("%s, caught signal: %d\n", Program, signum);
+
         session_graceful (SIGUNUSED);
         session_graceful (SIGTERM, _SIGTERM_GRACETIME);
         session_graceful (SIGKILL);
@@ -357,7 +383,7 @@ signal_responder(int signum)
 static void
 apply_signal_responder(void)
 {
-  signal(SIGHUP,  signal_responder);	/* 1 spawn SessionMonitor[%m] */
+  signal(SIGHUP,  SIG_IGN);		/* 1 future use */
   signal(SIGINT,  signal_responder);	/* 2 Ctrl+C received */
   signal(SIGQUIT, signal_responder);	/* 3 internal program error */
   signal(SIGILL,  signal_responder);	/* 4 internal program error */
@@ -365,10 +391,10 @@ apply_signal_responder(void)
   signal(SIGBUS,  signal_responder);	/* 7 internal program error */
   signal(SIGKILL, signal_responder);    /* 9 internal program error */
   signal(SIGSEGV, signal_responder);	/* 11 internal program error */
-  signal(SIGALRM, signal_responder);	/* 14 internal program error */
+  signal(SIGALRM, signal_responder);	/* 14 respawn _master[_indice] */
   signal(SIGTERM, signal_responder);	/* 15 graceful exit on kill */
   signal(SIGCHLD, signal_responder);	/* 17 reap children */
-  signal(SIGCONT, signal_responder);	/* 18 cancel request */
+  signal(SIGCONT, SIG_IGN);		/* 18 future use */
   signal(SIGUSR3, signal_responder);	/* 28 acknowleged */
 } /* </apply_signal_responder> */
 
@@ -389,6 +415,9 @@ interface(const char *program)
   const char *desktop  = getenv("DESKTOP");
   const char *launcher = getenv("LAUNCHER");
 
+  pid_t pid;
+
+
   if ((debug = (loglevel) ? atoi(loglevel) : 0) > 0) {
     sprintf(logfile, "%s/%s.log", getenv("HOME"), program);
     if (! (_logstream = fopen(logfile, "w"))) perror("cannot open logfile");
@@ -405,10 +434,16 @@ interface(const char *program)
     _exit (EX_PROTOCOL);
 
   /* {DESKTOP}, {WINDOWMANAGER}, {SCREENSAVER}, and {LAUNCHER} */
-  _master[0].program = (desktop) ? desktop : "gdesktop";
-  _master[1].program = (windowmanager) ? windowmanager : "twm";
-  _master[2].program = screensaver;
-  _master[3].program = launcher;
+  _master[_DESKTOP].program = (desktop) ? desktop : "gdesktop";
+  _master[_WINDOWMANAGER].program = (windowmanager) ? windowmanager : "twm";
+  _master[_SCREENSAVER].program = screensaver;
+  _master[_LAUNCHER].program = launcher;
+
+  for (int idx = 0; idx < SessionMonitorCount; idx++)
+    if (_master[idx].program) {
+      pid = session_spawn (_master[idx].program);
+      _master[idx].process = pid;
+    }
 
   /* monitor the gdesktop process */
   session_monitor( _GSESSION_MONITOR );
@@ -424,7 +459,7 @@ int
 main(int argc, char *argv[])
 {
   int opt;
-  pid_t pid = get_process_id (Program);
+  pid_t pid;
 
   /* disable invalid option messages */
   opterr = 0;
@@ -450,7 +485,9 @@ main(int argc, char *argv[])
         return EX_USAGE;
     }
   }
+
   _instance = getpid();		 /* singleton process ID */
+  pid = get_process_id (Program);
 
   if (pid > 0 && pid != _instance) {
     printf("%s: %s (pid => %d)\n", Program, _(Singleton), pid);

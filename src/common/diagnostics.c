@@ -51,24 +51,32 @@ timestamp(void)
 * gould_diagnostics
 */
 void
-gould_diagnostics(const char *program)
+gould_diagnostics(const char *format, ...)
 {
   void *trace[BACKTRACE_SIZE];
   const char *errorlog = getenv("ERRORLOG");
 
   int nptrs = backtrace(trace, BACKTRACE_SIZE);
+  char program[MAX_STRING];
+
+  va_list args;
+  va_start (args, format);
+  vsprintf(program, format, args);
+  va_end (args);
+
+  printf("%s %s", timestamp(), program);
   backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
 
   if (errorlog) {
     int errfd = open(errorlog, O_APPEND | O_WRONLY, 0644);
 
     if (errfd > 0) {
-      static char caption[MAX_STRING];
+      char caption[MAX_STRING];
+      sprintf(caption, "%s %s", timestamp(), program);
 
-      sprintf(caption, "%s %s [backtrace]\n", timestamp(), program);
       write(errfd, caption, strlen(caption));
-
       backtrace_symbols_fd(trace, nptrs, errfd);
+
       close(errfd);
     }
   }

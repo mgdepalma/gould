@@ -56,7 +56,7 @@ enum {
 /* Methods implemented by {gould}/src/common/diagnostics.c */
 const char *timestamp(void);
 
-void gould_diagnostics(const char *program);
+void gould_diagnostics(const char *format, ...);
 void gould_error(const char *format, ...);
 
 #endif /* </_GOULD> */

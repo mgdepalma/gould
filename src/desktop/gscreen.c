@@ -21,9 +21,10 @@
 #include "gscreen.h"
 #include "util.h"
 
-const char *Program;		/* (public) published program name */
-const char *Release;		/* (public) published program version */
-const char *Information =
+const char *Program = "gscreen"; /* (public) published program name */
+const char *Release = "1.0.1";	 /* (public) published program version */
+
+const char *Description =
 "is a gtk-based control panel utility.\n"
 "\n"
 "The program is developed for Generations Linux and distributed\n"
@@ -42,7 +43,7 @@ about (GtkWidget *instance, GtkWidget *parent)
   static gchar *message = NULL;
 
   if (message == NULL)
-    message = g_strdup_printf("\n%s %s %s", Program, Release, Information);
+    message = g_strdup_printf("\n%s %s %s", Program, Release, Description);
 
   notice(parent, ICON_SNAPSHOT, message);
 
@@ -171,14 +172,9 @@ main(int argc, char *argv[])
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
-  gtk_disable_setlocale();
 #endif
 
   gtk_init (&argc, &argv);	/* initialization of the GTK */
-  gtk_set_locale ();
-
-  Program = basename(argv[0]);
-  Release = "1.0.1";
 
   /* Initialize program data structure */
   initialize (&memory, (argc > 1) ? argv[1] : NULL);

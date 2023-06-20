@@ -211,11 +211,9 @@ main(int argc, char *argv[])
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
-  gtk_disable_setlocale();
 #endif
 
   gtk_init (&argc, &argv);	/* initialization of the GTK */
-  gtk_set_locale ();
 
   for (idx = 1; idx < argc; idx++)
     if (strcmp(argv[idx], "-d") == 0)

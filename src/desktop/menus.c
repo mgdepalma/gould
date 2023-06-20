@@ -160,9 +160,10 @@ finis (GlobalPanel *panel, bool logout, bool quit)
 
   if (logout) {	
     if (panel->session >= 0) {	/* send SIGTERM to gsession */
+      killall (GsessionProcess, SIGKILL);   /* (softcraft)draconian approach */
       killall (_GSESSION_BACKEND, SIGTERM);
       killall (_GSESSION_MONITOR, SIGTERM);
-      killall (GsessionProcess, SIGTERM);
+      //killall (GsessionProcess, SIGTERM); <= (softcraft)taking too long 
     }
     else {			/* signal {WINDOWMANAGER} */
       Display *display = panel->shared->display;

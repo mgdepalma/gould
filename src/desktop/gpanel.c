@@ -606,16 +606,17 @@ dispatch (int stream, const char *command)
 } /* </dispatch> */
 
 /*
-* gpanel_respawn - dispatch(_self_ silently)
+* gpanel_respawn - dispatch(_self_ silently[-s command line option])
 */
 pid_t
-gpanel_respawn(int stream)
+gpanel_respawn(int stream, int seconds)
 {
   static char command[MAX_PATHNAME];
 
   sprintf(command, "%s -s", path_finder(_desktop->path, Program));
   vdebug(2, "%s: command => %s\n", __func__, command);
   pid_t instance = dispatch (stream, command);
+  if(seconds > 0) sleep(seconds);
 
   return instance;
 } /* </gpanel_respawn> */
@@ -908,11 +909,15 @@ signal_responder (int signum)
       break;
 
     case SIGCHLD:		/* reap children */
+      gould_error ("%s %s: caught SIGCHLD, pid =>%d\n", timestamp(), Program, getpid());
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
       break;
 
     case SIGTTIN:		/* ignore (until we know better) */
+      gould_error ("%s %s: caught SIGTTIN.\n", timestamp(), Program);
+      break;
     case SIGTTOU:
+      gould_error ("%s %s: caught SIGTTOU.\n", timestamp(), Program);
       break;
 
     case SIGINT:
@@ -922,26 +927,29 @@ signal_responder (int signum)
       break;
 
     case SIGURG:		/* forced restart */
-      gpanel_respawn (_desktop->session);
+      gpanel_respawn (_desktop->session, 2);
+      gpanel_graceful (signum, verbose);
+      break;
+
+    case SIGABRT:
+      gould_diagnostics ("%s: caught signal %d\n", Program, signum);
       gpanel_graceful (signum, verbose);
       break;
 
     default:
-      {
-        gould_diagnostics (Program );
-        vdebug(2, "%s: caught signal %d.\n", __func__, signum);
+      gould_diagnostics ("%s: caught signal %d\n", Program, signum);
 
-        gtk_widget_show (_desktop->backdrop);
-        gpanel_dialog (150, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
+      gtk_widget_show (_desktop->backdrop);
+      gpanel_dialog (150, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
 						Program, _(Bugger), signum);
-        gtk_widget_hide (_desktop->backdrop);
+      gtk_widget_hide (_desktop->backdrop);
 
-        if (_persistent) {
-          vdebug(1, "%s: caught signal %d, respawn.\n", __func__, signum);
-          gpanel_respawn (_desktop->session);
-        }
-        gpanel_graceful (signum, verbose);
+      if (_persistent) {
+        sleep(2);		/* wait 2 seconds before respawn */
+        gpanel_respawn (_desktop->session, 0);
       }
+      gpanel_graceful (signum, verbose);
+      break;
   }
 } /* </signal_responder> */
 
@@ -965,12 +973,12 @@ session_signal_responder(int signum, siginfo_t *siginfo, void *context)
 static inline void
 apply_signal_responder(void)
 {
-  static struct sigaction anvil;
+  static struct sigaction cage;
 
-  anvil.sa_sigaction = *session_signal_responder;
-  anvil.sa_flags |= SA_SIGINFO;		/* get detail information */
+  cage.sa_sigaction = *session_signal_responder;
+  cage.sa_flags |= SA_SIGINFO;		/* get detail information */
 
-  if (sigaction(SIGUSR3, &anvil, NULL) != 0) {
+  if (sigaction(SIGUSR3, &cage, NULL) != 0) {
     gould_error ("%s sigaction() failed, errno => %d.\n", Program, errno);
   }
   signal(SIGHUP,  signal_responder);	/* 1 action required backdrop */
@@ -978,7 +986,7 @@ apply_signal_responder(void)
   signal(SIGQUIT, signal_responder);	/* 3 graceful exit */
   signal(SIGILL,  signal_responder);	/* 4 internal program error */
   signal(SIGTRAP, signal_responder);	/* 5 debugger */
-  signal(SIGABRT, signal_responder);	/* 6 internal program error */
+  signal(SIGABRT, signal_responder);	/* 6 unconditional exit */
   signal(SIGBUS,  signal_responder);	/* 7 internal program error */
   signal(SIGFPE,  signal_responder);	/* 8 internal program error */
   signal(SIGKILL, signal_responder);	/* 9 graceful exit */
@@ -1080,20 +1088,16 @@ main(int argc, char *argv[])
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
-  //gtk_disable_setlocale();
 #endif
 
   if(alias) prctl(PR_SET_NAME, (unsigned long)alias, 0, 0, 0);
   if(grespawn && strcasecmp(grespawn, "no") == 0) _persistent = false;
 
   gtk_init (&argc, &argv);	/* initialization of the GTK */
-  gtk_set_locale ();
+  apply_gtk_theme (CONFIG_FILE);
 
   apply_signal_responder();
   gpanel_instance (&memory);	/* GlobalPanel initialization */
-
-  apply_gtk_theme (CONFIG_FILE);
-  gtk_set_locale ();
   gtk_main ();			/* main event loop */
 
   return status;
