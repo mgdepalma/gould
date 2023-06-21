@@ -22,16 +22,9 @@
 /* special request - get gsession main process ID */
 #define _GET_SESSION_PID "(:_gsession_:)"
 
-#define GsessionProcess    "gsession"	/* gsession published process name */
-#define GdesktopProcess    "gpanel"	/* gdesktop published process name */
-
-#define _GSESSION_BACKEND  "master"	/* gsession dispatch process */
-#define _GSESSION_MONITOR  "anvil"	/* gsession monitor process */
-
-#define _WINDOWMANAGER	   0		/* SessionMonitor[<tag>] */
-#define _DESKTOP	   1
-#define _LAUNCHER	   2
-#define _SCREENSAVER	   3
+#define _GSESSION_BACKEND  "spawn"	/* gsession backend process */
+#define _GSESSION_MONITOR  "monitor"	/* gsession monitor process */
+#define _GSESSION_MASTER   "gsession"	/* gsession main process */
 
 #define _SIGTERM_GRACETIME 1		/* SIGTERM gracetime in seconds */
 

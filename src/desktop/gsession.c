@@ -38,7 +38,13 @@
 #include <fcntl.h>
 #include <time.h>
 
-#define SIGUSR3 SIGWINCH	/* SIGWINCH => 28, reserved */
+#define _DESKTOP	    0		/* SessionMonitor monitor_[0] */
+#define _WINDOWMANAGER	    1		/* SessionMonitor monitor_[1] */
+#define _SCREENSAVER	    2		/* SessionMonitor monitor_[2] */
+#define _LAUNCHER	    3		/* SessionMonitor monitor_[3] */
+#define SessionMonitorCount 4
+
+#define SIGUSR3 SIGWINCH		/* SIGWINCH => 28, reserved */
 
 #ifndef SIGUNUSED
 #define SIGUNUSED 31
@@ -63,31 +69,34 @@ const char *Usage =
 "There can only be one instance running per display.\n"
 "\n";
 
-#define SessionMonitorCount 4
 /* (protected) session monitor variables */
-SessionMonitor _master[SessionMonitorCount];
+SessionMonitor monitor_[SessionMonitorCount];
 
 char *_monitor_environ = "GOULD_ENVIRON=no-splash";
-const int _monitor_seconds_interval = 5;
+const int _monitor_seconds_interval = 4;
 
 debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
-int _indice = -1;	/* unresponsive _master[idx].process */
 int _stream = -1;	/* stream socket descriptor */
+
 pid_t _instance;	/* singleton process ID */
+pid_t _backend;		/* backend process ID */
+pid_t _monitor;		/* monitor process ID */
 
 /**
 * prototypes (forward method declarations)
 */
 int acknowledge(int connection);
 int open_stream_socket(const char *sockname);
-pid_t session_spawn(const char *command);
+pid_t session_respawn(const int idx);
+pid_t session_spawn(const int idx);
 void signal_responder(int signum);
 
 /*
 * (private)sessionlog - write when debug >= {level}
 * (private)sessionlog_stamp - sessionlog with timestamp()
+* (private)session_monitor_tag - human readable tag
 */
 static int
 sessionlog(debug_t level, const char *format, ...)
@@ -113,15 +122,36 @@ sessionlog(debug_t level, const char *format, ...)
 static int
 sessionlog_stamp(debug_t level, const char *format, ...)
 {
-  char message[MAX_STRING];
+  int nbytes = 0;
 
-  va_list args;
-  va_start (args, format);
-  vsprintf(message, format, args);
-  va_end (args);
+  if (debug >= level) {
+    char message[MAX_STRING];
 
-  return sessionlog(debug, "%s %s", timestamp(), message);
+    va_list args;
+    va_start (args, format);
+    vsprintf(message, format, args);
+    va_end (args);
+
+    nbytes = sessionlog(debug, "%s %s", timestamp(), message);
+  }
+  return nbytes;
 } /* </sessionlog_stamp> */
+
+static char *
+session_monitor_tag(const int tag)
+{
+  switch (tag) {
+    case _DESKTOP:
+      return "DESKTOP";
+    case _WINDOWMANAGER:
+      return "WINDOWMANAGER";
+    case _SCREENSAVER:
+      return "SCREENSAVER";
+    case _LAUNCHER:
+      return "LAUNCHER";
+  }
+  return "<undefined>";
+} /* </session_monitor_tag> */
 
 /*
 * gsession backend process thread
@@ -139,6 +169,7 @@ session_backend(const char *name)
 
   if (pid > 0) {        /* not in spawned process */
     int stat;
+    _backend = pid;
     sessionlog_stamp(1, "[%s] pid => %d\n", name, pid);
     waitpid(pid, &stat, 0);
     return pid;
@@ -173,7 +204,7 @@ session_monitor(const char *name)
 {
   pid_t pid = fork();
   char procfile[MAX_LABEL];
-  int idx;
+  int idx;		/* SessionMonitor monitor_[] index */
 
   if (pid < 0) {
     perror("session_monitor: fork() failed.");
@@ -181,6 +212,7 @@ session_monitor(const char *name)
   }
 
   if (pid > 0) {	/* not in spawned process */
+    _monitor = pid;
     sessionlog_stamp(1, "[%s] pid => %d\n", name, pid);
     return pid;
   }
@@ -190,21 +222,28 @@ session_monitor(const char *name)
     _exit (EX_SOFTWARE);
   }
   prctl(PR_SET_NAME, (unsigned long)name, 0, 0);
+
+  /* {DESKTOP}, {WINDOWMANAGER}, {SCREENSAVER}, and {LAUNCHER} */
+  for (idx = 0; idx < SessionMonitorCount; idx++)
+    if (monitor_[idx].program) {
+      pid = session_spawn (idx);
+      monitor_[idx].process = pid;
+    }
   
   close(STDIN_FILENO);	/* close stdin. stdout and stderr */
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-  /* regularly check SessionMonitor _master[].process */
+  /* regularly check SessionMonitor monitor_[].process */
   for ( ;; ) {
     for (idx = 0; idx < SessionMonitorCount; idx++) {
-      if (_master[idx].program) {
-        sprintf(procfile, "/proc/%d", _master[idx].process);
+      if (monitor_[idx].program) {
+        sprintf(procfile, "/proc/%d", monitor_[idx].process);
 
         if (access(procfile, R_OK) != 0) {
-          _indice = idx; /* {DESKTOP, WINDOWMANAGER, SCREENSAVER, LAUNCHER} */
-          sessionlog_stamp(1, "%s SIGALRM _master[%d]\n", Program, _indice);
-          signal(SIGALRM, signal_responder);
+          sessionlog_stamp(1, "/proc/{monitor_[%s].process}: missing\n",
+				session_monitor_tag (idx));
+          session_respawn (idx);
         }
       }
     }
@@ -214,13 +253,37 @@ session_monitor(const char *name)
 } /* </session_monitor> */
 
 /*
+* session_respawn - attempt to respawn well known program
+*/
+pid_t
+session_respawn(const int idx)
+{
+  pid_t pid = 0;
+
+  if (monitor_[idx].program) {
+    putenv (_monitor_environ);
+    pid = session_spawn (idx);
+    sleep (_monitor_seconds_interval);
+    monitor_[idx].process = pid;
+  }
+  else
+    gould_error ("%s %s::%s monitor_[%d].program: not found.",
+			timestamp(), Program, __func__, idx);
+  return pid;
+} /* </session_respawn> */
+
+/*
 * session_spawn - spawn wrapper that uses sessionlog
 */
 pid_t
-session_spawn(const char *command)
+session_spawn(const int idx)
 {
-  pid_t pid = spawn (command);
-  sessionlog_stamp(1, "[%s] pid => %d\n", command, pid);
+  pid_t pid = spawn( monitor_[idx].program );
+
+  sessionlog_stamp(1, "monitor_[%s].process => %d\n",
+				session_monitor_tag(idx), pid);
+  monitor_[idx].process = pid;
+
   return pid;
 } /* </session_spawn> */
 
@@ -324,22 +387,8 @@ signal_responder(int signum)
   pid_t pid = getpid();
 
   switch (signum) {
-    case SIGALRM:
-      if (pid == _instance) {
-        putenv (_monitor_environ);
-        sessionlog_stamp("%s SIGALRM, _master[%d].program => %s\n",
-				__func__, _indice, _master[_indice].program);
-
-        if (_master[_indice].program) {
-          pid = session_spawn (_master[_indice].program);
-          sleep (_monitor_seconds_interval);
-          _master[_indice].process = pid;
-        }
-      }
-      break;
-
     case SIGCHLD:		/* reap children */
-      sessionlog_stamp(1, "%s: received SIGCHLD, pid => %d\n",Program, pid);
+      sessionlog_stamp(3, "%s: received SIGCHLD, pid => %d\n",Program, pid);
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
       sleep (_monitor_seconds_interval);
       break;
@@ -390,8 +439,9 @@ apply_signal_responder(void)
   signal(SIGABRT, signal_responder);	/* 6 internal program error */
   signal(SIGBUS,  signal_responder);	/* 7 internal program error */
   signal(SIGKILL, signal_responder);    /* 9 internal program error */
+  signal(SIGUSR1, signal_responder);	/* 10 internal program error */
   signal(SIGSEGV, signal_responder);	/* 11 internal program error */
-  signal(SIGALRM, signal_responder);	/* 14 respawn _master[_indice] */
+  signal(SIGALRM, signal_responder);	/* 14 internal program error */
   signal(SIGTERM, signal_responder);	/* 15 graceful exit on kill */
   signal(SIGCHLD, signal_responder);	/* 17 reap children */
   signal(SIGCONT, SIG_IGN);		/* 18 future use */
@@ -415,9 +465,6 @@ interface(const char *program)
   const char *desktop  = getenv("DESKTOP");
   const char *launcher = getenv("LAUNCHER");
 
-  pid_t pid;
-
-
   if ((debug = (loglevel) ? atoi(loglevel) : 0) > 0) {
     sprintf(logfile, "%s/%s.log", getenv("HOME"), program);
     if (! (_logstream = fopen(logfile, "w"))) perror("cannot open logfile");
@@ -434,18 +481,20 @@ interface(const char *program)
     _exit (EX_PROTOCOL);
 
   /* {DESKTOP}, {WINDOWMANAGER}, {SCREENSAVER}, and {LAUNCHER} */
-  _master[_DESKTOP].program = (desktop) ? desktop : "gdesktop";
-  _master[_WINDOWMANAGER].program = (windowmanager) ? windowmanager : "twm";
-  _master[_SCREENSAVER].program = screensaver;
-  _master[_LAUNCHER].program = launcher;
+  monitor_[_DESKTOP].program = (desktop) ? desktop : "gdesktop";
+  monitor_[_WINDOWMANAGER].program = (windowmanager) ? windowmanager : "twm";
+  monitor_[_SCREENSAVER].program = screensaver;
+  monitor_[_LAUNCHER].program = launcher;
 
+  /* 20230620 session_spawn{..} done by _GSESSION_MONITOR
   for (int idx = 0; idx < SessionMonitorCount; idx++)
-    if (_master[idx].program) {
-      pid = session_spawn (_master[idx].program);
-      _master[idx].process = pid;
+    if (monitor_[idx].program) {
+      pid = session_spawn (monitor_[idx].program);
+      monitor_[idx].process = pid;
     }
+  */
 
-  /* monitor the gdesktop process */
+  /* monitor SessionMonitor monitor_[].process */
   session_monitor( _GSESSION_MONITOR );
 
   /* gsession::backend *must* be called last.. */

@@ -159,11 +159,10 @@ finis (GlobalPanel *panel, bool logout, bool quit)
   saveconfig (panel);		/* check for changes and save configuration */
 
   if (logout) {	
-    if (panel->session >= 0) {	/* send SIGTERM to gsession */
-      killall (GsessionProcess, SIGKILL);   /* (softcraft)draconian approach */
-      killall (_GSESSION_BACKEND, SIGTERM);
-      killall (_GSESSION_MONITOR, SIGTERM);
-      //killall (GsessionProcess, SIGTERM); <= (softcraft)taking too long 
+    if (panel->session >= 0) {	/* send SIGKILL to gsession */
+      killall (_GSESSION_BACKEND, SIGKILL);
+      killall (_GSESSION_MONITOR, SIGKILL);
+      killall (_GSESSION_MASTER, SIGKILL);
     }
     else {			/* signal {WINDOWMANAGER} */
       Display *display = panel->shared->display;
