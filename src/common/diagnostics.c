@@ -64,7 +64,7 @@ gould_diagnostics(const char *format, ...)
   vsprintf(program, format, args);
   va_end (args);
 
-  printf("%s %s", timestamp(), program);
+  printf("%s %s\n", timestamp(), program);
   backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
 
   if (errorlog) {
@@ -72,7 +72,7 @@ gould_diagnostics(const char *format, ...)
 
     if (errfd > 0) {
       char caption[MAX_COMMAND];
-      sprintf(caption, "%s %s", timestamp(), program);
+      sprintf(caption, "%s %s\n", timestamp(), program);
 
       write(errfd, caption, strlen(caption));
       backtrace_symbols_fd(trace, nptrs, errfd);

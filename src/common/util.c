@@ -691,9 +691,10 @@ get_process_name(pid_t pid)
 pid_t
 spawn (const char* cmdline)
 {
-  pid_t pid ;
+  pid_t pid = -1;
 #ifdef USE_GLIB_SPAWN
   gboolean result = g_spawn_command_line_async(cmdline, 0);
+  pid = pidof(cmdline);
 #else
   if ((pid = fork()) == 0) {                    /* child process */
     const char *shell = "/bin/sh";

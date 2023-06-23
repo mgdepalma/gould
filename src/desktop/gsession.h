@@ -26,7 +26,17 @@
 #define _GSESSION_MONITOR  "monitor"	/* gsession monitor process */
 #define _GSESSION_MANAGER  "gsession"	/* gsession main process */
 
-#define _SIGTERM_GRACETIME 1		/* SIGTERM gracetime in seconds */
+#define _WINDOWMANAGER	    0		/* SessionMonitor monitor_[0] */
+#define _SCREENSAVER	    1		/* SessionMonitor monitor_[1] */
+#define _LAUNCHER	    2		/* SessionMonitor monitor_[2] */
+#define _DESKTOP	    3		/* SessionMonitor monitor_[3] */
+#define SessionMonitorCount 4
+
+#define SIGUSR3 SIGWINCH		/* SIGWINCH => 28, reserved */
+
+#ifndef SIGUNUSED
+#define SIGUNUSED 31
+#endif
 
 typedef struct _SessionMonitor SessionMonitor;
 

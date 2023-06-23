@@ -27,12 +27,6 @@
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 
-#define SIGUSR3 SIGWINCH	/* SIGWINCH => 28, reserved */
-
-#ifndef SIGUNUSED
-#define SIGUNUSED 31
-#endif
-
 static GlobalPanel *_desktop;	/* (protected)encapsulated program data */
 
 const char *Program = "gpanel";	/* (public) published program name    */
@@ -80,7 +74,7 @@ bool _silent = false;	 /* show splash screen (or not) */
 
 int _signal = SIGUSR1;	 	/* what to signal [default] */
 int _stream = -1;	 	/* stream socket descriptor */
-
+
 
 /*
 * configuration_new creates new configuration data structure and file

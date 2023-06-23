@@ -25,8 +25,6 @@ gsession
 
 noinst_PROGRAMS = \
 gscreen \
-glauncher \
-gcommand \
 prova
 
 # additional LDFLAGS needed by gpanel
@@ -46,6 +44,6 @@ gpanel_SOURCES = gsession.h \
 
 gscreen_SOURCES  = gscreen.h gscreen.c
 
-gresources.c: gresource.xml screensaver.ui
-	$(GLIB_COMPILE_RESOURCES) $(srcdir)/gresource.xml --target=$@ $(GCRARGS)
+gresources.c: gresources.xml screensaver.ui
+	$(GLIB_COMPILE_RESOURCES) $(srcdir)/gresources.xml --target=$@ $(GCRARGS)
 #/

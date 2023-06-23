@@ -38,17 +38,7 @@
 #include <fcntl.h>
 #include <time.h>
 
-#define _DESKTOP	    0		/* SessionMonitor monitor_[0] */
-#define _WINDOWMANAGER	    1		/* SessionMonitor monitor_[1] */
-#define _SCREENSAVER	    2		/* SessionMonitor monitor_[2] */
-#define _LAUNCHER	    3		/* SessionMonitor monitor_[3] */
-#define SessionMonitorCount 4
-
-#define SIGUSR3 SIGWINCH		/* SIGWINCH => 28, reserved */
-
-#ifndef SIGUNUSED
-#define SIGUNUSED 31
-#endif
+#define _SIGTERM_GRACETIME 1	/* SIGTERM gracetime in seconds */
 
 const char *Program = "gsession";
 const char *Release = "1.2.2";
@@ -223,12 +213,20 @@ session_monitor(const char *name)
   }
   prctl(PR_SET_NAME, (unsigned long)name, 0, 0);
 
-  /* {DESKTOP}, {WINDOWMANAGER}, {SCREENSAVER}, and {LAUNCHER} */
+  /* {WINDOWMANAGER}, {SCREENSAVER}, {LAUNCHER}, {DESKTOP} */
   for (idx = 0; idx < SessionMonitorCount; idx++)
     if (monitor_[idx].program) {
       pid = session_spawn (idx);
       monitor_[idx].process = pid;
     }
+
+#ifdef NEVER
+  /* additional failsafe starting {DESKTOP} process */
+  if (get_process_id (monitor_[_DESKTOP].program) < 0) {
+    killall (monitor_[_DESKTOP].program, SIGKILL);
+    monitor_[_DESKTOP].process = session_spawn_async (_DESKTOP);
+  }
+#endif
   
   close(STDIN_FILENO);	/* close stdin. stdout and stderr */
   close(STDOUT_FILENO);
@@ -274,6 +272,7 @@ session_respawn(const int idx)
 
 /*
 * session_spawn - spawn wrapper that uses sessionlog
+* session_spawn_async - session_spawn using g_spawn_command_line_async
 */
 pid_t
 session_spawn(const int idx)
@@ -285,6 +284,19 @@ session_spawn(const int idx)
 
   return pid;
 } /* </session_spawn> */
+
+pid_t
+session_spawn_async(const int idx)
+{
+  GError *err = NULL;
+  gboolean res = g_spawn_command_line_async (monitor_[idx].program, &err);
+
+  pid = get_process_id (monitor_[idx].program);
+  sessionlog_stamp(1, "[%s] pid => %d\n", session_monitor_tag(idx), pid);
+  monitor_[idx].process = pid;
+
+  return pid;
+} /* </session_spawn_async> */
 
 /*
 * session_graceful - signal _GSESSION_{BACKEND,MONITOR} to exit
