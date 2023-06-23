@@ -639,8 +639,8 @@ get_process_id(const char *program)
 {
   pid_t instance = -1;
 
-  char command[MAX_STRING];
-  static char answer[MAX_STRING];
+  char command[MAX_COMMAND];
+  static char answer[MAX_COMMAND];
   FILE *stream;
 
   sprintf(command, "pidof %s", program);
@@ -650,7 +650,7 @@ get_process_id(const char *program)
     const char delim[2] = " ";
     char *master, *token;
 
-    fgets(answer, MAX_STRING, stream);	/* answer maybe a list */
+    fgets(answer, MAX_COMMAND, stream);	/* answer maybe a list */
     master = strtok(answer, delim);
 
     for (token = master; token != NULL; ) {
@@ -712,8 +712,8 @@ spawn (const char* cmdline)
 char *
 pidof(const char *program)
 {
-  char command[MAX_STRING];
-  static char answer[MAX_STRING];
+  char command[MAX_COMMAND];
+  static char answer[MAX_COMMAND];
 
   char *pidlist = NULL;
   FILE *stream;
@@ -722,7 +722,7 @@ pidof(const char *program)
   stream = popen(command, "r");
 
   if (stream) {
-    fgets(answer, MAX_STRING, stream);
+    fgets(answer, MAX_COMMAND, stream);
 
     if (strlen(answer) > 0) {
       answer[strlen(answer) - 1] = (char)0;	/* chomp newline */

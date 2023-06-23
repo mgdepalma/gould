@@ -20,6 +20,7 @@
 #include "gould.h"		/* common package declarations */
 #include "gpanel.h"
 #include "gsession.h"
+#include "screensaver.h"
 
 #include <sysexits.h>		/* exit status codes for system programs */
 #include <sys/prctl.h>		/* operations on a process or thread */
@@ -291,7 +292,11 @@ panel_config_settings (GlobalPanel *panel)
 
   PanelIcons *icons = panel->icons = g_new0 (PanelIcons, 1);
 
-  gchar *attrib = g_strdup_printf ("%s:%s", Program, _XLOCK_COMMAND);
+  const char delim[2] = ":";
+  const char *searchpath = getenv("PATH");
+  char *member = strtok((char *)searchpath, delim);
+
+  gchar *attrib = g_strdup_printf ("%s:%s", Program, _SCREENSAVER_COMMAND);
   /* gchar **path = g_strsplit (getenv("PATH"), ":", MAX_PATHNAME); */
 
   /* initialize panel->shared for interprocess communication */
@@ -306,10 +311,11 @@ panel_config_settings (GlobalPanel *panel)
   /* configuration for general settings  */
   panel->notice = NULL;		/* initialize alert notices */
   panel->path   = NULL;		/* initialize exec search path */
-  panel->path = g_list_append(panel->path, "/usr/bin");
-  panel->path = g_list_append(panel->path, "/usr/bin/X11");
-  //panel->path = g_list_append(panel->path, "/usr/local/bin");
-  panel->path = g_list_append(panel->path, "/usr/sbin");
+
+  while (member != NULL) {
+    panel->path = g_list_append(panel->path, member);
+    member = strtok(NULL, delim);
+  }
 
   /* Configuration for the icons. */
   icons->path  = NULL;
@@ -440,7 +446,7 @@ panel_config_moduli (GlobalPanel *panel, GList *builtin, GList *plugins)
   list = panel->moduli = g_list_concat (builtin, plugins);
 
   /* Screen saver applet. */
-  applet = panel->xlock = g_new0 (Modulus, 1);
+  applet = panel->screensaver = g_new0 (Modulus, 1);
   applet->module_close = saver_close;
   applet->module_open = saver_open;
   applet->enable = true;
@@ -909,7 +915,8 @@ signal_responder (int signum)
       break;
 
     case SIGCHLD:		/* reap children */
-      gould_error ("%s %s: caught SIGCHLD, pid =>%d\n", timestamp(), Program, getpid());
+      gould_error ("%s %s: caught SIGCHLD, pid => %d\n",
+			timestamp(), Program, getpid());
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
       break;
 

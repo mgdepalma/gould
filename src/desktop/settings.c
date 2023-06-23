@@ -505,7 +505,7 @@ settings_general_new (GlobalPanel *panel)
   GtkWidget *layout = gtk_hbox_new (FALSE, 4);
 
   Modulus *applet = g_new0 (Modulus, 1);
-  Modulus *saver  = panel->xlock;	/* [special] screen saver module */
+  Modulus *saver  = panel->screensaver;	/* [special] screen saver module */
 
   gchar *value;
 
@@ -1032,7 +1032,7 @@ settings_new (GlobalPanel *panel)
   for (iter = panel->moduli; iter != NULL; iter = iter->next) {
     applet = (Modulus *)iter->data;
 
-    if (applet != panel->start && applet != panel->xlock)
+    if (applet != panel->start && applet != panel->screensaver)
       if (applet->place != PLACE_SCREEN && applet->settings) {
         gtk_tree_store_append (store, &child, &cell);
         settings_page_new (store, &child, notebook, applet, panel);

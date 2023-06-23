@@ -13,6 +13,10 @@ PKG_CFLAGS  = $(PKG_DEFINE) $(ALL_CFLAGS) -I../common -Wall -g -O -pipe
 
 AM_CFLAGS  = $(PKG_CFLAGS) `pkg-config --cflags gtk+-2.0 libxml-2.0`
 AM_LDFLAGS = $(ALL_LDFLAGS) `pkg-config --libs gtk+-2.0 libxml-2.0`
+
+GLIB_COMPILE_RESOURCES = /usr/bin/glib-compile-resources
+GCRARGS = --sourcedir=$(srcdir) --generate-source
+
 LIBS = -L../common -lgould -lX11
 
 bin_PROGRAMS = \
@@ -29,16 +33,19 @@ prova
 gpanel_LDADD = -lgthread-2.0
 
 # program source dependencies
-gpanel_SOURCES = gpanel.h gsession.h \
+gpanel_SOURCES = gsession.h \
+		 gpanel.h \
 		 gpanel.c \
 		 desktop.c \
 		 taskbar.c \
 		 settings.c \
+		 screensaver.c \
 		 wallpaper.c \
 		 dialog.c \
-		 menus.c \
-		 saver.c
+		 menus.c
 
 gscreen_SOURCES  = gscreen.h gscreen.c
 
+gresources.c: gresource.xml screensaver.ui
+	$(GLIB_COMPILE_RESOURCES) $(srcdir)/gresource.xml --target=$@ $(GCRARGS)
 #/

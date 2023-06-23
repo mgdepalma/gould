@@ -57,7 +57,7 @@ gould_diagnostics(const char *format, ...)
   const char *errorlog = getenv("ERRORLOG");
 
   int nptrs = backtrace(trace, BACKTRACE_SIZE);
-  char program[MAX_STRING];
+  char program[MAX_COMMAND];
 
   va_list args;
   va_start (args, format);
@@ -71,7 +71,7 @@ gould_diagnostics(const char *format, ...)
     int errfd = open(errorlog, O_APPEND | O_WRONLY, 0644);
 
     if (errfd > 0) {
-      char caption[MAX_STRING];
+      char caption[MAX_COMMAND];
       sprintf(caption, "%s %s", timestamp(), program);
 
       write(errfd, caption, strlen(caption));

@@ -74,6 +74,7 @@ struct _SaverConfig
 {
   gboolean active;		/* saver active (or not) */
   const gchar *mode;		/* screen save/lock mode */
+  int selection;		/* save/lock mode selection */
   guint time;			/* screen save in minutes */
   guint lock;			/* screen lock in minutes */
   int index;			/* _xscreensaver_modes_directory index */
@@ -1071,23 +1072,6 @@ saver_open (Modulus *applet)
   GlobalPanel *panel = applet->data;
   PanelIcons  *icons = panel->icons;
 
-  /* Screen saver and lock timers. */
-printf("%s local_.monitor fork() disabled\n", __func__);
-#ifdef NEVER
-  local_.monitor = fork();
-
-  if (local_.monitor == 0) {		/* child process */
-    Display *display = XOpenDisplay (NULL);
-
-    if (display) {
-      setprogname ("^xlock");
-      strncpy((char *)Program, "^xlock", strlen(Program));
-      screensaver (display, panel->shared, local_.saver);
-    }
-    _exit(0);				/* never reached */
-  }
-#endif
-
   /* Construct the user interface. */
   button = gtk_button_new();
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
@@ -1122,14 +1106,22 @@ saver_close (Modulus *applet)
 } /* saver_close */
 
 /*
-* saver_getmode
+* saver_get_mode
+* saver_get_selection
 */
 const char *
-saver_getmode()
+saver_get_mode()
 {
   SaverConfig *saver = local_.saver;
   return saver->mode;
-}
+} /* saver_get_mode */
+
+const int
+saver_get_selection()
+{
+  SaverConfig *saver = local_.saver;
+  return saver->selection;
+} /* saver_get_selection */
 
 /*
 * saver_wake

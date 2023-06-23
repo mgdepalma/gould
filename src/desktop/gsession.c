@@ -125,7 +125,7 @@ sessionlog_stamp(debug_t level, const char *format, ...)
   int nbytes = 0;
 
   if (debug >= level) {
-    char message[MAX_STRING];
+    char message[MAX_COMMAND];
 
     va_list args;
     va_start (args, format);
@@ -241,7 +241,7 @@ session_monitor(const char *name)
         sprintf(procfile, "/proc/%d", monitor_[idx].process);
 
         if (access(procfile, R_OK) != 0) {
-          sessionlog_stamp(1, "/proc/{monitor_[%s].process}: missing\n",
+          sessionlog_stamp(1, "[%s] pid => missing\n",
 				session_monitor_tag (idx));
           session_respawn (idx);
         }
@@ -280,8 +280,7 @@ session_spawn(const int idx)
 {
   pid_t pid = spawn( monitor_[idx].program );
 
-  sessionlog_stamp(1, "monitor_[%s].process => %d\n",
-				session_monitor_tag(idx), pid);
+  sessionlog_stamp(1, "[%s] pid => %d\n", session_monitor_tag(idx), pid);
   monitor_[idx].process = pid;
 
   return pid;
@@ -323,10 +322,10 @@ int
 acknowledge(int connection)
 {
   int nbytes;
-  char request[MAX_STRING];
+  char request[MAX_COMMAND];
 
-  memset(request, 0, MAX_STRING);
-  nbytes = read(connection, request, MAX_STRING);
+  memset(request, 0, MAX_COMMAND);
+  nbytes = read(connection, request, MAX_COMMAND);
 
   if (nbytes < 0)
     perror("reading request from stream socket");

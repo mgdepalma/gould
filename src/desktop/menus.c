@@ -20,6 +20,7 @@
 #include "gould.h"      /* common package declarations */
 #include "gpanel.h"
 #include "gsession.h"	/* gsessionProcess declaration */
+#include "screensaver.h"
 #include "tasklist.h"
 #include "pager.h"
 #include "xutil.h"
@@ -162,7 +163,7 @@ finis (GlobalPanel *panel, bool logout, bool quit)
     if (panel->session >= 0) {	/* send SIGKILL to gsession */
       killall (_GSESSION_BACKEND, SIGKILL);
       killall (_GSESSION_MONITOR, SIGKILL);
-      killall (_GSESSION_MASTER, SIGKILL);
+      killall (_GSESSION_MANAGER, SIGKILL);
     }
     else {			/* signal {WINDOWMANAGER} */
       Display *display = panel->shared->display;
@@ -262,13 +263,13 @@ exit_suspend (GtkWidget *button, GlobalPanel *panel)
 static void
 screenlock (GtkWidget *button, GlobalPanel *panel)
 {
-  char command[128];
-  const char *mode = saver_getmode();
+  char command[MAX_COMMAND];
+  int idx = saver_get_selection();
 
-  if (mode)
-    sprintf(command, "%s -mode %s", _XLOCK_COMMAND, mode);
+  if (idx >= 0)
+    sprintf(command, "%s --select %d", _SCREENSAVER_COMMAND, idx);
   else
-    strcpy(command, _XLOCK_COMMAND);
+    sprintf(command, "%s --activate", _SCREENSAVER_COMMAND);
 
   vdebug (1, "[%s]%s\n", __func__, command);
   exit_cancel(button, panel);

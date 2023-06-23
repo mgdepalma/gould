@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<panel version="1.1">
+<panel version="1.2">
 
  <!-- Automatically generated ~/.config/panel, please DO NOT edit. Manual
    changes made will be lost when the program using this file exits.  -->
@@ -26,7 +26,7 @@
      <exec>xcalc</exec>
     </item>
     <item name="Console Window" icon="terminal.png">
-     <exec>xterm</exec>
+     <exec>terminal</exec>
     </item>
     <item name="Network Browser" icon="gftp.png">
      <exec>gftp</exec>
@@ -160,8 +160,8 @@
  </menu>
 
  <modules>
-  <path>$HOME/.config/plugins</path>
-  <path>/usr/lib/modules/gould</path>
+  <path>$HOME/.config/gould</path>
+  <path>/usr/libexec/gould</path>
   <applet name="splash" icon="welcome.png">
    <settings expire="10" font="Sans Bold 20" fg="blue" />
   </applet>
@@ -183,7 +183,7 @@
   <applet name="clock" icon="clock.png">
    <settings format="%H:%M" />
   </applet>
-  <applet name="xlock" icon="exit.png">
+  <applet name="screensaver" icon="exit.png">
    <settings mode="blank" time="20" />
   </applet>
  </modules>
@@ -196,7 +196,7 @@
    <exec>email</exec>
   </item>
   <item name="Terminal" icon="terminal.png">
-   <exec>xterm</exec>
+   <exec>terminal</exec>
   </item>
  </quicklaunch>
 

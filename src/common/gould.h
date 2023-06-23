@@ -31,7 +31,7 @@
 
 #define MAX_BUFFER_SIZE 512
 #define MAX_PATHNAME    256
-#define MAX_STRING      128
+#define MAX_COMMAND     128
 #define MAX_LABEL       64
 #define MAX_STAMP       32
 

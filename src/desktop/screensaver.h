@@ -16,31 +16,18 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-#ifndef _GSESSION
-#define _GSESSION "/tmp/gsession"
 
-/* special request - get gsession main process ID */
-#define _GET_SESSION_PID "=:_gsession_:="
+#ifndef _SCREENSAVER_H
+#define _SCREENSAVER_H 1
 
-#define _GSESSION_BACKEND  "backend"	/* gsession backend process */
-#define _GSESSION_MONITOR  "monitor"	/* gsession monitor process */
-#define _GSESSION_MANAGER  "gsession"	/* gsession main process */
+#define MAX_SCREENSAVER 256
 
-#define _SIGTERM_GRACETIME 1		/* SIGTERM gracetime in seconds */
+#define _xscreensaver_config_directory "/usr/share/xscreensaver/config"
+#define _xscreensaver_modes_directory "/usr/libexec/xscreensaver"
 
-typedef struct _SessionMonitor SessionMonitor;
+#define _xscreensaver_command	   "xscreensaver-command"
+#define _xscreensaver_user_config  ".xscreensaver"
 
-struct _SessionMonitor			/* array helper for process monitor */
-{
-  const char *program;
-  pid_t process;
-};
+#define _SCREENSAVER_COMMAND _xscreensaver_command
 
-#include <sys/socket.h>
-#include <sys/un.h>
-
-#ifndef UNIX_PATH_MAX
-#define UNIX_PATH_MAX 108
-#endif
-#endif /* </_GSESSION> */
-
+#endif /* </SCREENSAVER_H */

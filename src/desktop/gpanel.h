@@ -24,8 +24,8 @@
 #include "dialog.h"
 #include "docklet.h"
 #include "gwindow.h"
-#include "systray.h"
 #include "xmlconfig.h"
+#include "systray.h"
 #include "module.h"
 #include "util.h"
 
@@ -35,8 +35,6 @@
 
 #define SCHEMA_VERSION_CODE   SCHEMA_VERSION(1,2,0)
 #define SCHEMA_VERSION_STRING "1.2"
-
-#define _XLOCK_COMMAND "xlock"
 
 G_BEGIN_DECLS
 
@@ -87,7 +85,7 @@ struct _GlobalPanel
   Modulus *start;		/* start menu applet */
   Modulus *pager;		/* panel pager applet */
   Modulus *tasklist;		/* panel tasklist applet */
-  Modulus *xlock;		/* screen saver applet */
+  Modulus *screensaver;		/* screen saver applet */
 
   GList *moduli;		/* plugin modules list */
   GList *notice;		/* alert notices list */
@@ -229,7 +227,9 @@ void tasklist_close (Modulus *applet);
 bool saver_init (Modulus *applet, GlobalPanel *panel);
 void saver_open (Modulus *applet);
 void saver_close (Modulus *applet);
-const char *saver_getmode (void);
+
+const char *saver_get_mode (void);
+const int saver_get_selection (void);
 
 GtkWidget *saver_settings (Modulus *applet, GlobalPanel *panel);
 void saver_wake (GtkWidget *widget, GlobalPanel *panel);
