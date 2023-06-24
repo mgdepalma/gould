@@ -970,7 +970,9 @@ session_signal_responder(int signum, siginfo_t *siginfo, void *context)
 {
   pid_t sender = siginfo->si_pid; // get pid of sender
 
-  if (signum == SIGUSR3) {
+  if (signum != SIGUSR3)
+    signal_responder (signum);
+  else {
     alarm (_SIGALRM_GRACETIME);	  // acknowledgement timeout
     gtk_widget_show (_desktop->window);
     kill (sender, SIGUSR3);	  // acknowledge `sender'

@@ -861,13 +861,13 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
   GtkWidget *frame, *area, *layer, *slot, *widget;
   GtkWidget *layout = gtk_vbox_new (FALSE, 2);
 
-  SaverConfig *saver  = local_.saver;
-  SaverConfig *saver_ = &local_.cache;
+  SaverConfig *_saver = local_.saver;
+  SaverConfig *_cache = &local_.cache;
   gchar *caption = g_strdup_printf ("%s [%s]", _(applet->label), _("plugin"));
   int idx, count, mark = 0;
 
   /* Initialize private data structure singleton. */
-  memcpy(&local_.cache, saver, sizeof(SaverConfig));
+  memcpy(_cache, _saver, sizeof(SaverConfig));
 
   /* Construct settings page. */
   frame = gtk_frame_new (caption);
@@ -890,9 +890,9 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 6);
   gtk_widget_show (local_.enable_toggle = widget);
 
-  if (saver->time > 0 || saver->lock > 0) {
+  if (_saver->time > 0 || _saver->lock > 0) {
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(widget), TRUE);
-    saver_->active = TRUE;
+    _cache->active = TRUE;
   }
 
   g_signal_connect (G_OBJECT(widget), "toggled",
@@ -928,7 +928,7 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (widget);
 
   g_signal_connect (G_OBJECT(widget), "clicked",
-                    G_CALLBACK(screensaver_fullscreen), saver_);
+                    G_CALLBACK(screensaver_fullscreen), _cache);
 
   /* Settings for screen saver mode. */
   widget = local_.mode_selection = gtk_combo_box_new_text ();
@@ -942,9 +942,9 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
     vdebug(3, "[%d] %s\n", idx, modes_[idx]);
   }
 
-  if (saver->mode)
+  if (_saver->mode)
     for (idx = 0; modes_[idx] != NULL; idx++)
-      if (strcmp(modes_[idx], saver->mode) == 0) {
+      if (strcmp(modes_[idx], _saver->mode) == 0) {
         mark = idx;
         break;
       }
@@ -969,7 +969,7 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (widget);
 
   widget = local_.time_entry = gtk_entry_new();
-  caption = g_strdup_printf ("%d", saver_->time);
+  caption = g_strdup_printf ("%d", _cache->time);
   gtk_entry_set_text (GTK_ENTRY(widget), caption);
   gtk_entry_set_editable (GTK_ENTRY(widget), FALSE);
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, FALSE, 0);
@@ -999,7 +999,7 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (widget);
 
   widget = local_.lock_entry = gtk_entry_new();
-  caption = g_strdup_printf ("%d", saver_->lock);
+  caption = g_strdup_printf ("%d", _cache->lock);
   gtk_entry_set_text (GTK_ENTRY(widget), caption);
   gtk_entry_set_editable (GTK_ENTRY(widget), FALSE);
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, FALSE, 0);

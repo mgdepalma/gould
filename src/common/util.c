@@ -642,7 +642,7 @@ get_hostname(char *hostname, int len, bool full)
       strcpy(hostname, "localhost");
   }
   else {
-    FILE *stream = popen("hostname -f", "r");
+    FILE *stream = popen("/bin/hostname -f", "r");
 
     if (stream) {
       fgets(hostname, len, stream);
