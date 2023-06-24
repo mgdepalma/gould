@@ -72,8 +72,8 @@ debug_t debug = 0;	 /* debug verbosity (0 => none) {must be declared} */
 bool _persistent = true; /* getenv("GOULD_RESPAWN") => {yes,no} */
 bool _silent = false;	 /* show splash screen (or not) */
 
-int _signal = SIGUSR1;	 	/* what to signal [default] */
-int _stream = -1;	 	/* stream socket descriptor */
+int _signal = SIGUSR1; 	 /* what to signal [default] */
+int _stream = -1; 	 /* stream socket descriptor */
 
 
 /*
@@ -879,7 +879,10 @@ gpanel_graceful(int signum, bool verbose)
 {
   sleep (1);		/* quiescence (..let the cables sleep) */
 
-  if(verbose) printf("%s, exiting on signal: %d\n", Program, signum);
+  if (verbose) {
+    gould_error ("%s %s: exiting on signal: %d\n",timestamp(), Program,signum);
+    printf("%s, exiting on signal: %d\n", Program, signum);
+  }
   gtk_main_quit ();	/* innermost invocation of the main loop return */
 
   _exit (signum);
@@ -906,6 +909,11 @@ signal_responder (int signum)
 
     case SIGUSR2:		 /* create new shortcut */
       desktop_settings (_desktop, DESKTOP_SHORTCUT_CREATE);
+      break;
+
+    case SIGALRM:		 /* acknowledgement timed out */
+      gpanel_respawn (_desktop->session, 2);
+      gpanel_graceful (signum, verbose);
       break;
 
     case SIGCHLD:		/* reap children */
@@ -962,10 +970,12 @@ session_signal_responder(int signum, siginfo_t *siginfo, void *context)
 {
   pid_t sender = siginfo->si_pid; // get pid of sender
 
-  if (signum == SIGUSR3)
+  if (signum == SIGUSR3) {
+    alarm (_SIGALRM_GRACETIME);	  // acknowledgement timeout
+    gtk_widget_show (_desktop->window);
     kill (sender, SIGUSR3);	  // acknowledge `sender'
-  else
-    signal_responder (signum);
+    alarm (0);			  // disarm alarm()
+  }
 } /* </session_signal_responder> */
 
 /*
@@ -995,7 +1005,7 @@ apply_signal_responder(void)
   signal(SIGSEGV, signal_responder);	/* 11 internal program error */
   signal(SIGUSR2, signal_responder);	/* 12 new desktop shortcut */
   signal(SIGPIPE, signal_responder);	/* 13 ignore */
-  signal(SIGALRM, signal_responder);	/* 14 ignore */
+  signal(SIGALRM, signal_responder);	/* 14 acknowledgement timed out */
   signal(SIGTERM, signal_responder);	/* 15 show logout panel */
   signal(SIGCHLD, signal_responder);	/* 17 reap children */
   signal(SIGCONT, signal_responder);	/* 18 resume (cancel logout) */

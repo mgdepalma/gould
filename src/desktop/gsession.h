@@ -19,12 +19,18 @@
 #ifndef _GSESSION
 #define _GSESSION "/tmp/gsession"
 
+/* well known service requests handling */
+#define _GSESSION_SERVICE "=:_gsession"
+
+#define _GSESSION_SERVICE_DISABLE "=:_gsession %d 0:="
+#define _GSESSION_SERVICE_ENABLE  "=:_gsession %d 1:="
+
 /* special request - get gsession main process ID */
 #define _GET_SESSION_PID "=:_gsession_:="
 
-#define _GSESSION_BACKEND  "backend"	/* gsession backend process */
+#define _GSESSION_MANAGER  "gsession"	/* gsession main process    */
 #define _GSESSION_MONITOR  "monitor"	/* gsession monitor process */
-#define _GSESSION_MANAGER  "gsession"	/* gsession main process */
+#define _GSESSION_BACKEND  "backend"	/* gsession backend process */
 
 #define _WINDOWMANAGER	    0		/* SessionMonitor monitor_[0] */
 #define _SCREENSAVER	    1		/* SessionMonitor monitor_[1] */
@@ -32,7 +38,12 @@
 #define _DESKTOP	    3		/* SessionMonitor monitor_[3] */
 #define SessionMonitorCount 4
 
+#define _SIGALRM_GRACETIME  2		/* SIGALRM gracetime in seconds */
+#define _SIGTERM_GRACETIME  1		/* SIGTERM gracetime in seconds */
+
+#ifndef SIGUSR3
 #define SIGUSR3 SIGWINCH		/* SIGWINCH => 28, reserved */
+#endif
 
 #ifndef SIGUNUSED
 #define SIGUNUSED 31
@@ -40,10 +51,11 @@
 
 typedef struct _SessionMonitor SessionMonitor;
 
-struct _SessionMonitor			/* array helper for process monitor */
+struct _SessionMonitor		/* array helper for process monitor */
 {
-  const char *program;
   pid_t process;
+  const char *program;
+  bool enabled;
 };
 
 #include <sys/socket.h>
@@ -52,5 +64,6 @@ struct _SessionMonitor			/* array helper for process monitor */
 #ifndef UNIX_PATH_MAX
 #define UNIX_PATH_MAX 108
 #endif
-#endif /* </_GSESSION> */
 
+#endif /* </_GSESSION> */
+//

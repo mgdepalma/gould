@@ -92,6 +92,8 @@ const char *lsb_release (LinuxStandardBase option);
 int get_device_capability (const char *device);
 int glist_compare (GList *alist, GList *blist);
 
+int get_hostname(char *hostname, int len, bool full);
+
 pid_t get_process_id(const char *program);
 pid_t spawn(const char *program);
 

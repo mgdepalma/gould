@@ -25,9 +25,14 @@
 #define _xscreensaver_config_directory "/usr/share/xscreensaver/config"
 #define _xscreensaver_modes_directory "/usr/libexec/xscreensaver"
 
-#define _xscreensaver_command	   "xscreensaver-command"
-#define _xscreensaver_user_config  ".xscreensaver"
+#define _xscreensaver_daemon	  "xscreensaver"
+#define _xscreensaver_command	  "xscreensaver-command"
+#define _xscreensaver_user_config ".xscreensaver"
 
-#define _SCREENSAVER_COMMAND _xscreensaver_command
+#define _SCREENSAVER_DAEMON   _xscreensaver_daemon
+#define _SCREENSAVER_COMMAND  _xscreensaver_command
+
+#define _SCREENSAVER_ACTIVATE _SCREENSAVER_COMMAND " --activate"
+#define _SCREENSAVER_GRACEFUL _SCREENSAVER_COMMAND " --exit"
 
 #endif /* </SCREENSAVER_H */

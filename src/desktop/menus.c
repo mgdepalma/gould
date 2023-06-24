@@ -335,8 +335,8 @@ activate (GtkWidget *button, GdkEventButton *event, GlobalPanel *panel)
 const char * 
 item_check_access (ConfigurationNode *node, GlobalPanel *panel, gchar *attr)
 {
-  static char file[FILENAME_MAX];
-  static char args[FILENAME_MAX];
+  static char args[MAX_BUFFER_SIZE];
+  static char file[MAX_PATHNAME];
 
   char *value  = (attr) ? configuration_attrib (node, attr) : node->element;
   char *result = NULL;
@@ -522,10 +522,10 @@ restart (GlobalPanel *panel)
 GtkWidget *
 shutdown_dialog_new (GlobalPanel *panel)
 {
-  FILE *stream;
-  gchar *caption;
-  gchar text[FILENAME_MAX];
   bool resume = false;
+  char hostname[MAX_COMMAND];
+  gchar *caption;
+  FILE *stream;
 
   GtkWidget *dialog, *frame, *layout, *layer, *label, *image, *button;
   const gchar *icon = icon_path_finder (panel->icons, "shutdown.png");
@@ -562,11 +562,10 @@ shutdown_dialog_new (GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(layout), layer, FALSE, FALSE, 2);
   gtk_widget_show (layer);
 
-  if ( (stream = popen("hostname --long", "r")) ) {
-    fgets(text, FILENAME_MAX, stream);
+  if (get_hostname(hostname, MAX_COMMAND, true) > 0) {
     caption = g_strdup_printf (
       "\t<span foreground=\"#6699CC\" font_desc=\"San Bold 14\">%s</span>",
-                                text);
+                                hostname);
 
     label = gtk_label_new (caption);
     gtk_misc_set_alignment(GTK_MISC(label), 0.5, 0.5);
@@ -575,7 +574,6 @@ shutdown_dialog_new (GlobalPanel *panel)
     gtk_widget_show (label);
 
     g_free (caption);
-    pclose(stream);
   }
 
   /* Right justify `shutdown icon`(fallback: ICON_ECLIPSE) */

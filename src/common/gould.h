@@ -21,6 +21,7 @@
 #define _GOULD "/tmp/gould"
 
 #include <string.h>
+#include <stdbool.h>
 #include <libintl.h>
 #include <unistd.h>
 

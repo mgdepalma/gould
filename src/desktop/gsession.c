@@ -21,6 +21,7 @@
 */
 #include "gould.h"	/* common package declarations */
 #include "gsession.h"
+#include "screensaver.h"
 #include "util.h"
 
 #include <stdio.h>
@@ -37,8 +38,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
-
-#define _SIGTERM_GRACETIME 1	/* SIGTERM gracetime in seconds */
 
 const char *Program = "gsession";
 const char *Release = "1.2.2";
@@ -79,8 +78,8 @@ pid_t _monitor;		/* monitor process ID */
 */
 int acknowledge(int connection);
 int open_stream_socket(const char *sockname);
+pid_t session_spawn(const int idx, bool async);
 pid_t session_respawn(const int idx);
-pid_t session_spawn(const int idx);
 void signal_responder(int signum);
 
 /*
@@ -142,6 +141,35 @@ session_monitor_tag(const int tag)
   }
   return "<undefined>";
 } /* </session_monitor_tag> */
+
+/*
+* session_graceful - signal _GSESSION_{BACKEND,MONITOR} to exit
+*/
+static void
+session_graceful(int signum, ...)
+{
+  if (signum == SIGUNUSED) {	// prepare main program for exit
+    close(_stream);
+    remove(_GSESSION);
+    sessionlog(1, "%s ended on %s\n", Program, timestamp());
+    if(_logstream) fclose(_logstream);
+  }
+  else {
+    int seconds = 0;
+    void *data = NULL;
+
+    killall (_GSESSION_BACKEND, signum);
+    killall (_GSESSION_MONITOR, signum);
+
+    va_list ptr;
+    va_start(ptr, signum);
+    seconds = va_arg(ptr, int);
+    data = va_arg(ptr, void*);	// data => 0, at the end of va_list
+    if(data == 0) seconds = 0;
+    if(seconds > 0) sleep (seconds);
+    va_end(ptr);
+  }
+} /* </session_graceful> */
 
 /*
 * gsession backend process thread
@@ -214,41 +242,62 @@ session_monitor(const char *name)
   prctl(PR_SET_NAME, (unsigned long)name, 0, 0);
 
   /* {WINDOWMANAGER}, {SCREENSAVER}, {LAUNCHER}, {DESKTOP} */
-  for (idx = 0; idx < SessionMonitorCount; idx++)
-    if (monitor_[idx].program) {
-      pid = session_spawn (idx);
+  for (idx = 0; idx < SessionMonitorCount; idx++) {
+    monitor_[idx].enabled = (monitor_[idx].program) ? true : false;
+    if (monitor_[idx].enabled) {
+      pid = session_spawn(idx, false);
       monitor_[idx].process = pid;
     }
-
-#ifdef NEVER
-  /* additional failsafe starting {DESKTOP} process */
-  if (get_process_id (monitor_[_DESKTOP].program) < 0) {
-    killall (monitor_[_DESKTOP].program, SIGKILL);
-    monitor_[_DESKTOP].process = session_spawn_async (_DESKTOP);
   }
-#endif
-  
+
+  /* if needed: session_spawn(_DESKTOP, async => true) */
+  sprintf(procfile, "/proc/%d", monitor_[_DESKTOP].process);
+  if(access(procfile, R_OK) != 0) session_spawn(_DESKTOP, true);
+
   close(STDIN_FILENO);	/* close stdin. stdout and stderr */
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
   /* regularly check SessionMonitor monitor_[].process */
   for ( ;; ) {
+    sleep (_monitor_seconds_interval);
+
     for (idx = 0; idx < SessionMonitorCount; idx++) {
-      if (monitor_[idx].program) {
+      if (monitor_[idx].enabled) {
         sprintf(procfile, "/proc/%d", monitor_[idx].process);
 
         if (access(procfile, R_OK) != 0) {
           sessionlog_stamp(1, "[%s] pid => missing\n",
 				session_monitor_tag (idx));
-          session_respawn (idx);
+          session_respawn(idx);
         }
       }
     }
-    sleep (_monitor_seconds_interval);
+    kill(monitor_[_DESKTOP].process, SIGUSR3); /* acknowledgement expected */
   }
   return 0;
 } /* </session_monitor> */
+
+/*
+* session_spawn - spawn wrapper that uses sessionlog
+*/
+pid_t
+session_spawn(const int idx, bool async)
+{
+  pid_t pid;
+
+  if (async == false)
+    pid = spawn( monitor_[idx].program );
+  else {
+    GError *err = NULL;
+    gboolean res = g_spawn_command_line_async (monitor_[idx].program, &err);
+    pid = get_process_id (monitor_[idx].program);
+  }
+  sessionlog_stamp(1, "[%s] pid => %d\n", session_monitor_tag(idx), pid);
+  monitor_[idx].process = pid;
+
+  return pid;
+} /* </session_spawn> */
 
 /*
 * session_respawn - attempt to respawn well known program
@@ -260,7 +309,7 @@ session_respawn(const int idx)
 
   if (monitor_[idx].program) {
     putenv (_monitor_environ);
-    pid = session_spawn (idx);
+    pid = session_spawn(idx, false);
     sleep (_monitor_seconds_interval);
     monitor_[idx].process = pid;
   }
@@ -271,69 +320,14 @@ session_respawn(const int idx)
 } /* </session_respawn> */
 
 /*
-* session_spawn - spawn wrapper that uses sessionlog
-* session_spawn_async - session_spawn using g_spawn_command_line_async
-*/
-pid_t
-session_spawn(const int idx)
-{
-  pid_t pid = spawn( monitor_[idx].program );
-
-  sessionlog_stamp(1, "[%s] pid => %d\n", session_monitor_tag(idx), pid);
-  monitor_[idx].process = pid;
-
-  return pid;
-} /* </session_spawn> */
-
-pid_t
-session_spawn_async(const int idx)
-{
-  GError *err = NULL;
-  gboolean res = g_spawn_command_line_async (monitor_[idx].program, &err);
-
-  pid = get_process_id (monitor_[idx].program);
-  sessionlog_stamp(1, "[%s] pid => %d\n", session_monitor_tag(idx), pid);
-  monitor_[idx].process = pid;
-
-  return pid;
-} /* </session_spawn_async> */
-
-/*
-* session_graceful - signal _GSESSION_{BACKEND,MONITOR} to exit
-*/
-static void
-session_graceful(int signum, ...)
-{
-  if (signum == SIGUNUSED) {	// prepare main program for exit
-    close(_stream);
-    remove(_GSESSION);
-    sessionlog(1, "%s ended on %s\n", Program, timestamp());
-    if(_logstream) fclose(_logstream);
-  }
-  else {
-    int seconds = 0;
-    void *data = NULL;
-
-    killall (_GSESSION_BACKEND, signum);
-    killall (_GSESSION_MONITOR, signum);
-
-    va_list ptr;
-    va_start(ptr, signum);
-    seconds = va_arg(ptr, int);
-    data = va_arg(ptr, void*);	// data => 0, at the end of va_list
-    if(data == 0) seconds = 0;
-    if(seconds > 0) sleep (seconds);
-    va_end(ptr);
-  }
-} /* </session_graceful> */
-
-/*
 * acknowledge - socket stream request delivery
 */
 int
 acknowledge(int connection)
 {
-  int nbytes;
+  int idx, nbytes;
+  int mark = strlen(_GSESSION_SERVICE) + 1; // 012345678901234 
+					    // =:gession # b:=
   char request[MAX_COMMAND];
 
   memset(request, 0, MAX_COMMAND);
@@ -348,7 +342,20 @@ acknowledge(int connection)
       sessionlog_stamp(1, "pidof %s => %d\n", Program, _instance);
       sprintf(request, "%d\n", _instance);
     }
-    else {					   /* spawn( request ) */
+    else if (strncmp(request, _GSESSION_SERVICE, mark) == 0) {
+      idx = atoi(request[mark]);
+      monitor_[idx].enabled = (request[mark+2] == '1') ? true : false;
+
+      sessionlog_stamp(1, "[%s] enabled => %s\n", session_monitor_tag(idx),
+				(monitor_[idx].enabled) ? "true" : "false");
+      if (monitor_[idx].enabled)
+        strcpy(request, _SCREENSAVER_GRACEFUL);
+      else {
+        sprintf(request, "%d\n", _instance);
+        monitor_[idx].process = 0;
+      }
+    }
+    else {		   /* spawn( request ) */
       sessionlog_stamp(1, "spawn( %s )\n", request);
       sprintf(request, "%d\n", spawn( request ));
     }
@@ -414,8 +421,8 @@ signal_responder(int signum)
       sessionlog_stamp(1,"%s: caught signal %d, ignoring.\n", Program, signum);
       break;
 
-    case SIGUSR3:		/* acknowledge from gdesktop process */
-      sessionlog_stamp(2, "%s gdesktop acknowledges\n", timestamp());
+    case SIGUSR3:		/* acknowledgement from {DESKTOP} process */
+      sessionlog_stamp(3, "%s gdesktop acknowledges\n", timestamp());
       sleep (_monitor_seconds_interval);
       break;
 

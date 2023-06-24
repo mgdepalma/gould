@@ -632,6 +632,34 @@ glist_compare (GList *alist, GList *blist)
 } /* </glist_compare> */
 
 /*
+* get_hostname - get hostname, short or full
+*/
+int
+get_hostname(char *hostname, int len, bool full)
+{
+  if (full == false) {
+    if (gethostname(hostname, len) != 0)
+      strcpy(hostname, "localhost");
+  }
+  else {
+    FILE *stream = popen("hostname -f", "r");
+
+    if (stream) {
+      fgets(hostname, len, stream);
+
+      if (strlen(hostname) > 0)
+        hostname[strlen(hostname) - 1] = (char)0; /* chomp newline */
+
+      pclose(stream);
+    }
+    else {
+      hostname[0] = (char)0;
+    }
+  }
+  return strlen(hostname);
+} /* </get_hostname> */
+
+/*
 * get_process_id - get {program} PID or -1, if not running  
 */
 pid_t

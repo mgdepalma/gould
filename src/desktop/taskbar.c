@@ -816,7 +816,7 @@ tasklist_settings_new (Modulus *applet, TasklistConfig *config)
   gchar *caption = g_strdup_printf ("%s [%s]", _(applet->label), _("builtin"));
 
    /* Save configuration to singleton settings cache. */
-  memcpy(&local_.tasklist_cache, config, sizeof(PagerConfig));
+  memcpy(&local_.tasklist_cache, config, sizeof(TasklistConfig));
 
   /* Construct settings page. */
   frame = gtk_frame_new (caption);

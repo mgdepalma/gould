@@ -45,8 +45,8 @@ struct _DesktopPanel {
   GtkWidget *backward;    /* backward one selection button */
   GtkWidget *forward;     /* forward one selection button */
 
+  char pathname[MAX_PATHNAME + 2];
   char resource[MAX_PATHNAME]; /* resource path ($HOME/.config/desktop) */
-  char pathname[MAX_PATHNAME];
 };
 
 /* Forward prototype declarations. */

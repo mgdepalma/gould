@@ -20,6 +20,7 @@
 #include "gould.h"      /* common package declarations */
 #include "gpanel.h"
 #include "gsession.h"
+#include "screensaver.h"
 #include "module.h"
 #include "util.h"
 
@@ -98,13 +99,8 @@ struct _SaverPrivate		/* private global structure */
   pid_t preview;		/* saver preview process ID */
 };
 
-#define _xscreensaver_maximum 256
-#define _xscreensaver_modes_directory "/usr/libexec/xscreensaver"
+static char *modes_[MAX_SCREENSAVER];
 
-#define _xscreensaver_command "xscreensaver-command"
-#define _xscreensaver_config  ".xscreensaver"
-
-static char *modes_[_xscreensaver_maximum];
 static SaverPrivate local_;	/* private global structure singleton */
 
 /* implementation prototypes forward declarations */
@@ -396,8 +392,8 @@ screensaver_commands (SaverCommand *command, SaverConfig *config)
 {
   screensaver_debug ("resume", config, false);
 
-  sprintf(command->screenlock, "%s --activate", _xscreensaver_command);
-  sprintf(command->screensave, "%s --select %d", _xscreensaver_command,
+  sprintf(command->screenlock, "%s --activate", _SCREENSAVER_COMMAND);
+  sprintf(command->screensave, "%s --select %d", _SCREENSAVER_COMMAND,
 						config->index);
 
   config->active = (config->time > 0 || config->lock > 0) ? true : false;
@@ -431,7 +427,8 @@ screensaver_control (Display *display, GlobalShare *shared, SaverConfig *saver)
                                &type, &format, &count, &bytes,
                                (unsigned char **)&value);
   if (status != Success)
-    printf("%s screensaver_control[1] status => %d\n", _xscreensaver_command, status);
+    printf("%s screensaver_control[1] status => %d\n",
+			_SCREENSAVER_COMMAND, status);
 
   if (bytes > 0) {
     status = XGetWindowProperty (display, window, shared->saver,
@@ -439,7 +436,8 @@ screensaver_control (Display *display, GlobalShare *shared, SaverConfig *saver)
                                  &type, &format, &count, &bytes,
                                  (unsigned char **)&value);
     if (status != Success)
-      printf("%s screensaver_control[2] status => %d\n",_xscreensaver_command, status);
+      printf("%s screensaver_control[2] status => %d\n",
+			_SCREENSAVER_COMMAND, status);
 
     if (status == Success) {
       char *word = strchr((char*)value, ':');
@@ -507,15 +505,18 @@ screensaver_preview (GdkWindow *window, const gchar *mode)
   sprintf(parent, "%ld", (unsigned long)xwin);
   sprintf(geometry, "%dx%d", width, height);
 
-  if (process == 0) { 		/* child process */
-    execlp(_xscreensaver_command, _xscreensaver_command,
-           "-parent", parent,
-           "-geometry", geometry,
-           "-nolock", "-inwindow",
-           "-mode", mode,
-           NULL);
+  if (process > 0) {	/* not in spawned process */
+    int stat;
+    waitpid(process, &stat, 0);
+    return process;
   }
-  return process;
+
+  execlp(_SCREENSAVER_COMMAND,
+	   _SCREENSAVER_COMMAND,
+           "--activate",
+           NULL);
+
+  return 0;
 } /* </screensaver_preview> */
 
 /*
@@ -586,7 +587,7 @@ saver_configuration_read (Modulus *applet, SaverConfig *saver)
   while ((item = configuration_find (chain, "applet")) != NULL) {
     attrib = configuration_attrib (item, "name");
 
-    if (strcmp(attrib, _xscreensaver_command) == 0) {
+    if (strcmp(attrib, "screensaver") == 0) {
       if ((attrib = configuration_attrib (item, "icon")) != NULL)
         applet->icon = attrib;
 
@@ -639,14 +640,14 @@ saver_settings_apply (Modulus *applet)
 " <settings mode=\"%s\" time=\"%d\" lock=\"%d\" />\n"
 "</applet>\n";
 
-  data = g_strdup_printf (spec, _xscreensaver_command, local_.icon,
+  data = g_strdup_printf (spec, "screensaver", local_.icon,
                           ((saver->mode) ? saver->mode : "blank"),
                           saver->time, saver->lock);
   vdebug (1, "\n%s\n", data);
 
   /* Replace configuration item. */
   configuration_replace (panel->config, data, "modules",
-				"applet", _xscreensaver_command);
+				"applet", "screensaver");
   g_free (data);
 
   /* Memory was freed when original item was removed, read configuration. */
@@ -934,7 +935,7 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX (slot), widget, FALSE, FALSE, 0);
   gtk_widget_show (widget);
 
-  count = populate_modes(_xscreensaver_modes_directory, _xscreensaver_maximum);
+  count = populate_modes(_xscreensaver_modes_directory, MAX_SCREENSAVER);
 
   for (idx = 0; idx < count; idx++) {
     gtk_combo_box_append_text (GTK_COMBO_BOX(widget), modes_[idx]);
@@ -1025,16 +1026,15 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
 bool
 saver_init (Modulus *applet, GlobalPanel *panel)
 {
-  if (path_finder(panel->path, _xscreensaver_command) == NULL) {
-    /* TODO: warn that we did not find the xlock application */
+  if (path_finder(panel->path, _SCREENSAVER_COMMAND) == NULL) {
+    /* TODO: warn that we did not find the screen saver application */
     return false;
   }
 
   /* Modulus structure initialization. */
   applet->data    = panel;
-  applet->name    = _xscreensaver_command;
+  applet->name    = "screensaver";
   applet->icon    = "exit.png";
-  //applet->icon    = "lock.png";
   applet->place   = PLACE_END;
   applet->space   = MODULI_SPACE_SERVICE | MODULI_SPACE_TASKBAR;
   applet->authors = Authors;
