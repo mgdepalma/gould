@@ -724,6 +724,34 @@ saver_enable (GtkWidget *button, Modulus *applet)
 } /* </saver_enable> */
 
 /*
+* screensaver_mode
+*/
+static void
+screensaver_mode (GtkComboBox *combo, GlobalPanel *panel)
+{
+  char command[UNIX_PATH_MAX];
+  int selection = gtk_combo_box_get_active (combo);
+
+  vdebug(2, "%s: selection => %d\n", __func__, selection);
+
+  switch (selection) {
+    case 0:		// Disable Screen Saver => "=:gsession 1 0:="
+      sprintf(command, _GSESSION_SERVICE_DISABLE, _SCREENSAVER);
+      dispatch (panel->session, command);
+      break;
+    case 1:		// Activate Screen Saver
+      system_command (_SCREENSAVER_ACTIVATE);
+      break;
+    case 2:		// Only One Screen Saver
+      break;
+    case 3:		// Random Screen Saver
+      break;
+    case 4:		// Blank Screen Only
+      break;
+  }
+} /* </screensaver_mode> */
+
+/*
 * (private) sendmode allows to change screen saver mode
 * (private) sendtime allows to adjust screen saver timer
 * (private) sendlock allows to adjust screen lock timer
@@ -856,51 +884,101 @@ populate_modes(const char *dirname, const int maxcount)
 GtkWidget *
 saver_settings (Modulus *applet, GlobalPanel *panel)
 {
-  GdkColor color;
+  GtkWidget *area, *bundle, *frame, *layer, *scroll, *widget;
+  GtkWidget *layout = gtk_hbox_new (FALSE, 2);
   GtkTextBuffer *buffer;
-  GtkWidget *frame, *area, *layer, *slot, *widget;
-  GtkWidget *layout = gtk_vbox_new (FALSE, 2);
+  GdkColor color;
 
   SaverConfig *_saver = local_.saver;
   SaverConfig *_cache = &local_.cache;
-  gchar *caption = g_strdup_printf ("%s [%s]", _(applet->label), _("plugin"));
-  int idx, count, mark = 0;
+
+  int count = populate_modes(_xscreensaver_modes_directory, MAX_SCREENSAVER);
+  int idx, mark = 0;
 
   /* Initialize private data structure singleton. */
   memcpy(_cache, _saver, sizeof(SaverConfig));
 
   /* Construct settings page. */
-  frame = gtk_frame_new (caption);
-  gtk_frame_set_shadow_type (GTK_FRAME(frame), GTK_SHADOW_ETCHED_IN);
-  gtk_container_set_border_width (GTK_CONTAINER (frame), 10);
-  gtk_container_add (GTK_CONTAINER(layout), frame);
-  gtk_widget_show (frame);
-  g_free (caption);
-
-  area = gtk_vbox_new (FALSE, 4);
-  gtk_container_add (GTK_CONTAINER(frame), area);
-  gtk_widget_show (area);
-
-  /* Start with enable (or not) check box. */
-  layer = gtk_hbox_new (FALSE, 2);
-  gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 0);
+  layer = gtk_vbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(layout), layer, FALSE, FALSE, 2);
   gtk_widget_show (layer);
 
-  widget = gtk_check_button_new_with_label (_("Enable"));
-  gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 6);
-  gtk_widget_show (local_.enable_toggle = widget);
+  bundle = gtk_hbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(layer), bundle, FALSE, FALSE, 2);
+  gtk_widget_show (bundle);
 
-  if (_saver->time > 0 || _saver->lock > 0) {
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(widget), TRUE);
-    _cache->active = TRUE;
+  widget = gtk_label_new (_("Mode:"));
+  gtk_box_pack_start (GTK_BOX(bundle), widget, FALSE, TRUE, 2);
+  gtk_widget_show (widget);
+
+  widget = local_.mode_selection = gtk_combo_box_new_text ();
+  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Disable Screen Saver"));
+  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Activate Screen Saver"));
+  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Only One Screen Saver"));
+  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Random Screen Saver"));
+  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Blank Screen Only"));
+  gtk_box_pack_start (GTK_BOX(bundle), widget, FALSE, FALSE, 0);
+  gtk_widget_show (widget);
+
+  gtk_combo_box_set_active (GTK_COMBO_BOX(widget), 1);
+  vdebug(2, "%s: screensaver_mode => 1\n", __func__);
+
+  g_signal_connect (G_OBJECT(widget), "changed",
+                    G_CALLBACK (screensaver_mode), panel);
+
+  /* Assemble "Only One Screen Saver" selector. */
+  scroll = gtk_scrolled_window_new (NULL, NULL);
+  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW(scroll),
+                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_box_pack_start (GTK_BOX(layer), scroll, TRUE, TRUE, 5);
+  gtk_widget_show (scroll);
+
+#ifdef NEVER
+  GtkComboBox *cbox = GTK_COMBO_BOX (gtk_combo_box_new());
+  GtkListStore *model = gtk_tree_store_new(1, G_TYPE_STRING);
+  GtkCellRenderer *view = gtk_cell_renderer_text_new();
+  GtkTreeIter iter;
+  GList *opts;
+
+  gtk_container_add(GTK_CONTAINER(scroll), model);
+  gtk_widget_show (model);
+
+  g_object_set (G_OBJECT (cbox), "model", model, NULL);
+  g_object_unref (model);
+  gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (cbox), view, TRUE);
+  gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT(cbox), view, "text", 0,NULL);
+
+  for (idx = 0; idx < count; idx++) {
+    const char *name = modes_[idx];
+    gtk_list_store_append (model, &iter);
+    gtk_list_store_set (model, &iter, 0, name, -1);
+    vdebug(3, "[%d] %s\n", idx, name);
   }
+  p->widget = GTK_WIDGET (cbox);
+  parent = insert_fake_hbox (parent);
+  gtk_box_pack_start (GTK_BOX (parent), p->widget, FALSE, FALSE, 4);
+  g_signal_connect (p->widget, "changed",
+                       G_CALLBACK (changed_cb), changed_data);
+#endif
 
-  g_signal_connect (G_OBJECT(widget), "toggled",
-                    G_CALLBACK(saver_enable), applet);
+  if (_saver->mode)
+    for (idx = 0; modes_[idx] != NULL; idx++)
+      if (strcmp(modes_[idx], _saver->mode) == 0) {
+        mark = idx;
+        break;
+      }
 
-  /* Build preview window. */
-  layer = gtk_hbox_new (FALSE, 4);
-  gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 0);
+#ifdef NEVER
+  frame = gtk_frame_new (NULL);
+  gtk_frame_set_shadow_type (GTK_FRAME(frame), GTK_SHADOW_ETCHED_IN);
+  gtk_container_set_border_width (GTK_CONTAINER (frame), 10);
+  gtk_container_add (GTK_CONTAINER(combo), frame);
+  gtk_widget_show (frame);
+#endif
+
+  /* Build preview pane. */
+  layer = gtk_hbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(layout), layer, FALSE, FALSE, 2);
   gtk_widget_show (layer);
 
   widget = local_.preview_pane = gtk_text_view_new ();
@@ -918,102 +996,6 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_widget_set_usize (widget, 244, 114);
   gtk_widget_show (widget);
 
-  /* Add button for fullscreen preview. */
-  slot = gtk_vbox_new (FALSE, 2);
-  gtk_box_pack_start (GTK_BOX(layer), slot, FALSE, FALSE, 4);
-  gtk_widget_show (slot);
-
-  widget = xpm_button(ICON_RESIZE, _("Fullscreen"));
-  gtk_box_pack_start (GTK_BOX(slot), widget, FALSE, FALSE, 10);
-  gtk_widget_show (widget);
-
-  g_signal_connect (G_OBJECT(widget), "clicked",
-                    G_CALLBACK(screensaver_fullscreen), _cache);
-
-  /* Settings for screen saver mode. */
-  widget = local_.mode_selection = gtk_combo_box_new_text ();
-  gtk_box_pack_start (GTK_BOX (slot), widget, FALSE, FALSE, 0);
-  gtk_widget_show (widget);
-
-  count = populate_modes(_xscreensaver_modes_directory, MAX_SCREENSAVER);
-
-  for (idx = 0; idx < count; idx++) {
-    gtk_combo_box_append_text (GTK_COMBO_BOX(widget), modes_[idx]);
-    vdebug(3, "[%d] %s\n", idx, modes_[idx]);
-  }
-
-  if (_saver->mode)
-    for (idx = 0; modes_[idx] != NULL; idx++)
-      if (strcmp(modes_[idx], _saver->mode) == 0) {
-        mark = idx;
-        break;
-      }
-
-  gtk_combo_box_set_active (GTK_COMBO_BOX(widget), mark);
-  gtk_widget_show (widget);
-
-  g_signal_connect (G_OBJECT(widget), "changed",
-                    G_CALLBACK (sendmode), panel);
-
-  /* Settings for screen saver timer. */
-  layer = gtk_hbox_new (FALSE, 4);
-  gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 0);
-  gtk_widget_show (layer);
-
-  widget = gtk_label_new ("");
-  gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 6);
-  gtk_widget_show (widget);
-
-  widget = gtk_label_new (_("Activate screen saver after"));
-  gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 2);
-  gtk_widget_show (widget);
-
-  widget = local_.time_entry = gtk_entry_new();
-  caption = g_strdup_printf ("%d", _cache->time);
-  gtk_entry_set_text (GTK_ENTRY(widget), caption);
-  gtk_entry_set_editable (GTK_ENTRY(widget), FALSE);
-  gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, FALSE, 0);
-  gtk_entry_set_max_length (GTK_ENTRY(widget), 3);
-  gtk_widget_set_size_request (widget, 30, 20);
-  gtk_widget_show (widget);
-  g_free (caption);
-
-  g_signal_connect (G_OBJECT(widget), "key_press_event",
-                            G_CALLBACK(sendtime), panel);
-
-  widget = gtk_label_new (_("minutes"));
-  gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 2);
-  gtk_widget_show (widget);
-
-  /* Settings for screen lock timer. */
-  layer = gtk_hbox_new (FALSE, 4);
-  gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 0);
-  gtk_widget_show (layer);
-
-  widget = gtk_label_new ("");
-  gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 6);
-  gtk_widget_show (widget);
-
-  widget = gtk_label_new (_("Activate screen lock after"));
-  gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 5);
-  gtk_widget_show (widget);
-
-  widget = local_.lock_entry = gtk_entry_new();
-  caption = g_strdup_printf ("%d", _cache->lock);
-  gtk_entry_set_text (GTK_ENTRY(widget), caption);
-  gtk_entry_set_editable (GTK_ENTRY(widget), FALSE);
-  gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, FALSE, 0);
-  gtk_entry_set_max_length (GTK_ENTRY(widget), 3);
-  gtk_widget_set_size_request (widget, 30, 20);
-  gtk_widget_show (widget);
-  g_free (caption);
-
-  g_signal_connect (G_OBJECT(widget), "key_press_event",
-                            G_CALLBACK(sendlock), panel);
-
-  widget = gtk_label_new (_("minutes"));
-  gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 2);
-  gtk_widget_show (widget);
 
   g_signal_connect (G_OBJECT(layout), "map",
                     G_CALLBACK (saver_wake), panel);

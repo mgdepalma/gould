@@ -29,8 +29,8 @@
 #include <stdio.h>
 #include <string.h>
 
-const char *Program = "prova";	/* (public) published program name */
-const char *Release = "0.8.1";	/* (public) published program version */
+const char *Program = "gtaskbar";  /* (public) published program name */
+const char *Release = "0.8.1";	  /* (public) published program version */
 
 debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 

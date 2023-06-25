@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <signal.h>
+#include <assert.h>
 #include <sysexits.h>	/* exit status codes for system programs */
 #include <sys/prctl.h>	/* operations on a process or thread */
 #include <sys/types.h>
@@ -62,24 +63,27 @@ const char *Usage =
 SessionMonitor monitor_[SessionMonitorCount];
 
 char *_monitor_environ = "GOULD_ENVIRON=no-splash";
-const int _monitor_seconds_interval = 4;
+const int _monitor_seconds_interval = 2;
 
 debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
 int _stream = -1;	/* stream socket descriptor */
 
-pid_t _instance;	/* singleton process ID */
-pid_t _backend;		/* backend process ID */
-pid_t _monitor;		/* monitor process ID */
+pid_t _instance = 0;	/* singleton process ID */
+pid_t _backend = 0;	/* backend process ID */
+pid_t _monitor = 0;	/* monitor process ID */
 
 /**
 * prototypes (forward method declarations)
 */
 int acknowledge(int connection);
 int open_stream_socket(const char *sockname);
+
 pid_t session_spawn(const int idx, bool async);
 pid_t session_respawn(const int idx);
+
+void session_monitor_request(char *request);
 void signal_responder(int signum);
 
 /*
@@ -220,9 +224,11 @@ session_backend(const char *name)
 int
 session_monitor(const char *name)
 {
-  pid_t pid = fork();
-  char procfile[MAX_LABEL];
   int idx;		/* SessionMonitor monitor_[] index */
+  const char *monitor = getenv("GOULD_MONITOR");
+  char procfile[MAX_LABEL];
+  bool gmonitor = false;
+  pid_t pid = fork();
 
   if (pid < 0) {
     perror("session_monitor: fork() failed.");
@@ -239,12 +245,15 @@ session_monitor(const char *name)
     perror("session_monitor: setsid() failed.");
     _exit (EX_SOFTWARE);
   }
+
+  if(monitor && strcasecmp(monitor, "yes") == 0) gmonitor = true;
   prctl(PR_SET_NAME, (unsigned long)name, 0, 0);
 
   /* {WINDOWMANAGER}, {SCREENSAVER}, {LAUNCHER}, {DESKTOP} */
   for (idx = 0; idx < SessionMonitorCount; idx++) {
     monitor_[idx].enabled = (monitor_[idx].program) ? true : false;
-    if (monitor_[idx].enabled) {
+
+    if (monitor_[idx].enabled) {  // may be turned off by request later on
       pid = session_spawn(idx, false);
       monitor_[idx].process = pid;
     }
@@ -273,10 +282,51 @@ session_monitor(const char *name)
         }
       }
     }
-    kill(monitor_[_DESKTOP].process, SIGUSR3); /* acknowledgement expected */
+    if (gmonitor)	/* acknowledgement expected */
+      kill(monitor_[_DESKTOP].process, SIGUSR3);
+    else
+      sleep (_monitor_seconds_interval);
   }
   return 0;
 } /* </session_monitor> */
+
+/*
+* session_monitor_request - _GSESSION_MONITOR request parser
+*
+* {_GSESSION_SERVICE} # b{_GSESSION_SERVICE_CALL} style request
+*                     ^ ^  0 => disable, 1 => enable
+*                     ` {_WINDOWMANAGER,_SCREENSAVER,_LAUNCHER,_DESKTOP}
+*/
+void
+session_monitor_request(char *request)
+{
+  int mark = strlen(_GSESSION_SERVICE);
+  int idx = (request[mark+1] - '0');
+
+  monitor_[idx].enabled = (request[mark+3] == '1') ? true : false;
+
+  sessionlog_stamp(1, "[%s] enabled => %s\n", session_monitor_tag(idx),
+				(monitor_[idx].enabled) ? "true" : "false");
+
+  if (monitor_[idx].enabled) {
+    if(monitor_[idx].process == 0) session_respawn (idx);
+    sprintf(request, "%d\n", monitor_[idx].process);
+  }
+  else {
+    switch (idx) {
+      case _SCREENSAVER:
+        sessionlog_stamp(1, "[%s] exit\n", session_monitor_tag(idx));
+        system (_SCREENSAVER_GRACEFUL);  // system(3) not recommended
+        monitor_[idx].process = 0;
+        strcpy(request, "0\n");
+        break;
+
+      default:
+        sprintf(request, "%d\n", monitor_[idx].process);
+        break;
+    }
+  }
+} /* </session_monitor_request> */
 
 /*
 * session_spawn - spawn wrapper that uses sessionlog
@@ -325,10 +375,14 @@ session_respawn(const int idx)
 int
 acknowledge(int connection)
 {
-  int idx, nbytes;
-  int mark = strlen(_GSESSION_SERVICE) + 1; // 012345678901234 
-					    // =:gession # b:=
+  static char *sfmt = "pidof %s::%s => %d\n";
+
+  int mark = strlen(_GSESSION_SERVICE); // 0123456789012345
+					// =:gsession # b:=
   char request[MAX_COMMAND];
+
+  pid_t pid = getpid(); // main process |_GSESSION_BACKEND |_GSESSION_MONITOR
+  int nbytes;
 
   memset(request, 0, MAX_COMMAND);
   nbytes = read(connection, request, MAX_COMMAND);
@@ -336,26 +390,26 @@ acknowledge(int connection)
   if (nbytes < 0)
     perror("reading request from stream socket");
   else if (nbytes > 0) {
-    request[nbytes] = 0;	/* trim request to the nbytes read */
+    request[nbytes] = 0;	// chomp request to nbytes read
 
-    if (strcmp(request, _GET_SESSION_PID) == 0) {  /* [main]pidof {Program} */
-      sessionlog_stamp(1, "pidof %s => %d\n", Program, _instance);
-      sprintf(request, "%d\n", _instance);
+    if (strcmp(request, _GET_SESSION_PID) == 0) {
+      if (pid == _instance)	// _GSESSION_MANAGER main process
+        sessionlog_stamp(1, "pidof %s => %d\n", Program, pid);
+      else {
+        if (pid == _monitor)	// _GSESSION_MONITOR process thread
+          sessionlog_stamp(1, sfmt, Program, _GSESSION_MONITOR, pid);
+        else
+          sessionlog_stamp(1, sfmt, Program, _GSESSION_BACKEND, pid);
+      }
+      sprintf(request, "%d\n", pid);
     }
     else if (strncmp(request, _GSESSION_SERVICE, mark) == 0) {
-      idx = atoi(request[mark]);
-      monitor_[idx].enabled = (request[mark+2] == '1') ? true : false;
-
-      sessionlog_stamp(1, "[%s] enabled => %s\n", session_monitor_tag(idx),
-				(monitor_[idx].enabled) ? "true" : "false");
-      if (monitor_[idx].enabled)
-        strcpy(request, _SCREENSAVER_GRACEFUL);
-      else {
-        sprintf(request, "%d\n", _instance);
-        monitor_[idx].process = 0;
-      }
+      if (pid == _monitor)
+        session_monitor_request (request);
+      else
+        strcpy(request, "\n");
     }
-    else {		   /* spawn( request ) */
+    else {  // spawn( request )
       sessionlog_stamp(1, "spawn( %s )\n", request);
       sprintf(request, "%d\n", spawn( request ));
     }
@@ -427,7 +481,7 @@ signal_responder(int signum)
       break;
 
     default:
-      sessionlog_stamp(1,"%s: signal => %d, pid => %d\n",Program, signum, pid);
+      sessionlog_stamp(3,"%s: signal => %d, pid => %d\n",Program, signum, pid);
 
       if (pid == _instance) {
         if (signum == SIGINT || signum == SIGTERM)

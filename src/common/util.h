@@ -95,6 +95,7 @@ int glist_compare (GList *alist, GList *blist);
 int get_hostname(char *hostname, int len, bool full);
 
 pid_t get_process_id(const char *program);
+pid_t system_command(const char *command);
 pid_t spawn(const char *program);
 
 char *get_process_name(pid_t pid);

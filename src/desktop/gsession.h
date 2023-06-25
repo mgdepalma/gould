@@ -20,10 +20,11 @@
 #define _GSESSION "/tmp/gsession"
 
 /* well known service requests handling */
-#define _GSESSION_SERVICE "=:_gsession"
+#define _GSESSION_SERVICE "=:gsession"
+#define _GSESSION_SERVICE_CALL ":="
 
-#define _GSESSION_SERVICE_DISABLE "=:_gsession %d 0:="
-#define _GSESSION_SERVICE_ENABLE  "=:_gsession %d 1:="
+#define _GSESSION_SERVICE_DISABLE "=:gsession %d 0:="
+#define _GSESSION_SERVICE_ENABLE  "=:gsession %d 1:="
 
 /* special request - get gsession main process ID */
 #define _GET_SESSION_PID "=:_gsession_:="

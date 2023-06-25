@@ -25,7 +25,7 @@ gsession
 
 noinst_PROGRAMS = \
 gscreen \
-prova
+gtaskbar
 
 # additional LDFLAGS needed by gpanel
 gpanel_LDADD = -lgthread-2.0

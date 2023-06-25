@@ -692,6 +692,63 @@ get_process_id(const char *program)
 } /* </get_process_id> */
 
 /*
+* system_command - execute system command
+*/
+pid_t
+system_command(const char *command)
+{
+  pid_t pid;
+
+  if ((pid = fork()) < 0) {
+    perror("system_command: fork() failed.");
+    return -1;
+  }
+
+  if (pid == 0) {		/* child process */
+    const char *path  = "/bin:/sbin:/usr/bin:/usr/local/bin";
+    const char *shell = "/bin/sh";
+
+    char searchpath[MAX_COMMAND];
+    char *argv[4];
+
+    argv[0] = "sh";
+    argv[1] = "-c";
+    argv[2] = command;
+    argv[3] = 0;
+
+    sprintf(searchpath, "PATH=%s", path);
+    putenv(searchpath);
+
+    setsid();
+    execve(shell, argv, environ);
+    exit(127);
+  }
+  return pid;
+} /* </system_command> */
+
+/*
+* spawn forks child process
+*/
+pid_t
+spawn (const char* cmdline)
+{
+  pid_t pid = -1;
+#ifdef USE_GLIB_SPAWN
+  gboolean result = g_spawn_command_line_async(cmdline, 0);
+  pid = pidof(cmdline);
+#else
+  if ((pid = fork()) == 0) {	/* child process */
+    const char *shell = "/bin/sh";
+
+    setsid();
+    execlp(shell, shell, "-f", "-c", cmdline, NULL);
+    exit(0);
+  }
+#endif
+  return pid;
+} /* </spawn> */
+
+/*
 * get_process_name - get name of process given a pid
 */
 char *
@@ -712,28 +769,6 @@ get_process_name(pid_t pid)
   }
   return name;
 } /* </get_process_name> */
-
-/*
-* spawn forks child process
-*/
-pid_t
-spawn (const char* cmdline)
-{
-  pid_t pid = -1;
-#ifdef USE_GLIB_SPAWN
-  gboolean result = g_spawn_command_line_async(cmdline, 0);
-  pid = pidof(cmdline);
-#else
-  if ((pid = fork()) == 0) {                    /* child process */
-    const char *shell = "/bin/sh";
-
-    setsid();
-    execlp(shell, shell, "-f", "-c", cmdline, NULL);
-    exit(0);
-  }
-#endif
-  return pid;
-} /* </spawn> */
 
 /*
 * pidof - find process ID by name

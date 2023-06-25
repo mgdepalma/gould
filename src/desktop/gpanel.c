@@ -868,6 +868,12 @@ gpanel_instance (GlobalPanel *panel)
     printf("%s: %s.", Program, _("cannot find configuration file"));
     _exit (EX_CONFIG);		/* configuration file disappeared */
   }
+
+  if (debug > 1) {
+    pid_t pid = dispatch (panel->session, _GET_SESSION_PID);
+    vdebug(debug, "system manager pid => %d (_GET_SESSION_PID => %d)\n",
+		get_process_id (_GSESSION_MANAGER), pid);
+  }
   _desktop = panel;		/* save GlobalPanel data structure */
 } /* </gpanel_instance> */
 
@@ -968,15 +974,19 @@ signal_responder (int signum)
 static void
 session_signal_responder(int signum, siginfo_t *siginfo, void *context)
 {
-  pid_t sender = siginfo->si_pid; // get pid of sender
+  pid_t sender = siginfo->si_pid;	// get pid of sender
 
-  if (signum != SIGUSR3)
-    signal_responder (signum);
-  else {
-    alarm (_SIGALRM_GRACETIME);	  // acknowledgement timeout
-    gtk_widget_show (_desktop->window);
-    kill (sender, SIGUSR3);	  // acknowledge `sender'
-    alarm (0);			  // disarm alarm()
+  switch (signum) {
+    case SIGUSR3:
+      alarm (_SIGALRM_GRACETIME);	// acknowledgement timeout
+      gtk_widget_show (_desktop->window);
+      kill (sender, SIGUSR3);		// acknowledge `sender'
+      alarm (0);			// disarm alarm()
+      break;
+
+    default:
+      signal_responder (signum);
+      break;
   }
 } /* </session_signal_responder> */
 
