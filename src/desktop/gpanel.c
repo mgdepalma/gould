@@ -67,12 +67,10 @@ const char *ConfigurationHeader =
 const char *Bugger  = "internal program error";
 const char *Schema  = "panel";	/* (public) XML configuration schema */
 
-debug_t debug = 0;	 /* debug verbosity (0 => none) {must be declared} */
-
 bool _persistent = true; /* getenv("GOULD_RESPAWN") => {yes,no} */
 bool _silent = false;	 /* show splash screen (or not) */
 
-int _signal = SIGUSR1; 	 /* what to signal [default] */
+debug_t debug = 0;	 /* debug verbosity (0 => none) {must be declared} */
 int _stream = -1; 	 /* stream socket descriptor */
 
 
@@ -741,24 +739,14 @@ gpanel_initialize (GlobalPanel *panel)
   char *scan;
 
   /* initialize configuration variables */
-  panel->config   = NULL;
-  panel->settings = NULL;
-  panel->resource = g_strdup_printf("%s/.config/panel", home);
   panel->green    = green_filter_new (selfexclude, DefaultScreen(gdk_display));
+  panel->resource = g_strdup_printf("%s/.config/panel", home);
 
-  if (systray_check_running_screen (green_get_gdk_screen (panel->green))) {
-    pid_t instance = get_process_id (Program);
+  if (systray_check_running_screen (green_get_gdk_screen (panel->green)))
+    vdebug(1, "%s: warning: Another systemtray already running.\n", Program);
 
-    if (instance > 0) {
-      if ((kill(instance, _signal)) == -1) {
-        g_printerr("%s: %s (pid => %d)\n", Program, _(Singleton), instance);
-      }
-    }
-    _exit (_RUNNING);
-  }
-
-  panel->systray  = systray_new ();
   panel->session  = open_session_stream(_GSESSION);
+  panel->systray  = systray_new ();
 
   strcpy(dirname, panel->resource);	/* obtain parent directory path */
   scan = strrchr(dirname, '/');
@@ -1035,6 +1023,7 @@ apply_signal_responder(void)
 int
 main(int argc, char *argv[])
 {
+  pid_t instance;
   GlobalPanel memory;		/* master data structure (gpanel.h) */
 
   const char *genviron = getenv("GOULD_ENVIRON");
@@ -1043,21 +1032,23 @@ main(int argc, char *argv[])
   char *alias = NULL;		/* used to change process name */
   char *quiet;			/* check {GOULD_ENVIRON} for "no-splash" */
 
+  int signal = SIGUSR1;		/* when already running, show controls */
   int status = EX_OK;
+
   int opt;
+  /* disable invalid option messages */
+  opterr = 0;
 
   if (genviron) {
     quiet = strstr(genviron, "no-splash");
     if(quiet) _silent = true;
   }
-  /* disable invalid option messages */
-  opterr = 0;
      
   while ((opt = getopt (argc, argv, "d:hvacnp:so")) != -1) {
   /* while ((opt = getopt_long (argc, argv, opts, longopts, NULL)) != -1) */
     switch (opt) {
       case 'd':
-        _signal = SIGUNUSED;
+        signal = SIGUNUSED;
         debug = atoi(optarg);
         putenv("DEBUG=1");
         break;
@@ -1071,25 +1062,25 @@ main(int argc, char *argv[])
         _exit (status);
 
       case 'a':			/* activate logout panel */
-        _signal = SIGTERM;
+        signal = SIGTERM;
         break;
       case 'c':			/* cancel logout panel */
-        _signal = SIGCONT;
+        signal = SIGCONT;
         break;
       case 'n':			/* create new shortcut */
-        _signal = SIGUSR2;
+        signal = SIGUSR2;
         break;
 
       case 'p':			/* set process name */
-        _signal = SIGUNUSED;
+        signal = SIGUNUSED;
         alias = optarg;
         break;
       case 's':			/* inert splash screen */
-        _signal = SIGUNUSED;
+        signal = SIGUNUSED;
         _silent = true;
         break;
       case 'o':			/* _persistent => false */
-        _signal = SIGUNUSED;
+        signal = SIGUNUSED;
         grespawn = "no";
         break;
 
@@ -1098,14 +1089,15 @@ main(int argc, char *argv[])
         _exit (EX_USAGE);
     }
   }
+  instance = get_process_id (Program);
 
-  if (_signal == SIGUNUSED) {
-    pid_t instance = get_process_id (Program);
-
-    if (instance && instance != getpid()) {
+  if (instance > 0 && instance != getpid()) {  /* already running */
+    if (signal == SIGUNUSED)
       printf("%s: %s (pid => %d)\n", Program, _(Singleton), instance);
-      _exit (_RUNNING);
-    }
+    else
+      kill (instance, signal);
+
+    _exit (_RUNNING);
   }
 #ifdef GETTEXT_PACKAGE
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
