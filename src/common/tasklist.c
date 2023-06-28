@@ -30,8 +30,8 @@
 
 extern const char *Program;	/* must be declared in main program */
 
-/*
- * Private data structures.
+/**
+* Private data structures.
 */
 #define ALL_WORKSPACES (0xFFFFFFFF)
 
@@ -123,6 +123,7 @@ struct _TasklistPrivate {
 static gpointer parent_class_;		/* parent class instance */
 
 static void tasklist_connect_window (GreenWindow *object, Tasklist *tasklist);
+static void tasklist_disconnect_window(GreenWindow *object,Tasklist *tasklist);
 
 static void tasklist_remove_startup_sequences (Tasklist *tasklist,
                                                GreenWindow *Window);
@@ -144,11 +145,11 @@ static void tasklist_window_removed (Green *green,
 
 
 /*
- * tasklist_item_pixbuf_glow
- * tasklist_item_button_glow
- * tasklist_item_queue_glow
- * tasklist_item_stop_glow
- */
+* tasklist_item_pixbuf_glow
+* tasklist_item_button_glow
+* tasklist_item_queue_glow
+* tasklist_item_stop_glow
+*/
 static GdkPixbuf *
 tasklist_item_pixbuf_glow (TasklistItem *item, gdouble factor)
 {
@@ -241,9 +242,9 @@ tasklist_item_stop_glow (TasklistItem *item)
 } /* </tasklist_item_stop_glow> */
 
 /*
- * tasklist_item_expose_widget
- * tasklist_item_screenshot
- */
+* tasklist_item_expose_widget
+* tasklist_item_screenshot
+*/
 static void
 tasklist_item_draw_dot (GdkWindow *window, GdkGC *lgc, GdkGC *dgc, int x, int y)
 {
@@ -362,8 +363,8 @@ tasklist_item_cleanup_screenshots (TasklistItem *item)
 } /* </tasklist_item_cleanup_screenshots> */
 
 /*
- * tasklist_item_expose
- */
+* tasklist_item_expose
+*/
 static bool
 tasklist_item_expose (GtkWidget *widget,
                       GdkEventExpose *event,
@@ -419,8 +420,8 @@ tasklist_item_expose (GtkWidget *widget,
 } /* </tasklist_item_expose> */
 
 /*
- * tasklist_item_activate_window
- */
+* tasklist_item_activate_window
+*/
 static void
 tasklist_item_activate_window (TasklistItem *item, guint32 stamp)
 {
@@ -440,9 +441,9 @@ tasklist_item_activate_window (TasklistItem *item, guint32 stamp)
 } /* </tasklist_item_activate_window> */
 
 /*
- * tasklist_item_get_text
- * tasklist_item_is_active
- */
+* tasklist_item_get_text
+* tasklist_item_is_active
+*/
 const gchar *
 tasklist_item_get_text (TasklistItem *item, Green *green, bool winame)
 {
@@ -489,9 +490,9 @@ tasklist_item_is_active (TasklistItem *item, Window active)
 } /* </tasklist_item_is_active */
 
 /*
- * tasklist_item_activate_menu
- * tasklist_item_position_menu
- */
+* tasklist_item_activate_menu
+* tasklist_item_position_menu
+*/
 static void
 tasklist_item_activate_menu (GtkMenuItem *menuitem, TasklistItem *item)
 {
@@ -560,15 +561,15 @@ tasklist_item_position_menu (GtkMenu  *menu,
 } /* </tasklist_item_position_menu> */
 
 /*
- * tasklist_item_action_close
- * tasklist_item_action_desktop
- * tasklist_item_action_maximize
- * tasklist_item_action_minimize
- * tasklist_item_action_move
- * tasklist_item_action_resize
- * tasklist_item_action_restore
- * tasklist_item_action_sticky
- */
+* tasklist_item_action_close
+* tasklist_item_action_desktop
+* tasklist_item_action_maximize
+* tasklist_item_action_minimize
+* tasklist_item_action_move
+* tasklist_item_action_resize
+* tasklist_item_action_restore
+* tasklist_item_action_sticky
+*/
 static void
 tasklist_item_action_close (GtkMenuItem *menuitem, TasklistItem *item)
 {
@@ -625,8 +626,8 @@ tasklist_item_action_restore (GtkMenuItem *menuitem, TasklistItem *item)
 } /* </tasklist_item_action_restore> */
 
 /*
- * tasklist_item_actions_menu_new
- */
+* tasklist_item_actions_menu_new
+*/
 static GtkWidget *
 tasklist_item_actions_menu_new (TasklistItem *item)
 {
@@ -756,9 +757,9 @@ tasklist_item_actions_menu_new (TasklistItem *item)
 } /* </tasklist_item_actions_menu_new> */
 
 /*
- * tasklist_item_actions_menu
- * tasklist_item_members_menu
- */
+* tasklist_item_actions_menu
+* tasklist_item_members_menu
+*/
 static void
 tasklist_item_actions_menu (TasklistItem *item)
 {
@@ -835,9 +836,9 @@ tasklist_item_members_menu (TasklistItem *item)
 } /* </tasklist_item_members_menu> */
 
 /*
- * tasklist_item_button_press
- * tasklist_item_button_toggled
- */
+* tasklist_item_button_press
+* tasklist_item_button_toggled
+*/
 static bool
 tasklist_item_button_press (GtkWidget *widget,
                             GdkEventButton *event,
@@ -878,9 +879,9 @@ tasklist_item_button_toggled (GtkToggleButton *button, TasklistItem *item)
 } /* </tasklist_item_button_toggled> */
 
 /*
- * tasklist_item_init
- * tasklist_item_new
- */
+* tasklist_item_init
+* tasklist_item_new
+*/
 static void
 tasklist_item_init (TasklistItem *item, Tasklist *tasklist)
 {
@@ -967,8 +968,8 @@ tasklist_item_init (TasklistItem *item, Tasklist *tasklist)
 } /* </tasklist_item_init> */
 
 /*
- * tasklist_item_new
- */
+* tasklist_item_new
+*/
 TasklistItem *
 tasklist_item_new (GreenWindow *window,
                    TasklistItemType type,
@@ -987,8 +988,8 @@ tasklist_item_new (GreenWindow *window,
 } /* </tasklist_item_new> */
 
 /*
- * tasklist_item_update
- */
+* tasklist_item_update
+*/
 static void
 tasklist_item_update (TasklistItem *item, const char *event)
 {
@@ -1045,11 +1046,11 @@ tasklist_item_update (TasklistItem *item, const char *event)
 } /* </tasklist_item_update> */
 
 /*
- * tasklist_layout - returns the maximal possible button width
- *
- * (i.e. if you don't want to stretch the buttons to fill the allocation
- *  the width can be smaller)
- */
+* tasklist_layout - returns the maximal possible button width
+*
+* (i.e. if you don't want to stretch the buttons to fill the allocation
+*  the width can be smaller)
+*/
 static int
 tasklist_layout (GtkAllocation *allocation,
                  int            max_width,
@@ -1075,12 +1076,12 @@ tasklist_layout (GtkAllocation *allocation,
 } /* </tasklist_layout> */
 
 /*
- * tasklist_widget_realize
- * tasklist_widget_unrealize
- * tasklist_widget_size_request
- * tasklist_widget_size_allocate
- * tasklist_widget_expose
- */
+* tasklist_widget_realize
+* tasklist_widget_unrealize
+* tasklist_widget_size_request
+* tasklist_widget_size_allocate
+* tasklist_widget_expose
+*/
 static void
 tasklist_widget_realize (GtkWidget *widget)
 {
@@ -1201,9 +1202,9 @@ tasklist_widget_expose (GtkWidget *widget, GdkEventExpose *event)
 } /* </tasklist_widget_expose> */
 
 /*
- * tasklist_container_forall
- * tasklist_container_remove
- */
+* tasklist_container_forall
+* tasklist_container_remove
+*/
 static void
 tasklist_container_forall (GtkContainer *container,
                            bool         internals,
@@ -1249,7 +1250,7 @@ tasklist_container_remove (GtkContainer *container, GtkWidget *widget)
     if (item->button == widget) {
       g_hash_table_remove (priv->winhash, item->window);
       priv->visible = g_list_remove (priv->visible, item);
-       gtk_widget_unparent (widget);
+      gtk_widget_unparent (widget);
       g_free (item);
       break;
     }
@@ -1259,10 +1260,10 @@ tasklist_container_remove (GtkContainer *container, GtkWidget *widget)
 } /* </tasklist_container_remove> */
 
 /*
- * tasklist_idle_act
- * tasklist_idle_agent
- * tasklist_idle_cancel
- */
+* tasklist_idle_act
+* tasklist_idle_agent
+* tasklist_idle_cancel
+*/
 static bool
 tasklist_idle_act (Tasklist *tasklist)
 {
@@ -1276,8 +1277,10 @@ tasklist_idle_agent (Tasklist *tasklist, const char *event)
 {
   if (tasklist->priv->agent == 0) {
     vdebug (2, "Tasklist::update: event => %s\n", event);
-    tasklist->priv->agent = g_idle_add ((GSourceFunc)tasklist_idle_act,
-                                         tasklist);
+    if ((strcmp(event, "window-added") != 0) &&
+        (strcmp(event, "window-removed") != 0))
+      tasklist->priv->agent = g_idle_add ((GSourceFunc)tasklist_idle_act,
+                                         		tasklist);
   }
 } /* </tasklist_idle_agent> */
 
@@ -1291,8 +1294,8 @@ tasklist_idle_cancel (Tasklist *tasklist)
 } /* </tasklist_idle_cancel> */
 
 /*
- * tasklist_cleanup
- */
+* tasklist_cleanup
+*/
 static inline void
 tasklist_cleanup (Tasklist *tasklist)
 {
@@ -1331,11 +1334,11 @@ tasklist_cleanup (Tasklist *tasklist)
 } /* </tasklist_cleanup */
 
 /*
- * tasklist_queue_update_lists
- * tasklist_construct_visible_list
- * tasklist_update_active_list
- * tasklist_update_lists
- */
+* tasklist_queue_update_lists
+* tasklist_construct_visible_list
+* tasklist_update_active_list
+* tasklist_update_lists
+*/
 static inline void
 tasklist_queue_update_lists (Tasklist *tasklist, const char *tag)
 {
@@ -1442,14 +1445,16 @@ tasklist_update_lists (Tasklist *tasklist)
   GreenWindow *window;
   TasklistItem *item;
 
+  tasklist_cleanup (tasklist);	/* start fresh everytime */
 
   /* Iterate though the windows list creating all new items. */
   list = green_get_windows (priv->green, WindowTaskbarFilter, -1);
-
-  tasklist_cleanup (tasklist);	/* start fresh everytime */
   priv->windows = list;
 
   for (idx = 0; idx < count; idx++) {
+    int mark = 1;
+    vdebug(3, "tasklist_update_lists: workspace => %d\n", idx);
+
     for (iter = list; iter != NULL; iter = iter->next) {
       window = iter->data;
 
@@ -1457,6 +1462,7 @@ tasklist_update_lists (Tasklist *tasklist)
         space = green_window_get_desktop (window);
 
         if (space == -1 || space == idx) {
+          vdebug(3, "GreenWindow iter => %d\n", mark++);
           item = tasklist_item_new (window, TASK_WINDOW, tasklist);
           priv->ungrouped = g_list_append (priv->ungrouped, item);
           g_hash_table_insert (priv->winhash, window, item);
@@ -1473,9 +1479,9 @@ tasklist_update_lists (Tasklist *tasklist)
 } /* </tasklist_update_lists> */
 
 /*
- * tasklist_active_window_changed
- * tasklist_active_workspace_changed
- */
+* tasklist_active_window_changed
+* tasklist_active_workspace_changed
+*/
 static void
 tasklist_active_window_changed (Green *green, Tasklist *tasklist)
 {
@@ -1496,9 +1502,9 @@ tasklist_active_workspace_changed (Green *green, Tasklist *tasklist)
 } /* </tasklist_active_workspace_changed> */
 
 /*
- * tasklist_window_added
- * tasklist_window_removed
- */
+* tasklist_window_added
+* tasklist_window_removed
+*/
 static void
 tasklist_window_added (Green *green, GreenWindow* window, Tasklist *tasklist)
 {
@@ -1528,11 +1534,11 @@ tasklist_window_removed (Green *green, GreenWindow *window, Tasklist *tasklist)
 } /* </tasklist_window_removed> */
 
 /*
- * tasklist_window_icon_changed
- * tasklist_window_name_changed
- * tasklist_window_state_changed
- * tasklist_window_workspace_changed
- */
+* tasklist_window_icon_changed
+* tasklist_window_name_changed
+* tasklist_window_state_changed
+* tasklist_window_workspace_changed
+*/
 static void
 tasklist_window_icon_changed (GreenWindow *window, Tasklist *tasklist)
 {
@@ -1591,8 +1597,8 @@ tasklist_window_workspace_changed (GreenWindow *window, Tasklist *tasklist)
 } /* </tasklist_window_workspace_changed> */
 
 /*
- * tasklist_viewports_changed
- */
+* tasklist_viewports_changed
+*/
 static void
 tasklist_viewports_changed (Green *green, Tasklist *tasklist)
 {
@@ -1603,6 +1609,7 @@ tasklist_viewports_changed (Green *green, Tasklist *tasklist)
 /*
  * tasklist_connect_screen
  * tasklist_connect_window
+ * tasklist_disconnect_window
  * tasklist_disconnect_screen
  */
 static void
@@ -1660,6 +1667,12 @@ tasklist_connect_window (GreenWindow *window, Tasklist *tasklist)
 } /* </tasklist_connect_window> */
 
 static void
+tasklist_disconnect_window(GreenWindow *window, Tasklist *tasklist)
+{
+  error ("not implemented");
+} /* </tasklist_disconnect_window> */
+
+static void
 tasklist_disconnect_screen (Tasklist *tasklist)
 {
   guint *conn = tasklist->priv->connection;
@@ -1672,17 +1685,17 @@ tasklist_disconnect_screen (Tasklist *tasklist)
 } /* </tasklist_disconnect_screen> */
 
 /*
- *
- */
+* tasklist_remove_startup_sequences
+*/
 static void
 tasklist_remove_startup_sequences (Tasklist *tasklist, GreenWindow *window)
 {
   /* nothing */
 } /* </tasklist_remove_startup_sequences> */
 
-/**
- * Tasklist and TasklistClass implementation.
- */
+/*
+* Tasklist and TasklistClass implementation.
+*/
 static void
 tasklist_init (Tasklist *tasklist)
 {
@@ -1719,7 +1732,8 @@ tasklist_finalize (GObject *object)
 
   tasklist_idle_cancel (tasklist);	  /* inert g_idle_add() */
   tasklist_disconnect_screen (tasklist);  /* disconnect from GREEN instance */
-  /*<SEGV> tasklist_cleanup (tasklist); */
+  vdebug (2, "%s: calling, tasklist_cleanup\n", __func__);
+  tasklist_cleanup (tasklist);
 
   if (priv->visible) {
     g_list_free (priv->visible);
@@ -1778,8 +1792,8 @@ tasklist_class_init (TasklistClass *klass)
 } /* </tasklist_class_init> */
 
 /**
- * Public methods
- */
+* Public methods
+*/
 GType
 tasklist_get_type (void)
 {
@@ -1804,16 +1818,15 @@ tasklist_get_type (void)
     object_type = g_type_register_static (GTK_TYPE_CONTAINER, "Tasklist",
                                           &object_info, 0);
   }
-  
   return object_type;
 } /* </tasklist_get_type> */
 
 /*
- * tasklist_set_button_relief - govern buttons relief
- * tasklist_set_grouping - govern window class resource grouping
- * tasklist_set_include_all_workspaces - govern including all workspaces
- * tasklist_set_orientation - govern orientation
- */
+* tasklist_set_button_relief - govern buttons relief
+* tasklist_set_grouping - govern window class resource grouping
+* tasklist_set_include_all_workspaces - govern including all workspaces
+* tasklist_set_orientation - govern orientation
+*/
 void
 tasklist_set_button_relief (Tasklist *tasklist, GtkReliefStyle relief)
 {
@@ -1889,7 +1902,6 @@ tasklist_new (Green *green)
                            G_OBJECT (tasklist),
                            0);
 #endif
-
   return tasklist;
 } /* </tasklist_new> */
 

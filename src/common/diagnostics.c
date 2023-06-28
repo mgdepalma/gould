@@ -57,26 +57,23 @@ gould_diagnostics(const char *format, ...)
   const char *errorlog = getenv("ERRORLOG");
 
   int nptrs = backtrace(trace, BACKTRACE_SIZE);
-  char program[MAX_COMMAND];
+  char caption[MAX_COMMAND];
 
   va_list args;
   va_start (args, format);
-  vsprintf(program, format, args);
+  vsprintf(caption, format, args);
   va_end (args);
 
-  printf("%s %s\n", timestamp(), program);
+  printf("%s %s\n", timestamp(), caption);
   backtrace_symbols_fd(trace, nptrs, STDOUT_FILENO);
 
   if (errorlog) {
     int errfd = open(errorlog, O_APPEND | O_WRONLY, 0644);
 
     if (errfd > 0) {
-      char caption[MAX_COMMAND];
-      sprintf(caption, "%s %s\n", timestamp(), program);
-
+      strcat(caption, "\n");
       write(errfd, caption, strlen(caption));
       backtrace_symbols_fd(trace, nptrs, errfd);
-
       close(errfd);
     }
   }

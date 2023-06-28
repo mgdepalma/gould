@@ -368,14 +368,14 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   DesktopPanel *desktop = setbg_initialize (panel);
   FileChooser *chooser = desktop->chooser;
 
-  GtkWidget *layout = gtk_vbox_new (FALSE, 0);
-  GtkWidget *area, *box, *button, *field, *inset;
-  GtkWidget *canvas, *frame, *scroll, *split;
+  GtkWidget *button, *field, *frame, *inset;
+  GtkWidget *canvas, *pane, *scroll, *split;
 
-  gint width  = 34 * gdk_screen_width() / 100;
+  GtkWidget *area, *layout = gtk_vbox_new (FALSE, 0);
+  gint width = 34 * gdk_screen_width() / 100;
 
 
-  /* Split view: preview on the left, file chooser on the right. */
+  /* Split view: chooser on the left, preview on the right. */
   split = gtk_hbox_new(FALSE, 1);
   gtk_box_pack_start (GTK_BOX (layout), split, TRUE, TRUE, 0);
   gtk_widget_show (split);
@@ -385,10 +385,10 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX (split), area, TRUE, TRUE, 0);
   gtk_widget_show (area);
 
-  /* Assemble box containing navigation and current directory. */
-  box = chooser->dirbox;
-  gtk_box_pack_start (GTK_BOX (area), box, FALSE, FALSE, 2);
-  gtk_widget_show (box);
+  /* Assemble pane containing navigation and current directory. */
+  pane = chooser->dirbox;
+  gtk_box_pack_start (GTK_BOX (area), pane, FALSE, FALSE, 2);
+  gtk_widget_show (pane);
 
   /* Assemble file selector. */
   scroll = gtk_scrolled_window_new (NULL, NULL);
@@ -407,18 +407,18 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (area);
 
   /* Previous and next selection navigation. */
-  box = gtk_hbox_new (FALSE, 0);
-  gtk_box_pack_start (GTK_BOX (area), box, FALSE, TRUE, 0);
-  gtk_widget_show (box);
+  pane = gtk_hbox_new (FALSE, 0);
+  gtk_box_pack_start (GTK_BOX (area), pane, FALSE, TRUE, 0);
+  gtk_widget_show (pane);
 
   button = desktop->backward = xpm_button(ICON_BACK, NULL);
-  gtk_box_pack_start (GTK_BOX (box), button, FALSE, TRUE, 0);
+  gtk_box_pack_start (GTK_BOX (pane), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(prevfile), chooser);
   gtk_widget_show (button);
 
   button = desktop->forward = xpm_button(ICON_FORWARD, NULL);
-  gtk_box_pack_start (GTK_BOX (box), button, FALSE, TRUE, 0);
+  gtk_box_pack_start (GTK_BOX (pane), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(nextfile), chooser);
   gtk_widget_show (button);

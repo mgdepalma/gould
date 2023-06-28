@@ -739,14 +739,12 @@ screensaver_mode (GtkComboBox *combo, GlobalPanel *panel)
       sprintf(command, _GSESSION_SERVICE_DISABLE, _SCREENSAVER);
       dispatch (panel->session, command);
       break;
-    case 1:		// Activate Screen Saver
-      system_command (_SCREENSAVER_ACTIVATE);
+    case 1:		// Only One Screen Saver
       break;
-    case 2:		// Only One Screen Saver
+    case 2:		// Random Screen Saver
       break;
-    case 3:		// Random Screen Saver
-      break;
-    case 4:		// Blank Screen Only
+    case 3:		// Blank Screen Only
+	system_command (_SCREENSAVER_ACTIVATE);
       break;
   }
 } /* </screensaver_mode> */
@@ -884,82 +882,17 @@ populate_modes(const char *dirname, const int maxcount)
 GtkWidget *
 saver_settings (Modulus *applet, GlobalPanel *panel)
 {
-  GtkWidget *area, *bundle, *frame, *layer, *scroll, *widget;
-  GtkWidget *layout = gtk_hbox_new (FALSE, 2);
-  GtkTextBuffer *buffer;
-  GdkColor color;
+  GtkWidget *canvas, *frame, *scroll, *split;
+  GtkWidget *area, *glue, *layer, *pane, *widget;
+  GtkWidget *layout = gtk_vbox_new (FALSE, 0);
 
   SaverConfig *_saver = local_.saver;
   SaverConfig *_cache = &local_.cache;
 
-  int count = populate_modes(_xscreensaver_modes_directory, MAX_SCREENSAVER);
+  FileChooser *chooser = filechooser_new (_SCREENSAVER_CONFIG);
+
   int idx, mark = 0;
-
-  /* Initialize private data structure singleton. */
-  memcpy(_cache, _saver, sizeof(SaverConfig));
-
-  /* Construct settings page. */
-  layer = gtk_vbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX(layout), layer, FALSE, FALSE, 2);
-  gtk_widget_show (layer);
-
-  bundle = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX(layer), bundle, FALSE, FALSE, 2);
-  gtk_widget_show (bundle);
-
-  widget = gtk_label_new (_("Mode:"));
-  gtk_box_pack_start (GTK_BOX(bundle), widget, FALSE, TRUE, 2);
-  gtk_widget_show (widget);
-
-  widget = local_.mode_selection = gtk_combo_box_new_text ();
-  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Disable Screen Saver"));
-  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Activate Screen Saver"));
-  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Only One Screen Saver"));
-  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Random Screen Saver"));
-  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Blank Screen Only"));
-  gtk_box_pack_start (GTK_BOX(bundle), widget, FALSE, FALSE, 0);
-  gtk_widget_show (widget);
-
-  gtk_combo_box_set_active (GTK_COMBO_BOX(widget), 1);
-  vdebug(2, "%s: screensaver_mode => 1\n", __func__);
-
-  g_signal_connect (G_OBJECT(widget), "changed",
-                    G_CALLBACK (screensaver_mode), panel);
-
-  /* Assemble "Only One Screen Saver" selector. */
-  scroll = gtk_scrolled_window_new (NULL, NULL);
-  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW(scroll),
-                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-  gtk_box_pack_start (GTK_BOX(layer), scroll, TRUE, TRUE, 5);
-  gtk_widget_show (scroll);
-
-#ifdef NEVER
-  GtkComboBox *cbox = GTK_COMBO_BOX (gtk_combo_box_new());
-  GtkListStore *model = gtk_tree_store_new(1, G_TYPE_STRING);
-  GtkCellRenderer *view = gtk_cell_renderer_text_new();
-  GtkTreeIter iter;
-  GList *opts;
-
-  gtk_container_add(GTK_CONTAINER(scroll), model);
-  gtk_widget_show (model);
-
-  g_object_set (G_OBJECT (cbox), "model", model, NULL);
-  g_object_unref (model);
-  gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (cbox), view, TRUE);
-  gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT(cbox), view, "text", 0,NULL);
-
-  for (idx = 0; idx < count; idx++) {
-    const char *name = modes_[idx];
-    gtk_list_store_append (model, &iter);
-    gtk_list_store_set (model, &iter, 0, name, -1);
-    vdebug(3, "[%d] %s\n", idx, name);
-  }
-  p->widget = GTK_WIDGET (cbox);
-  parent = insert_fake_hbox (parent);
-  gtk_box_pack_start (GTK_BOX (parent), p->widget, FALSE, FALSE, 4);
-  g_signal_connect (p->widget, "changed",
-                       G_CALLBACK (changed_cb), changed_data);
-#endif
+  int count = populate_modes(_SCREENSAVER_MODES, MAX_SCREENSAVER);
 
   if (_saver->mode)
     for (idx = 0; modes_[idx] != NULL; idx++)
@@ -968,37 +901,136 @@ saver_settings (Modulus *applet, GlobalPanel *panel)
         break;
       }
 
-#ifdef NEVER
-  frame = gtk_frame_new (NULL);
-  gtk_frame_set_shadow_type (GTK_FRAME(frame), GTK_SHADOW_ETCHED_IN);
-  gtk_container_set_border_width (GTK_CONTAINER (frame), 10);
-  gtk_container_add (GTK_CONTAINER(combo), frame);
-  gtk_widget_show (frame);
-#endif
+  /* Initialize private data structure singleton. */
+  memcpy(_cache, _saver, sizeof(SaverConfig));
 
-  /* Build preview pane. */
-  layer = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX(layout), layer, FALSE, FALSE, 2);
-  gtk_widget_show (layer);
+  /* Split view: chooser on the left, preview on the right. */
+  split = gtk_hbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(layout), split, FALSE, FALSE, 4);
+  gtk_widget_show (split);
 
-  widget = local_.preview_pane = gtk_text_view_new ();
-  gtk_text_view_set_editable (GTK_TEXT_VIEW(widget), FALSE);
-  gtk_text_view_set_cursor_visible (GTK_TEXT_VIEW(widget), FALSE);
-  gtk_text_view_set_justification (GTK_TEXT_VIEW(widget), GTK_JUSTIFY_CENTER);
-  gtk_text_view_set_pixels_above_lines (GTK_TEXT_VIEW(widget), 30);
+  /* Assemble scrollable screensaver chooser. */
+  area = gtk_vbox_new(FALSE, 1);
+  //area = desktop->browser = gtk_vbox_new(FALSE, 1);
+  gtk_box_pack_start (GTK_BOX (split), area, FALSE, TRUE, 5);
+  gtk_widget_show (area);
 
-  gdk_color_parse ("red", &color);
-  buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (widget));
-  gtk_text_buffer_set_text (buffer, _("Screen saver preview"), -1);
-  gtk_widget_modify_text (widget, GTK_STATE_NORMAL, &color);
+  /* screensaver modes: label + combo_box */
+  pane = gtk_hbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(area), pane, FALSE, FALSE, 2);
+  gtk_widget_show (pane);
 
-  gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, FALSE, 6);
-  gtk_widget_set_usize (widget, 244, 114);
+  widget = gtk_label_new (_("Mode:"));
+  gtk_box_pack_start (GTK_BOX(pane), widget, FALSE, TRUE, 2);
   gtk_widget_show (widget);
 
+  widget = local_.mode_selection = gtk_combo_box_new_text ();
+  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Disable Screen Saver"));
+  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Only One Screen Saver"));
+  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Random Screen Saver"));
+  gtk_combo_box_append_text (GTK_COMBO_BOX(widget), _("Blank Screen Only"));
+  gtk_box_pack_start (GTK_BOX(pane), widget, FALSE, FALSE, 0);
+  gtk_combo_box_set_active (GTK_COMBO_BOX(widget), 1);
+  gtk_widget_show (widget);
 
-  g_signal_connect (G_OBJECT(layout), "map",
-                    G_CALLBACK (saver_wake), panel);
+  g_signal_connect (G_OBJECT(widget), "changed",
+                    G_CALLBACK (screensaver_mode), panel);
+
+  /* Assemble pane containing navigation. */
+  layer = gtk_vbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 2);
+  gtk_widget_show (layer);
+
+  pane = chooser->dirbox;
+  gtk_box_pack_start (GTK_BOX(layer), pane, FALSE, FALSE, 2);
+  gtk_widget_show (pane);
+
+  /* Assemble file selector. */
+  scroll = gtk_scrolled_window_new (NULL, NULL);
+  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW(scroll),
+                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_box_pack_start (GTK_BOX(layer), scroll, TRUE, TRUE, 5);
+  gtk_widget_show (scroll);
+
+  widget = chooser->viewer;
+  gtk_container_add (GTK_CONTAINER(scroll), widget);
+  gtk_widget_show (widget);
+
+  /* Blank After, Cycle After, and Lock Screen After */
+  pane = gtk_hbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(layer), pane, FALSE, FALSE, 2);
+  gtk_widget_show (pane);
+
+  widget = gtk_label_new (_("Blank After:"));
+  gtk_box_pack_start (GTK_BOX(pane), widget, TRUE, TRUE, 2);
+  gtk_widget_show (widget);
+
+  pane = gtk_hbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(layer), pane, FALSE, FALSE, 2);
+  gtk_widget_show (pane);
+
+  widget = gtk_label_new (_("Cycle After:"));
+  gtk_box_pack_start (GTK_BOX(pane), widget, TRUE, TRUE, 2);
+  gtk_widget_show (widget);
+
+  pane = gtk_hbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(layer), pane, FALSE, FALSE, 2);
+  gtk_widget_show (pane);
+
+  glue = gtk_hbox_new (FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(pane), glue, TRUE, TRUE, 2);
+  gtk_widget_show (glue);
+
+  widget = gtk_check_button_new ();
+  gtk_box_pack_start (GTK_BOX(glue), widget, FALSE, FALSE, 2);
+  gtk_widget_show (widget);
+
+  widget = gtk_label_new (_("Lock Screen After:"));
+  gtk_box_pack_start (GTK_BOX(glue), widget, FALSE, FALSE, 2);
+  gtk_widget_show (widget);
+
+  /* Assemble canvas display area. */
+  area = gtk_vbox_new(FALSE, 4);
+  //area = desktop->viewer = gtk_vbox_new(FALSE, 1);
+  gtk_box_pack_start (GTK_BOX(split), area, TRUE, TRUE, 8);
+  gtk_widget_show (area);
+
+  pane = gtk_hbox_new(FALSE, 4);
+  gtk_box_pack_start (GTK_BOX(area), pane, FALSE, FALSE, 0);
+  gtk_widget_show (pane);
+
+  widget = gtk_label_new(_("Ants walk around a simple maze."));
+  gtk_box_pack_start (GTK_BOX(pane), widget, FALSE, FALSE, 0);
+  gtk_widget_show (widget);
+
+  /* Draw frame around display area. */
+  frame = gtk_frame_new (NULL);
+  gtk_container_add (GTK_CONTAINER(area), frame);
+  gtk_widget_show (frame);
+
+  canvas = gtk_drawing_area_new ();
+  //canvas = desktop->canvas = gtk_drawing_area_new ();
+  gtk_container_add (GTK_CONTAINER(frame), canvas);
+  gtk_widget_show (canvas);
+
+  //g_signal_connect (G_OBJECT (canvas), "expose_event",
+  //                         G_CALLBACK (preview_refresh), NULL);
+
+  pane = gtk_hbox_new(FALSE, 4);
+  gtk_box_pack_start (GTK_BOX(area), pane, FALSE, TRUE, 0);
+  gtk_widget_show (pane);
+
+  /* right justify button */
+  widget = gtk_label_new("");
+  gtk_box_pack_start (GTK_BOX(pane), widget, TRUE, TRUE, 0);
+  gtk_widget_show (widget);
+
+  widget = gtk_button_new_with_label(_("Preview"));
+  gtk_box_pack_start (GTK_BOX(pane), widget, FALSE, FALSE, 0);
+  gtk_widget_show (widget);
+
+//il SEGNO per oggi
+
   return layout;
 } /* </saver_settings> */
 

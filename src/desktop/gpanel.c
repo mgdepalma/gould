@@ -71,7 +71,9 @@ bool _persistent = true; /* getenv("GOULD_RESPAWN") => {yes,no} */
 bool _silent = false;	 /* show splash screen (or not) */
 
 debug_t debug = 0;	 /* debug verbosity (0 => none) {must be declared} */
+int _quiescence = 1;	 /* quiescence sleep time in seconds */
 int _stream = -1; 	 /* stream socket descriptor */
+pid_t _instance;	 /* process ID */
 
 
 /*
@@ -871,15 +873,16 @@ gpanel_instance (GlobalPanel *panel)
 static void
 gpanel_graceful(int signum, bool verbose)
 {
-  sleep (1);		/* quiescence (..let the cables sleep) */
-
   if (verbose) {
     gould_error ("%s %s: exiting on signal: %d\n",timestamp(), Program,signum);
     printf("%s, exiting on signal: %d\n", Program, signum);
   }
-  gtk_main_quit ();	/* innermost invocation of the main loop return */
 
+  gtk_main_quit ();	/* innermost invocation of the main loop return */
+  sleep (_quiescence);  /* quiescence (..let the cables sleep) */
   _exit (signum);
+
+  killall(Program, SIGKILL);  /* if gentle approach fails */
 } /* </gpanel_graceful> */
 
 /*
@@ -1023,7 +1026,6 @@ apply_signal_responder(void)
 int
 main(int argc, char *argv[])
 {
-  pid_t instance;
   GlobalPanel memory;		/* master data structure (gpanel.h) */
 
   const char *genviron = getenv("GOULD_ENVIRON");
@@ -1089,13 +1091,13 @@ main(int argc, char *argv[])
         _exit (EX_USAGE);
     }
   }
-  instance = get_process_id (Program);
+  _instance = get_process_id (Program);
 
-  if (instance > 0 && instance != getpid()) {  /* already running */
+  if (_instance > 0 && _instance != getpid()) {  /* already running */
     if (signal == SIGUNUSED)
-      printf("%s: %s (pid => %d)\n", Program, _(Singleton), instance);
+      printf("%s: %s (pid => %d)\n", Program, _(Singleton), _instance);
     else
-      kill (instance, signal);
+      kill (_instance, signal);
 
     _exit (_RUNNING);
   }

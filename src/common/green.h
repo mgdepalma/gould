@@ -58,7 +58,6 @@ typedef struct _GreenPrivate GreenPrivate;
 struct _Green
 {
   GObject instance;		/* parent instance */
-
   GreenPrivate *priv;		/* private data */
 };
 
@@ -125,10 +124,8 @@ Green *green_get_default (void);
 Green *green_filter_new (WindowFilter filter, int number);
 Green *green_new (int number);
 
-gpointer green_find_window (Window xid);
-
 gint green_screen_width(void);
-
+gpointer green_find_window (Window xid);
 void green_select_input (Window xid, int mask);
 
 G_END_DECLS

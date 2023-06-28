@@ -50,7 +50,6 @@ typedef struct _GreenWindowPrivate GreenWindowPrivate;
 struct _GreenWindow
 {
   GObject instance;		/* parent instance */
-
   GreenWindowPrivate *priv;	/* private data */
 };
 

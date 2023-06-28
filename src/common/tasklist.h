@@ -49,7 +49,6 @@ typedef struct _TasklistPrivate TasklistPrivate;
 struct _Tasklist
 {
   GtkContainer instance;	/* parent instance */
-
   TasklistPrivate *priv;	/* private data */
 };
 

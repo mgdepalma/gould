@@ -730,20 +730,42 @@ system_command(const char *command)
 * spawn forks child process
 */
 pid_t
-spawn (const char* cmdline)
+spawn (const char* command)
 {
-  pid_t pid = -1;
-#ifdef USE_GLIB_SPAWN
-  gboolean result = g_spawn_command_line_async(cmdline, 0);
-  pid = pidof(cmdline);
-#else
-  if ((pid = fork()) == 0) {	/* child process */
+  pid_t pid = fork();
+
+  if (pid < 0) {
+    perror("spawn: fork() failed.");
+    return -1;
+  }
+
+  if (pid == 0) {	/* child process */
     const char *shell = "/bin/sh";
 
     setsid();
-    execlp(shell, shell, "-f", "-c", cmdline, NULL);
+    execlp(shell, shell, "-f", "-c", command, NULL);
     exit(0);
   }
+#ifdef NEVER
+  GPid pid = 0;
+  GError *error = NULL;
+  GSpawnFlags flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_FILE_AND_ARGV_ZERO
+      | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL;
+
+  gchar argv = { command, NULL };
+  gchar *envp[] = { NULL };
+  
+  g_spawn_async_with_pipes (NULL, /* working directory */
+		argv,
+		envp,
+		flags,
+		NULL, /* setup function */
+		NULL, /* user data */
+		&pid,
+		NULL, /* standard input */
+		NULL, /* standard output */
+		NULL, /* standard error */
+		&error);
 #endif
   return pid;
 } /* </spawn> */
