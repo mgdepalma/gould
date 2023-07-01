@@ -705,7 +705,7 @@ system_command(const char *command)
   }
 
   if (pid == 0) {		/* child process */
-    const char *path  = "/bin:/sbin:/usr/bin:/usr/local/bin";
+    const char *path  = "/bin:/sbin:/usr/bin:/usr/bin/X11:/usr/local/bin";
     const char *shell = "/bin/sh";
 
     char searchpath[MAX_COMMAND];

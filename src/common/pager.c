@@ -1249,47 +1249,47 @@ pager_connect_screen (Pager *pager, Green *green)
   unsigned short idx = 0;
 
   conn[idx++] = g_signal_connect_object (
-                 G_OBJECT (green), "active_window_changed",
+                 G_OBJECT (green), "active-window-changed",
                  G_CALLBACK (pager_active_window_changed),
                  pager, 0);
 
   conn[idx++] = g_signal_connect_object (
-                  G_OBJECT (green), "active_workspace_changed",
+                  G_OBJECT (green), "active-workspace-changed",
                   G_CALLBACK (pager_active_workspace_changed),
                   pager, 0);
 
   conn[idx++] = g_signal_connect_object (
-                  G_OBJECT (green), "background_changed",
+                  G_OBJECT (green), "background-changed",
                   G_CALLBACK (pager_background_changed),
                   pager, 0);
 
   conn[idx++] = g_signal_connect_object (
-                  G_OBJECT (green), "window_opened",
+                  G_OBJECT (green), "window-opened",
                   G_CALLBACK (pager_window_opened),
                   pager, 0);
 
   conn[idx++] = g_signal_connect_object (
-                 G_OBJECT (green), "window_closed",
+                 G_OBJECT (green), "window-closed",
                  G_CALLBACK (pager_window_closed),
                  pager, 0);
 
   conn[idx++] = g_signal_connect_object (
-                  G_OBJECT (green), "window_stacking_changed",
+                  G_OBJECT (green), "window-stacking-changed",
                   G_CALLBACK (pager_window_stacking_changed),
                   pager, 0);
 
   conn[idx++] = g_signal_connect_object (
-                  G_OBJECT (green), "workspace_created",
+                  G_OBJECT (green), "workspace-created",
                   G_CALLBACK (pager_workspace_created),
                   pager, 0);
 
   conn[idx++] = g_signal_connect_object (
-                  G_OBJECT (green), "workspace_destroyed",
+                  G_OBJECT (green), "workspace-destroyed",
                   G_CALLBACK (pager_workspace_destroyed),
                   pager, 0);
 
   conn[idx++] = g_signal_connect_object (
-                 G_OBJECT (green), "viewports_changed",
+                 G_OBJECT (green), "viewports-changed",
                  G_CALLBACK (pager_viewports_changed),
                  pager, 0);
 

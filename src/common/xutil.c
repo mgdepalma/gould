@@ -258,7 +258,7 @@ get_utf8_property (Window xid, Atom atom)
   result = XGetWindowProperty (gdk_display, xid, atom, 0, G_MAXLONG, False,
                                _UTF8_STRING, &cast, &format, &length, &after,
                                (void*)&data);
-  error = _x_error_trap_pop ("get_utf8_property(xid=>%d)", xid);
+  error = _x_error_trap_pop ("get_utf8_property(xid => 0x%x)", xid);
 
   if (error == Success && result == Success)
     if (cast == _UTF8_STRING && format == 8 && length != 0 && data) {
@@ -455,7 +455,7 @@ get_atom_list (Window xid, Atom atom, int *count)
   result = XGetWindowProperty (gdk_display, xid, atom, 0, G_MAXLONG, False,
                                XA_ATOM, &cast, &format, &length, &after,
                                (void*)&data);
-  error = _x_error_trap_pop ("get_atom_list(xid=>%d)", xid);
+  error = _x_error_trap_pop ("get_atom_list(xid => 0x%x)", xid);
 
   if (error == Success && result == Success) {
     if (cast == XA_ATOM) {
@@ -488,7 +488,7 @@ get_active_window (Window xroot)
   result = XGetWindowProperty (gdk_display, xroot, prop, 0, G_MAXLONG,
                                False, XA_WINDOW, &cast, &format, &length,
                                &after, (void*)&data);
-  error = _x_error_trap_pop ("get_active_window(xroot=%d)", xroot);
+  error = _x_error_trap_pop ("get_active_window(xroot => 0x%x", xroot);
 
   if (error == Success && result == Success) {
     if (cast == XA_WINDOW)
@@ -573,7 +573,7 @@ get_window_list (Window xroot, Atom atom, int desktop, int *count)
   result = XGetWindowProperty (gdk_display, xroot, atom, 0, G_MAXLONG,
                                False, XA_WINDOW, &cast, &format, &length,
                                &after, (void*)&data);
-  error = _x_error_trap_pop ("get_window_list(xroot=%d)", xroot);
+  error = _x_error_trap_pop ("get_window_list(xroot => 0x%x", xroot);
 
   if (error == Success && result == Success) {
     if (cast == XA_WINDOW) {
@@ -627,7 +627,7 @@ get_desktop_names (Window xroot)
   result = XGetWindowProperty (gdk_display, xroot, _NET_DESKTOP_NAMES,
                                0, G_MAXLONG, False, _UTF8_STRING, &cast,
                                &format, &length, &after, &data);
-  error = _x_error_trap_pop ("get_desktop_names(xroot=%d)", xroot);
+  error = _x_error_trap_pop ("get_desktop_names(xroot => 0x%x", xroot);
 
   if (error == Success && result == Success)
     if (cast == _UTF8_STRING && format == 8 && length != 0 && data) {
@@ -679,7 +679,7 @@ get_window_pixmap (Window xid)
   result = XGetWindowProperty (gdk_display, xid, prop, 0L, 1L,
                                False, XA_PIXMAP, &cast, &format, &length,
                                &after, (void*)&data);
-  error = _x_error_trap_pop ("get_window_pixmap(xid=>%d)", xid);
+  error = _x_error_trap_pop ("get_window_pixmap(xid => 0x%x)", xid);
 
   if (error == Success && result == Success) {
     if (cast == XA_PIXMAP && format == 32 && length == 1 && after == 0)
@@ -703,7 +703,7 @@ get_window_class (Window xid)
 
   gdk_error_trap_push ();
   status = XGetClassHint (gdk_display, xid, &hint);
-  error = _x_error_trap_pop ("get_window_class(xid=>%d)", xid);
+  error = _x_error_trap_pop ("get_window_class(xid => 0x%x)", xid);
 
   if (error == Success && status) {
     if (hint.res_name) {
@@ -750,7 +750,7 @@ get_window_geometry (Window xid, GdkRectangle *geometry)
       xpos = ypos = xres = yres = 2;
   }
 
-  error = _x_error_trap_pop ("get_window_geometry(xid=>%d)", xid);
+  error = _x_error_trap_pop ("get_window_geometry(xid => 0x%x)", xid);
 
   geometry->x = xpos;
   geometry->y = ypos;
@@ -813,7 +813,7 @@ get_window_icon_scaled (Window xid, int width, int height)
 
     gdk_error_trap_push ();
     hints = XGetWMHints (gdk_display, xid);
-    _x_error_trap_pop ("get_window_icon_scaled(xid=>%d)", xid);
+    _x_error_trap_pop ("get_window_icon_scaled(xid => 0x%x)", xid);
 
     /*
     * IconPixmapHint flag indicates that hints->icon_pixmap contains
@@ -984,7 +984,7 @@ get_xprop_atom (Window xid, Atom prop, Atom type, int *count)
   gdk_error_trap_push ();
   result = XGetWindowProperty(gdk_display, xid, prop, 0, G_MAXLONG, False,
                               type, &cast, &format, &length, &after, &data);
-  error = _x_error_trap_pop ("get_xprop_atom(xid=>%d)", xid);
+  error = _x_error_trap_pop ("get_xprop_atom(xid => 0x%x)", xid);
 
   if (error == Success && result == Success) {
     value = data;
@@ -1036,7 +1036,7 @@ get_xprop_name (Window xid, const char *name)
   result = XGetWindowProperty (gdk_display, xid, atom, 0L, 1L, False,
                                AnyPropertyType, &cast, &format, &length,
                                &after, &data);
-  error = _x_error_trap_pop ("get_xprop_name(xid=>%d)", xid);
+  error = _x_error_trap_pop ("get_xprop_name(xid => 0x%x)", xid);
 
   if (error == Success && result == Success)
     if ((cast == XA_CARDINAL) && (format == 32) && data)
@@ -1065,7 +1065,7 @@ get_xprop_text (Window xid, Atom atom)
     if (text.nitems > 0)
       XFree(text.value);
   }
-  _x_error_trap_pop ("get_xprop_text(xid=>%d)", xid);
+  _x_error_trap_pop ("get_xprop_text(xid => 0x%x)", xid);
 
   return value;
 } /* </get_xprop_text> */

@@ -17,20 +17,32 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+#include "green.h"
 #include "gould.h"		/* common package declarations */
 #include "gwindow.h"
-#include "xutil.h"
-
-#include "green.h"
 #include "systray.h"
 #include "tasklist.h"
 #include "pager.h"
+#include "xutil.h"
 
 #include <stdio.h>
 #include <string.h>
+#include <sysexits.h>		/* exit status codes for system programs */
 
 const char *Program = "gtaskbar";  /* (public) published program name */
 const char *Release = "0.8.1";	  /* (public) published program version */
+
+const char *Description =
+"is a simple desktop taskbar panel.\n"
+"  The program is developed for Generations Linux and distributed\n"
+"  under the terms and condition of the GNU Public License.";
+
+const char *Usage =
+"usage: %s [-v | -h]\n"
+"\n"
+"\t-v print version information\n"
+"\t-h print help usage (what you are reading)\n"
+"\n";
 
 debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 
@@ -206,6 +218,31 @@ main(int argc, char *argv[])
   GdkScreen *screen;
   GtkWidget *frame, *window;
   int idx, width;
+
+  int opt;
+  /* disable invalid option messages */
+  opterr = 0;
+
+  while ((opt = getopt (argc, argv, "d:hv")) != -1) {
+    switch (opt) {
+      case 'd':
+        debug = atoi(optarg);
+        putenv("DEBUG=1");
+        break;
+
+      case 'h':
+        printf(Usage, Program);
+        _exit (EX_OK);
+
+      case 'v':
+        printf("<!-- %s %s %s\n -->\n", Program, Release, Description);
+        _exit (EX_OK);
+
+      default:
+        printf("%s: invalid option, use -h for help usage.\n", Program);
+        _exit (EX_USAGE);
+    }
+  }
 
 #ifdef GETTEXT_PACKAGE
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);

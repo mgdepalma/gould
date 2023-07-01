@@ -503,7 +503,7 @@ green_window_minimize (GreenWindow *window)
 
     gdk_error_trap_push ();
     XIconifyWindow (gdk_display, priv->xid, screenumber);
-    _x_error_trap_pop ("green_window_minimize(xid=>%d)\n", priv->xid);
+    _x_error_trap_pop ("green_window_minimize(xid => 0x%x)\n", priv->xid);
   }
 } /* </green_window_minimize> */
 
@@ -590,7 +590,7 @@ green_window_restore (GreenWindow *window)
     else {
       gdk_error_trap_push ();
       XMapRaised (gdk_display, priv->xid);
-      _x_error_trap_pop ("green_window_restore(xid=>%d)\n", priv->xid);
+      _x_error_trap_pop ("green_window_restore(xid => 0x%x)\n", priv->xid);
     }
   }
 

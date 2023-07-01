@@ -141,10 +141,10 @@ check_configuration_version (GlobalPanel *panel, SchemaVersion *version)
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<quicklaunch>\n"
 " <item name=\"Web Browser\" icon=\"web.png\">\n"
-"  <exec>xwww</exec>\n"
+"  <exec>webrowser</exec>\n"
 " </item>\n"
 " <item name=\"Mail\" icon=\"mail.png\">\n"
-"  <exec>xmail</exec>\n"
+"  <exec>email</exec>\n"
 " </item>\n"
 "</quicklaunch>\n";
 
@@ -381,11 +381,12 @@ static void
 panel_quicklaunch (GtkWidget *widget, Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
-  const gchar *command = path_finder(panel->path, applet->label);
+  const gchar *command = applet->label;
+  //const gchar *command = path_finder(panel->path, applet->label);
   vdebug(2, "%s: command => %s\n", __func__, command);
 
   if (command)
-    dispatch (panel->session, command);
+    system_command (command);
   else
      gpanel_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
                	Program, applet->label, _("command not found"));

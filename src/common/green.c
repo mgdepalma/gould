@@ -241,19 +241,19 @@ green_update_active_window (Green *green)
 static void
 green_update_active_workspace (Green *green)
 {
-  static int desktop = -1;
+  static int workspace = -1;
 
   if (green->priv->update[NET_CURRENT_DESKTOP]) {
     int active = green_get_active_workspace (green);
 
     green->priv->update[NET_CURRENT_DESKTOP] = FALSE;
 
-    if (active != desktop) {
+    if (workspace != active) {
       g_signal_emit (G_OBJECT (green),
                      signals_[ACTIVE_WORKSPACE_CHANGED],
                      0);
 
-      desktop = active;
+      workspace = active;
     }
   }
 } /* </green_update_active_workspace> */
@@ -317,11 +317,13 @@ green_update_client_list (Green *green)
         window = green_window_new (mapping[idx], green);
         green_hash_insert (mapping[idx], window, green);
 
+        vdebug(2, "%s: WINDOW_OPENED, xid => 0x%x\n", __func__,
+				green_window_get_xid (window));
+
         g_signal_emit (G_OBJECT (green),
                        signals_[WINDOW_OPENED],
                        0, window);
       }
-
       list = g_list_append (list, key);  /* add to new list in order */
     }
 
@@ -330,6 +332,9 @@ green_update_client_list (Green *green)
       if (g_list_find (list, iter->data) == NULL) {   /* not in new list */
         window = g_hash_table_lookup (priv->winhash, iter->data);
         green_hash_remove ((Window)iter->data, window, green);
+
+        vdebug(2, "%s: WINDOW_CLOSED, xid => 0x%x\n", __func__,
+				green_window_get_xid (window));
 
         g_signal_emit (G_OBJECT (green),
                        signals_[WINDOW_CLOSED],
@@ -614,7 +619,7 @@ green_class_init (GreenClass *klass)
   object_class->finalize = green_finalize;
 
   signals_[ACTIVE_WINDOW_CHANGED] =
-    g_signal_new ("active_window_changed",
+    g_signal_new ("active-window-changed",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, active_window_changed),
@@ -623,7 +628,7 @@ green_class_init (GreenClass *klass)
                   G_TYPE_NONE, 0);
 
   signals_[ACTIVE_WORKSPACE_CHANGED] =
-    g_signal_new ("active_workspace_changed",
+    g_signal_new ("active-workspace-changed",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, active_workspace_changed),
@@ -633,7 +638,7 @@ green_class_init (GreenClass *klass)
                   //G_TYPE_NONE, 1, GREEN_TYPE_WORKSPACE);
 
   signals_[BACKGROUND_CHANGED] =
-    g_signal_new ("background_changed",
+    g_signal_new ("background-changed",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, background_changed),
@@ -642,7 +647,7 @@ green_class_init (GreenClass *klass)
                   G_TYPE_NONE, 0);
 
   signals_[CLASS_GROUP_OPENED] =
-    g_signal_new ("class_group_opened",
+    g_signal_new ("class-group-opened",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, class_group_opened),
@@ -652,7 +657,7 @@ green_class_init (GreenClass *klass)
                   //G_TYPE_NONE, 1, GREEN_TYPE_CLASS_GROUP);
 
   signals_[CLASS_GROUP_CLOSED] =
-    g_signal_new ("class_group_closed",
+    g_signal_new ("class-group-closed",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, class_group_closed),
@@ -662,7 +667,7 @@ green_class_init (GreenClass *klass)
                   //G_TYPE_NONE, 1, GREEN_TYPE_CLASS_GROUP);
 
   signals_[SHOWING_DESKTOP_CHANGED] =
-    g_signal_new ("showing_desktop_changed",
+    g_signal_new ("showing-desktop-changed",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, showing_desktop_changed),
@@ -671,7 +676,7 @@ green_class_init (GreenClass *klass)
                   G_TYPE_NONE, 0);
 
   signals_[VIEWPORTS_CHANGED] =
-    g_signal_new ("viewports_changed",
+    g_signal_new ("viewports-changed",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, viewports_changed),
@@ -680,7 +685,7 @@ green_class_init (GreenClass *klass)
                   G_TYPE_NONE, 0);
 
   signals_[WINDOW_STACKING_CHANGED] =
-    g_signal_new ("window_stacking_changed",
+    g_signal_new ("window-stacking-changed",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, window_stacking_changed),
@@ -689,7 +694,7 @@ green_class_init (GreenClass *klass)
                   G_TYPE_NONE, 0);
 
   signals_[WINDOW_OPENED] =
-    g_signal_new ("window_opened",
+    g_signal_new ("window-opened",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, window_opened),
@@ -698,7 +703,7 @@ green_class_init (GreenClass *klass)
                   G_TYPE_NONE, 1, GREEN_TYPE_WINDOW);
 
   signals_[WINDOW_CLOSED] =
-    g_signal_new ("window_closed",
+    g_signal_new ("window-closed",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, window_closed),
@@ -707,7 +712,7 @@ green_class_init (GreenClass *klass)
                   G_TYPE_NONE, 1, GREEN_TYPE_WINDOW);
 
   signals_[WORKSPACE_CREATED] =
-    g_signal_new ("workspace_created",
+    g_signal_new ("workspace-created",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, workspace_created),
@@ -717,7 +722,7 @@ green_class_init (GreenClass *klass)
                   //G_TYPE_NONE, 1, GREEN_TYPE_WORKSPACE);
 
   signals_[WORKSPACE_DESTROYED] =
-    g_signal_new ("workspace_destroyed",
+    g_signal_new ("workspace-destroyed",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST,
                   G_STRUCT_OFFSET (GreenClass, workspace_destroyed),

@@ -58,6 +58,22 @@ struct _TasklistClass
 };
 
 typedef enum {
+  TASKLIST_REALIZE,			// realize
+  TASKLIST_ACTIVE_WINDOW_CHANGED,	// active-window-changed
+  TASKLIST_ACTIVE_WORKSPACE_CHANGED,	// active-workspace-changed
+  TASKLIST_SET_GROUPING,		// set-grouping
+  TASKLIST_SET_INCLUDE_ALL_WORKSPACES,	// set-include-all-workspaces"
+  TASKLIST_VIEWPORTS_CHANGED,		// viewports-changed
+  TASKLIST_WINDOW_ADDED,		// window-added
+  TASKLIST_WINDOW_ICON_CHANGED,		// window-icon-changed
+  TASKLIST_WINDOW_NAME_CHANGED,		// window-name-changed
+  TASKLIST_WINDOW_STATE_CHANGED,	// window-state-changed
+  TASKLIST_WINDOW_WORKSPACE_CHANGED,	// window-workspace-changed
+  TASKLIST_WINDOW_REMOVED,		// window-removed
+  TASKLIST_UNREALIZE			// unrealize
+} TasklistEventType;
+
+typedef enum {
   TASKLIST_NEVER_GROUP,
   TASKLIST_ALWAYS_GROUP,
   TASKLIST_AUTO_GROUP
