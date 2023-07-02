@@ -28,7 +28,7 @@
 
 
 /* Private data structures. */
-enum {
+enum {				/* anonymous window state enum */
   ACTIVE_WINDOW_CHANGED,
   ACTIVE_WORKSPACE_CHANGED,
   BACKGROUND_CHANGED,
@@ -44,7 +44,7 @@ enum {
   LAST_SIGNAL
 };
 
-enum {
+enum {				/* anonymous window property enum */
   NET_ACTIVE_WINDOW,
   NET_CLIENT_LIST,
   NET_CURRENT_DESKTOP,
@@ -59,24 +59,24 @@ enum {
 
 struct _GreenPrivate
 {
-  Window  xroot;		/* Xlib root window */
-  Screen *screen;		/* Xlib Screen of workspaces */
+  Window  xroot;		  /* Xlib root window */
+  Screen *screen;		  /* Xlib Screen of workspaces */
 
-  Pixmap backdrop;		/* Xlib background pixmap */
+  Pixmap backdrop;		  /* Xlib background pixmap */
 
-  GHashTable *reshash;		/* persistent Xlib resource class hash */
-  GHashTable *winhash;		/* persistent GREEN_TYPE_WINDOW hash */
-  GList *winlist;		/* open windows list */
+  GHashTable *reshash;		  /* persistent Xlib resource class hash */
+  GHashTable *winhash;		  /* persistent GREEN_TYPE_WINDOW hash */
+  GList *winlist;		  /* open windows list */
 
-  WindowFilter filter;		/* [optional] Xlib window list filter */
+  WindowFilter filter;		  /* [optional] Xlib window list filter */
 
-  Window *mapping;		/* _NET_CLIENT_LIST */
-  Window *stacking;		/* _NET_CLIENT_LIST_STACKING */
+  Window *mapping;		  /* _NET_CLIENT_LIST */
+  Window *stacking;		  /* _NET_CLIENT_LIST_STACKING */
 
-  int clients, stacks;		/* respective number of elements */
+  int clients, stacks;		  /* respective number of elements */
 
-  gboolean update[LAST_PROPERTY];
-  guint agent;			/* update handler */
+  gboolean update[LAST_PROPERTY]; /* window property enum */
+  guint agent;			  /* update handler */
 };
 
 static gpointer parent_class_;	/* parent class instance */
@@ -85,9 +85,9 @@ static guint signals_[LAST_SIGNAL] = { 0 };
 static Green **screen_ = NULL;	/* singleton GREEN array */
 
 /*
- * green_hash_insert
- * green_hash_remove
- */
+* green_hash_insert
+* green_hash_remove
+*/
 static void
 green_hash_insert (Window xid, GreenWindow *window, Green *green)
 {
@@ -123,8 +123,8 @@ green_hash_remove (Window xid, GreenWindow* window, Green *green)
 } /* </green_hash_remove> */
 
 /*
- * green_hash_list - update hash table and return windows linked list
- */
+* green_hash_list - update hash table and return windows linked list
+*/
 GList *
 green_hash_list (Green *green, Window *wins, int count)
 {
@@ -172,10 +172,10 @@ green_window_list (Green *green, WindowFilter filter, int desktop,
 } /* </green_window_list> */
 
 /*
- * green_get_windows
- * green_get_windows_stacking
- * green_get_group_list
- */
+* green_get_windows
+* green_get_windows_stacking
+* green_get_group_list
+*/
 GList *
 green_get_windows (Green *green, WindowFilter filter, int desktop)
 {
@@ -209,15 +209,15 @@ green_get_group_list (Green *green, gpointer object)
 } /* </green_get_group_list> */
 
 /*
- * green_update_active_window
- * green_update_active_workspace
- * green_update_background_pixmap
- * green_update_client_list
- * green_update_workspace_count
- * green_update_workspace_names
- * green_update_workspace_layout
- * green_update_workspace_viewport
- */
+* green_update_active_window
+* green_update_active_workspace
+* green_update_background_pixmap
+* green_update_client_list
+* green_update_workspace_count
+* green_update_workspace_names
+* green_update_workspace_layout
+* green_update_workspace_viewport
+*/
 static void
 green_update_active_window (Green *green)
 {
@@ -336,9 +336,16 @@ green_update_client_list (Green *green)
         vdebug(2, "%s: WINDOW_CLOSED, xid => 0x%x\n", __func__,
 				green_window_get_xid (window));
 
+        char genviron[MAX_LABEL]; // propagate WINDOW_CLOSED event  
+        Window xid = green_window_get_xid (window);
+        sprintf(genviron, "GOULD_WINDOW_CLOSED=%lu", xid);
+        putenv (genviron);
+
+#ifdef NEVER
         g_signal_emit (G_OBJECT (green),
                        signals_[WINDOW_CLOSED],
                        0, window);
+#endif
       }
     }
 
@@ -393,8 +400,8 @@ green_update_workspace_viewport (Green *green)
 } /* </green_update_workspace_viewport> */
 
 /*
- * green_update
- */
+* green_update
+*/
 static void
 green_update (Green *green)
 {
@@ -426,10 +433,10 @@ green_update (Green *green)
 } /* green_update */
 
 /*
- * green_idle_act
- * green_idle_agent
- * green_idle_cancel
- */
+* green_idle_act
+* green_idle_agent
+* green_idle_cancel
+*/
 static gboolean
 green_idle_act (Green *green)
 {
@@ -456,8 +463,8 @@ green_idle_cancel (Green *green)
 } /* </green_idle_cancel> */
 
 /*
- * green_property_notify
- */
+* green_property_notify
+*/
 static void
 green_property_notify (Green *green, XEvent *xevent)
 {
@@ -504,8 +511,8 @@ green_property_notify (Green *green, XEvent *xevent)
 } /* </green_property_notify> */
 
 /*
- * green_get_for_xroot
- */
+* green_get_for_xroot
+*/
 Green *
 green_get_for_xroot (gulong xroot)
 {
@@ -519,9 +526,9 @@ green_get_for_xroot (gulong xroot)
 } /* </green_get_for_xroot> */
 
 /*
- * green_event_filter
- * green_event_filter_init
- */
+* green_event_filter
+* green_event_filter_init
+*/
 static GdkFilterReturn
 green_event_filter (XEvent *xevent, GdkEvent *event, gpointer data)
 {
@@ -541,7 +548,7 @@ green_event_filter (XEvent *xevent, GdkEvent *event, gpointer data)
         green_window_configure_notify (window, xevent);
       break;
 
-#if 0 /* CONSIDER */
+#ifdef CONSIDER
     case SelectionClear:
       _green_desktop_layout_manager_process_event (xevent);
       break;
@@ -566,8 +573,8 @@ green_event_filter_init (gpointer data)
 } /* </green_event_filter_init> */
 
 /*
- * green_winhash_unref - only use immediately prior to g_hash_table_destroy()
- */
+* green_winhash_unref - only use immediately prior to g_hash_table_destroy()
+*/
 static void
 green_winhash_unref (Window key, GdkWindow *window, Green *green)
 {
@@ -575,8 +582,8 @@ green_winhash_unref (Window key, GdkWindow *window, Green *green)
 } /* </green_winhash_unref> */
 
 /**
- * Green and GreenClass construction
- */
+* Green and GreenClass construction
+*/
 static void
 green_init (Green *green)
 {
@@ -733,8 +740,8 @@ green_class_init (GreenClass *klass)
 } /* </green_class_init> */
 
 /*
- * Public methods
- */
+* Public methods
+*/
 GType
 green_get_type (void)
 {
@@ -766,9 +773,9 @@ green_get_type (void)
 } /* </green_get_type> */
 
 /*
- * green_get_gdk_screen
- * green_get_screen
- */
+* green_get_gdk_screen
+* green_get_screen
+*/
 GdkScreen *
 green_get_gdk_screen (Green *green)
 {
@@ -783,8 +790,8 @@ green_get_screen (Green *green)
 } /* </green_get_screen> */
 
 /*
- * green_get_root_window
- */
+* green_get_root_window
+*/
 Window
 green_get_root_window (Green *green)
 {
@@ -792,8 +799,8 @@ green_get_root_window (Green *green)
 } /* </green_get_root_window> */
 
 /*
- * green_get_background_pixmap
- */
+* green_get_background_pixmap
+*/
 Pixmap
 green_get_background_pixmap (Green *green)
 {
@@ -808,9 +815,9 @@ green_get_background_pixmap (Green *green)
 } /* </green_get_background_pixmap> */
 
 /*
- * green_get_active_workspace
- * green_get_window_workspace
- */
+* green_get_active_workspace
+* green_get_window_workspace
+*/
 int
 green_get_active_workspace (Green *green)
 {
@@ -818,9 +825,9 @@ green_get_active_workspace (Green *green)
 } /* </green_get_active_workspace> */
 
 /*
- * green_get_workspace_count
- * green_get_workspace_name
- */
+* green_get_workspace_count
+* green_get_workspace_name
+*/
 int
 green_get_workspace_count (Green *green)
 {
@@ -841,8 +848,8 @@ green_get_workspace_name (Green *green, int desktop)
 } /* </green_get_workspace_name> */
 
 /*
- * green_change_workspace
- */
+* green_change_workspace
+*/
 void
 green_change_workspace (Green *green, int desktop, Time stamp)
 {
@@ -873,8 +880,8 @@ green_change_workspace (Green *green, int desktop, Time stamp)
 } /* </green_change_workspace> */
 
 /*
- * green_change_workspace_count
- */
+* green_change_workspace_count
+*/
 void
 green_change_workspace_count (Green *green, int count)
 {
@@ -900,9 +907,9 @@ green_change_workspace_count (Green *green, int count)
 } /* </green_change_workspace_count> */
 
 /*
- * green_release_workspace_layout
- * green_request_workspace_layout
- */
+* green_release_workspace_layout
+* green_request_workspace_layout
+*/
 void
 green_release_workspace_layout (Green *green, int token)
 {
@@ -917,8 +924,8 @@ green_request_workspace_layout (Green *green, int token, int rows, int cols)
 } /* </green_request_workspace_layout> */
 
 /*
- * green_remove_window - draconian Xlib window removal
- */
+* green_remove_window - draconian Xlib window removal
+*/
 void
 green_remove_window (Green *green, Window xid)
 {
@@ -952,8 +959,8 @@ green_remove_window (Green *green, Window xid)
 } /* </green_remove_window> */
 
 /*
- * green_set_window_filter
- */
+* green_set_window_filter
+*/
 void
 green_set_window_filter (Green *green, WindowFilter filter)
 {
@@ -979,9 +986,10 @@ green_set_window_filter (Green *green, WindowFilter filter)
 } /* </green_set_window_filter> */
 
 /*
- * green_get_default
- * green_new
- */
+* green_get_default
+* green_filter_new
+* green_new
+*/
 Green *
 green_get_default (void)	/* singleton GREEN object instance */
 {
@@ -1044,8 +1052,8 @@ green_new (int number)
 } /* </green_new> */
 
 /*
- * green_find_window - search all screen_[]->priv->winhash for Window
- */
+* green_find_window - search all screen_[]->priv->winhash for Window
+*/
 gpointer
 green_find_window (Window xid)
 {
@@ -1066,8 +1074,8 @@ green_find_window (Window xid)
 } /* </green_find_window> */
 
 /*
- * green_screen_width
- */
+* green_screen_width
+*/
 gint
 green_screen_width (void)
 {
@@ -1084,8 +1092,8 @@ green_screen_width (void)
 } /* </green_screen_width> */
 
 /*
- * green_select_input
- */
+* green_select_input
+*/
 void
 green_select_input (Window xid, int mask)
 {
@@ -1097,3 +1105,4 @@ green_select_input (Window xid, int mask)
 
   XSelectInput (gdk_display, xid, mask);
 } /* </green_select_input> */
+

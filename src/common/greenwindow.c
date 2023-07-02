@@ -24,8 +24,8 @@
 #include <unistd.h>
 
 #include <X11/Xatom.h>
-#include <gdk/gdkx.h>
 #include <gtk/gtkmain.h>
+#include <gdk/gdkx.h>
 
 #define _NET_WM_MOVERESIZE_SIZE_TOPLEFT      0
 #define _NET_WM_MOVERESIZE_SIZE_TOP          1
@@ -43,7 +43,7 @@
 #define _NET_WM_STATE_ADD           1    /* add/set property */
 #define _NET_WM_STATE_TOGGLE        2    /* toggle property  */
 
-enum {
+enum {					/* window state enum */
   ICON_CHANGED,
   NAME_CHANGED,
   STATE_CHANGED,
@@ -52,7 +52,7 @@ enum {
   LAST_SIGNAL
 };
 
-enum {
+enum {					/* window property enum */
   NET_WM_ICON,
   NET_WM_NAME,
   NET_WM_STATE,
@@ -62,19 +62,22 @@ enum {
 
 struct _GreenWindowPrivate
 {
-  Window        xid;		/* Xlib Window */
+  Window xid;			/* Xlib Window */
+
+  XWindowState  state;		/* window state */
+  GdkRectangle  geometry;	/* window geometry */
+
   const gchar  *name;		/* window name */
   const gchar  *iconame;	/* window iconame */
   const gchar  *wmclass;
 
-  XWindowState  state;		/* window state */
-  GdkRectangle  geometry;	/* window geometry */
-  int           desktop;	/* window workspace number */
+  Green *green;			/* Green object instance */
+  int  desktop;			/* window workspace number */
 
-  Green        *green;          /* Green object instance */
-
-  bool	update[LAST_PROPERTY];
+  bool	update[LAST_PROPERTY];	/* window property enum */
   guint agent;			/* update handler */
+
+  pid_t spy;			/* xprop -spy -id <xid> */
 };
 
 static gpointer parent_class_;		/* parent class instance */
@@ -88,7 +91,7 @@ static guint signals_[LAST_SIGNAL] = { 0 };
 * green_window_update_workspace
 */
 static void
-green_window_update_icon (GreenWindow *window)
+green_window_update_icon(GreenWindow *window)
 {
   if (window->priv->update[NET_WM_ICON]) {
     GreenWindowPrivate *priv = window->priv;
@@ -107,7 +110,7 @@ green_window_update_icon (GreenWindow *window)
 } /* </green_window_update_icon> */
 
 static void
-green_window_update_name (GreenWindow *window)
+green_window_update_name(GreenWindow *window)
 {
   if (window->priv->update[NET_WM_NAME]) {
     GreenWindowPrivate *priv = window->priv;
@@ -126,7 +129,7 @@ green_window_update_name (GreenWindow *window)
 } /* </green_window_update_name> */
 
 static void
-green_window_update_state (GreenWindow *window)
+green_window_update_state(GreenWindow *window)
 {
   if (window->priv->update[NET_WM_STATE]) {
     GreenWindowPrivate *priv = window->priv;
@@ -146,7 +149,7 @@ green_window_update_state (GreenWindow *window)
 } /* </green_window_update_state> */
 
 static void
-green_window_update_workspace (GreenWindow *window)
+green_window_update_workspace(GreenWindow *window)
 {
   if (window->priv->update[NET_WM_DESKTOP]) {
     GreenWindowPrivate *priv = window->priv;
@@ -166,7 +169,7 @@ green_window_update_workspace (GreenWindow *window)
 * green_window_update
 */
 static void
-green_window_update (GreenWindow *window)
+green_window_update(GreenWindow *window)
 {
   green_window_update_icon (window);
   green_window_update_name (window);
@@ -180,16 +183,15 @@ green_window_update (GreenWindow *window)
 * green_window_idle_cancel
 */
 static gboolean
-green_window_idle_act (GreenWindow *window)
+green_window_idle_act(GreenWindow *window)
 {
   window->priv->agent = 0;	/* reentrancy guard */
   green_window_update (window);
-
   return FALSE;
 } /* </green_window_idle_act> */
 
 static void
-green_window_idle_agent (GreenWindow *window)
+green_window_idle_agent(GreenWindow *window)
 {
   if (window->priv->agent == 0)
     window->priv->agent = g_idle_add ((GSourceFunc)green_window_idle_act,
@@ -197,7 +199,7 @@ green_window_idle_agent (GreenWindow *window)
 } /* </green_window_idle_agent> */
 
 static void
-green_window_idle_cancel (GreenWindow *window)
+green_window_idle_cancel(GreenWindow *window)
 {
   if (window->priv->agent != 0) {
     g_source_remove (window->priv->agent);
@@ -209,13 +211,13 @@ green_window_idle_cancel (GreenWindow *window)
 * GreenWindow and GreenWindowClass construction
 */
 static void
-green_window_init (GreenWindow *window)
+green_window_init(GreenWindow *window)
 {
   window->priv = g_new0 (GreenWindowPrivate, 1);
 } /* </green_window_init> */
 
 static void
-green_window_finalize (GObject *object)
+green_window_finalize(GObject *object)
 {
   GreenWindow *window = GREEN_WINDOW (object);
 
@@ -228,7 +230,7 @@ green_window_finalize (GObject *object)
 } /* <green_window_finalize> */
 
 static void
-green_window_class_init (GreenWindowClass *klass)
+green_window_class_init(GreenWindowClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
@@ -286,7 +288,7 @@ green_window_class_init (GreenWindowClass *klass)
  * Public methods
  */
 GType
-green_window_get_type (void)
+green_window_get_type(void)
 {
   static GType object_type = 0;
 
@@ -319,7 +321,7 @@ green_window_get_type (void)
  * green_window_property_notify
  */
 void
-green_window_property_notify (GreenWindow *window, XEvent *xevent)
+green_window_property_notify(GreenWindow *window, XEvent *xevent)
 {
   Atom atom = xevent->xproperty.atom;
   bool *update_ = window->priv->update;
@@ -348,7 +350,7 @@ green_window_property_notify (GreenWindow *window, XEvent *xevent)
  * green_window_configure_notify
  */
 void
-green_window_configure_notify (GreenWindow *window, XEvent *xevent)
+green_window_configure_notify(GreenWindow *window, XEvent *xevent)
 {
   GreenWindowPrivate *priv = window->priv;
   GdkRectangle geometry;
@@ -370,7 +372,7 @@ green_window_configure_notify (GreenWindow *window, XEvent *xevent)
  * green_window_change_state
  */
 void
-green_window_activate (GreenWindow *window, Time stamp)
+green_window_activate(GreenWindow *window, Time stamp)
 {
   Screen *screen = green_get_screen (window->priv->green);
   Window xwindow = window->priv->xid;
@@ -399,7 +401,7 @@ green_window_activate (GreenWindow *window, Time stamp)
 } /* </green_window_activate> */
 
 void
-green_window_change_workspace (GreenWindow *window, int desktop)
+green_window_change_workspace(GreenWindow *window, int desktop)
 {
   Screen *screen = green_get_screen (window->priv->green);
   Window xwindow = window->priv->xid;
@@ -428,7 +430,7 @@ green_window_change_workspace (GreenWindow *window, int desktop)
 } /* </green_window_change_workspace> */
 
 void
-green_window_change_state (GreenWindow *window, bool enable, const char *prop)
+green_window_change_state(GreenWindow *window, bool enable, const char *prop)
 {
   Screen *screen = green_get_screen (window->priv->green);
   Window xwindow = window->priv->xid;
@@ -465,7 +467,7 @@ green_window_change_state (GreenWindow *window, bool enable, const char *prop)
  * green_window_restore
  */
 void
-green_window_close (GreenWindow *window)
+green_window_close(GreenWindow *window)
 {
   Screen *screen = green_get_screen (window->priv->green);
   Window xwindow = window->priv->xid;
@@ -493,7 +495,7 @@ green_window_close (GreenWindow *window)
 } /* </green_window_close> */
 
 void
-green_window_minimize (GreenWindow *window)
+green_window_minimize(GreenWindow *window)
 {
   GreenWindowPrivate *priv = window->priv;
 
@@ -508,7 +510,7 @@ green_window_minimize (GreenWindow *window)
 } /* </green_window_minimize> */
 
 void
-green_window_maximize (GreenWindow *window)
+green_window_maximize(GreenWindow *window)
 {
   GreenWindowPrivate *priv = window->priv;
   GdkWindow *gdkwindow = gdk_window_foreign_new (priv->xid);
@@ -547,7 +549,7 @@ green_window_move (GreenWindow *window)
 } /* </green_window_move> */
 
 void
-green_window_resize (GreenWindow *window)
+green_window_resize(GreenWindow *window)
 {
   GreenWindowPrivate *priv = window->priv;
   Screen *screen = green_get_screen (priv->green);
@@ -576,7 +578,7 @@ green_window_resize (GreenWindow *window)
 } /* </green_window_resize> */
 
 void
-green_window_restore (GreenWindow *window)
+green_window_restore(GreenWindow *window)
 {
   GreenWindowPrivate *priv = window->priv;
   GdkWindow *gdkwindow = gdk_xid_table_lookup (priv->xid);
@@ -602,52 +604,62 @@ green_window_restore (GreenWindow *window)
 } /* </green_window_restore> */
 
 /*
- * green_window_get_xid
- * green_window_get_icon
- * green_window_get_name
- * green_window_get_desktop
- */
+* green_window_get_xid
+* green_window_get_name
+* green_window_get_class
+* green_window_get_icon
+* green_window_get_geometry
+* green_window_get_state
+* green_window_get_green
+* green_window_get_desktop
+*/
 Window
-green_window_get_xid (GreenWindow *window)
+green_window_get_xid(GreenWindow *window)
 {
   return (window) ? window->priv->xid : None;
 } /* </green_window_get_xid> */
 
-GdkPixbuf *
-green_window_get_icon (GreenWindow *window)
-{
-  return (window) ? get_window_icon (window->priv->xid) : NULL;
-} /* </green_window_get_icon> */
-
 const gchar *
-green_window_get_name (GreenWindow *window)
+green_window_get_name(GreenWindow *window)
 {
   return (window) ? window->priv->name : NULL;
 } /* </green_window_get_name> */
 
 const gchar *
-green_window_get_class (GreenWindow *window)
+green_window_get_class(GreenWindow *window)
 {
   return (window) ? window->priv->wmclass : NULL;
 } /* </green_window_get_class> */
 
+GdkPixbuf *
+green_window_get_icon(GreenWindow *window)
+{
+  return (window) ? get_window_icon (window->priv->xid) : NULL;
+} /* </green_window_get_icon> */
+
 GdkRectangle *
-green_window_get_geometry (GreenWindow *window)
+green_window_get_geometry(GreenWindow *window)
 {
   return (window) ? &window->priv->geometry : NULL;
 } /* </green_window_get_name> */
 
 XWindowState *
-green_window_get_state (GreenWindow *window)
+green_window_get_state(GreenWindow *window)
 {
   return (window) ? &window->priv->state : NULL;
 } /* </green_window_get_state> */
 
+Green *
+green_window_get_green(GreenWindow *window)
+{
+  return (window) ? window->priv->green : NULL;
+} /* </green_window_get_green> */
+
 int
-green_window_get_desktop (GreenWindow *window)
+green_window_get_desktop(GreenWindow *window)
 {
   return (window) ? window->priv->desktop : -1;
-} /* </green_window_get_window> */
+} /* </green_window_get_desktop> */
 
 /*
  * green_window_new

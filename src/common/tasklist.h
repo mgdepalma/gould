@@ -21,6 +21,8 @@
 #define TASKLIST_H
 
 #include "greenwindow.h"
+#include "xpmglyphs.h"
+#include "xutil.h"
 
 #include <gtk/gtk.h>
 

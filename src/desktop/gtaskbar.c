@@ -285,6 +285,9 @@ main(int argc, char *argv[])
   /* gtk_container_add (GTK_CONTAINER(window), interface ()); */
   gtk_widget_show (window);
 
+  g_signal_connect(G_OBJECT(window), "destroy",
+                        G_CALLBACK(gtk_main_quit), NULL);
+
   /* Give the interface() a nicer look. */
   frame = gtk_frame_new (NULL);
   gtk_frame_set_shadow_type (GTK_FRAME (frame), GTK_SHADOW_OUT);

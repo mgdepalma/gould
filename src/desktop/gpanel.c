@@ -67,20 +67,19 @@ const char *ConfigurationHeader =
 const char *Bugger  = "internal program error";
 const char *Schema  = "panel";	/* (public) XML configuration schema */
 
+bool _monitor = false;	 /* getenv("GOULD_MONITOR") => {yes,no} */
 bool _persistent = true; /* getenv("GOULD_RESPAWN") => {yes,no} */
 bool _silent = false;	 /* show splash screen (or not) */
 
 debug_t debug = 0;	 /* debug verbosity (0 => none) {must be declared} */
 int _quiescence = 1;	 /* quiescence sleep time in seconds */
-int _stream = -1; 	 /* stream socket descriptor */
-pid_t _instance;	 /* process ID */
 
 
 /*
 * configuration_new creates new configuration data structure and file
 */
 ConfigurationNode *
-configuration_new (const char *resource)
+configuration_new(const char *resource)
 {
   ConfigurationNode *config = NULL;
   char *reference;
@@ -110,7 +109,7 @@ configuration_new (const char *resource)
 * check_configuration_version
 */
 static void
-check_configuration_version (GlobalPanel *panel, SchemaVersion *version)
+check_configuration_version(GlobalPanel *panel, SchemaVersion *version)
 {
   ConfigurationNode *config = panel->config;
   ConfigurationNode *chain;
@@ -163,7 +162,7 @@ check_configuration_version (GlobalPanel *panel, SchemaVersion *version)
  * icon_path_finder wrapper for path_finder()
  */
 const char *
-icon_path_finder (PanelIcons *icons, const char *name)
+icon_path_finder(PanelIcons *icons, const char *name)
 {
   return path_finder (icons->path, name);
 } /* </icon_path_finder> */
@@ -172,7 +171,7 @@ icon_path_finder (PanelIcons *icons, const char *name)
 * (protected) start_menu_open
 */
 static void
-start_menu_open (Modulus *applet)
+start_menu_open(Modulus *applet)
 {
   applet->widget = menu_config (applet, applet->data);
 } /* </start_menu_open> */
@@ -181,7 +180,7 @@ start_menu_open (Modulus *applet)
 * (private) applets_builtin - setup internal applets
 */
 static GList *
-applets_builtin (GlobalPanel *panel)
+applets_builtin(GlobalPanel *panel)
 {
   GList   *iter;		/* modules list iterator */
   GList   *list = NULL;		/* builtin modules list */
@@ -234,7 +233,7 @@ applets_builtin (GlobalPanel *panel)
 * panel_config_orientation
 */
 void
-panel_config_orientation (GlobalPanel *panel)
+panel_config_orientation(GlobalPanel *panel)
 {
   gint height = gdk_screen_height ();
   gint width  = green_screen_width ();
@@ -275,7 +274,7 @@ panel_config_orientation (GlobalPanel *panel)
 * (private) panel_config_settings
 */
 static void
-panel_config_settings (GlobalPanel *panel)
+panel_config_settings(GlobalPanel *panel)
 {
   ConfigurationNode *item;
   ConfigurationNode *chain;
@@ -378,15 +377,17 @@ panel_config_settings (GlobalPanel *panel)
 * (private) panel_quicklaunch_open
 */
 static void
-panel_quicklaunch (GtkWidget *widget, Modulus *applet)
+panel_quicklaunch(GtkWidget *widget, Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
-  const gchar *command = applet->label;
-  //const gchar *command = path_finder(panel->path, applet->label);
+  const gchar *command = path_finder(panel->path, applet->label);
   vdebug(2, "%s: command => %s\n", __func__, command);
 
+  if (strcmp(applet->label, "email") == 0) /* cannot dispatch(.., email) */
+    system_command (applet->label);
+  else
   if (command)
-    system_command (command);
+    dispatch (panel->session, command);
   else
      gpanel_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
                	Program, applet->label, _("command not found"));
@@ -394,7 +395,7 @@ panel_quicklaunch (GtkWidget *widget, Modulus *applet)
 } /* </panel_quicklaunch> */
 
 static void
-panel_quicklaunch_open (Modulus *applet)
+panel_quicklaunch_open(Modulus *applet)
 {
   GtkWidget   *button, *image;
   GtkTooltips *tooltips;
@@ -425,7 +426,7 @@ panel_quicklaunch_open (Modulus *applet)
 * (private) panel_config_moduli
 */
 static void
-panel_config_moduli (GlobalPanel *panel, GList *builtin, GList *plugins)
+panel_config_moduli(GlobalPanel *panel, GList *builtin, GList *plugins)
 {
   ConfigurationNode *config = panel->config;
   ConfigurationNode *chain = configuration_find (config, "quicklaunch");
@@ -433,7 +434,7 @@ panel_config_moduli (GlobalPanel *panel, GList *builtin, GList *plugins)
   ConfigurationNode *exec;
   const gchar *value;
 
-  GList   *iter, *list;		/* modules list iterator */
+  GList *iter, *list;		/* modules list iterator */
   Modulus *applet;		/* applet instance */
 
 
@@ -503,7 +504,7 @@ panel_config_moduli (GlobalPanel *panel, GList *builtin, GList *plugins)
 * the screen coordinates of the applet->widget window.
 */
 void
-panel_update_pack_position (GlobalPanel *panel, Modulus *applet)
+panel_update_pack_position(GlobalPanel *panel, Modulus *applet)
 {
   GtkRequisition requisition;
 
@@ -523,7 +524,7 @@ panel_update_pack_position (GlobalPanel *panel, Modulus *applet)
 * (private) applets_loadable
 */
 static GList *
-applets_loadable (GlobalPanel *panel, guint space)
+applets_loadable(GlobalPanel *panel, guint space)
 {
   GList *iter, *list = NULL;
   GList *moduli = NULL;
@@ -587,7 +588,7 @@ applets_loadable (GlobalPanel *panel, guint space)
 * dispatch - dispatch request using session socket stream
 */
 pid_t
-dispatch (int stream, const char *command)
+dispatch(int stream, const char *command)
 {
   pid_t pid;
   vdebug(2, "%s: stream => %d, command => %s\n", __func__, stream, command);
@@ -598,10 +599,12 @@ dispatch (int stream, const char *command)
     int  nbytes;
     char reply[MAX_PATHNAME];
 
+    alarm (_SIGALRM_GRACETIME);
     write(stream, command, strlen(command));
     nbytes = read(stream, reply, MAX_PATHNAME);
     reply[nbytes] = 0;
     pid = atoi(reply);
+    alarm(0);
   }
   return pid;
 } /* </dispatch> */
@@ -626,7 +629,7 @@ gpanel_respawn(int stream, int seconds)
 * settings_initialize post modules load initialization
 */
 static void
-settings_initialize (GlobalPanel *panel)
+settings_initialize(GlobalPanel *panel)
 {
   PanelIcons   *icons   = panel->icons;
   PanelLogout  *logout  = panel->logout  = g_new0 (PanelLogout, 1);
@@ -657,7 +660,7 @@ settings_initialize (GlobalPanel *panel)
 * interface - construct user interface
 */
 GtkWidget *
-interface (GlobalPanel *panel)
+interface(GlobalPanel *panel)
 {
   static bool once = true;	/* one time initialization */
 
@@ -697,7 +700,7 @@ interface (GlobalPanel *panel)
 * selfexclude - WindowFilter to exclude self from GREEN window lists
 */
 static bool
-selfexclude (Window xid, int desktop)
+selfexclude(Window xid, int desktop)
 {
   const gchar *wname = get_window_name (xid);
   return (wname) ? strcmp(wname, (char *)Program) == 0 : true;
@@ -709,7 +712,7 @@ selfexclude (Window xid, int desktop)
 static int
 open_session_stream(const char *pathway)
 {
-  int stream = socket(PF_UNIX, SOCK_STREAM, 0);
+  int status, stream = socket(PF_UNIX, SOCK_STREAM, 0);
 
   if (stream < 0)
     perror("opening stream socket"); 
@@ -720,7 +723,14 @@ open_session_stream(const char *pathway)
     address.sun_family = AF_UNIX;
     snprintf(address.sun_path, UNIX_PATH_MAX, pathway);
 
-    if (connect(stream, (struct sockaddr *)&address, sizeof(struct sockaddr_un))) {
+    alarm (_SIGALRM_GRACETIME);
+    status = connect(stream, (struct sockaddr *)&address,
+				sizeof(struct sockaddr_un));
+    alarm(0);
+
+    if (status < 0) {
+      gould_error ("%s %s: connect stream socket, errno => %d\n",
+				timestamp(), Program, errno);
       perror("connect stream socket");
       stream = -1;
     }
@@ -732,7 +742,7 @@ open_session_stream(const char *pathway)
 * gpanel_initialize
 */
 void
-gpanel_initialize (GlobalPanel *panel)
+gpanel_initialize(GlobalPanel *panel)
 {
   GList *builtin, *plugins;
   SchemaVersion *version = NULL;
@@ -788,7 +798,7 @@ gpanel_initialize (GlobalPanel *panel)
 * application constructor
 */
 void
-panel_constructor (GlobalPanel *panel)
+panel_constructor(GlobalPanel *panel)
 {
   GtkWidget *frame;
   GtkWidget *layout;
@@ -800,8 +810,11 @@ panel_constructor (GlobalPanel *panel)
                                               panel->width, panel->height,
                                               panel->xpos, panel->ypos);
 
+  g_signal_connect(G_OBJECT(widget), "destroy",
+			G_CALLBACK(gtk_main_quit), NULL);
+
   gtk_window_set_keep_below (GTK_WINDOW(widget), true);
-  if (panel->visible) gtk_widget_show (widget);
+  if(panel->visible) gtk_widget_show (widget);
 
   /* Give the layout box a nicer look. */
   frame = gtk_frame_new (NULL);
@@ -826,7 +839,7 @@ panel_constructor (GlobalPanel *panel)
 * reload data structures and reconstruct as needed
 */
 int
-panel_loader (GlobalPanel *panel)
+panel_loader(GlobalPanel *panel)
 {
   int status = EX_CONFIG;	/* i.e. config corrupted or missing */
 
@@ -851,7 +864,7 @@ panel_loader (GlobalPanel *panel)
 * application unique instance
 */
 void
-gpanel_instance (GlobalPanel *panel)
+gpanel_instance(GlobalPanel *panel)
 {
   memset(panel, 0, sizeof(GlobalPanel));
 
@@ -879,7 +892,7 @@ gpanel_graceful(int signum, bool verbose)
     printf("%s, exiting on signal: %d\n", Program, signum);
   }
 
-  gtk_main_quit ();	/* innermost invocation of the main loop return */
+  //gtk_main_quit ();	/* innermost invocation of the main loop return */
   sleep (_quiescence);  /* quiescence (..let the cables sleep) */
   _exit (signum);
 
@@ -890,7 +903,7 @@ gpanel_graceful(int signum, bool verbose)
 * signal_responder - signal handler
 */
 void
-signal_responder (int signum)
+signal_responder(int signum)
 {
   bool verbose = (debug > 0) ? true : false;
 
@@ -905,13 +918,18 @@ signal_responder (int signum)
       settings_activate (_desktop);
       break;
 
-    case SIGUSR2:		 /* create new shortcut */
+    case SIGUSR2:		/* create new shortcut */
       desktop_settings (_desktop, DESKTOP_SHORTCUT_CREATE);
       break;
 
-    case SIGALRM:		 /* acknowledgement timed out */
-      gpanel_respawn (_desktop->session, 2);
-      gpanel_graceful (signum, verbose);
+    case SIGALRM:
+      if (_monitor) {		/* acknowledgement timed out */
+        gpanel_respawn (_desktop->session, 2);
+        gpanel_graceful (signum, verbose);
+      }
+      else {
+        _desktop->session = -1;	/* needs work! */
+      }
       break;
 
     case SIGCHLD:		/* reap children */
@@ -1027,16 +1045,18 @@ apply_signal_responder(void)
 int
 main(int argc, char *argv[])
 {
-  GlobalPanel memory;		/* master data structure (gpanel.h) */
-
   const char *genviron = getenv("GOULD_ENVIRON");
+  const char *gmonitor = getenv("GOULD_MONITOR");
   const char *grespawn = getenv("GOULD_RESPAWN");
 
-  char *alias = NULL;		/* used to change process name */
-  char *quiet;			/* check {GOULD_ENVIRON} for "no-splash" */
+  GlobalPanel memory;	/* master data structure (gpanel.h) */
 
-  int signal = SIGUSR1;		/* when already running, show controls */
+  char *alias = NULL;	/* used to change process name */
+  char *quiet;		/* check {GOULD_ENVIRON} for "no-splash" */
+
+  int signal = SIGUSR1;	/* when already running, show controls */
   int status = EX_OK;
+  pid_t instance;	/* singleton process ID */
 
   int opt;
   /* disable invalid option messages */
@@ -1046,6 +1066,7 @@ main(int argc, char *argv[])
     quiet = strstr(genviron, "no-splash");
     if(quiet) _silent = true;
   }
+  if(gmonitor && strcasecmp(gmonitor, "yes") == 0) _monitor = true;
      
   while ((opt = getopt (argc, argv, "d:hvacnp:so")) != -1) {
   /* while ((opt = getopt_long (argc, argv, opts, longopts, NULL)) != -1) */
@@ -1092,13 +1113,13 @@ main(int argc, char *argv[])
         _exit (EX_USAGE);
     }
   }
-  _instance = get_process_id (Program);
+  instance = get_process_id (Program);
 
-  if (_instance > 0 && _instance != getpid()) {  /* already running */
+  if (instance > 0 && instance != getpid()) {  /* already running */
     if (signal == SIGUNUSED)
-      printf("%s: %s (pid => %d)\n", Program, _(Singleton), _instance);
+      printf("%s: %s (pid => %d)\n", Program, _(Singleton), instance);
     else
-      kill (_instance, signal);
+      kill (instance, signal);
 
     _exit (_RUNNING);
   }

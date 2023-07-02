@@ -746,27 +746,6 @@ spawn (const char* command)
     execlp(shell, shell, "-f", "-c", command, NULL);
     exit(0);
   }
-#ifdef NEVER
-  GPid pid = 0;
-  GError *error = NULL;
-  GSpawnFlags flags = G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_FILE_AND_ARGV_ZERO
-      | G_SPAWN_STDOUT_TO_DEV_NULL | G_SPAWN_STDERR_TO_DEV_NULL;
-
-  gchar argv = { command, NULL };
-  gchar *envp[] = { NULL };
-  
-  g_spawn_async_with_pipes (NULL, /* working directory */
-		argv,
-		envp,
-		flags,
-		NULL, /* setup function */
-		NULL, /* user data */
-		&pid,
-		NULL, /* standard input */
-		NULL, /* standard output */
-		NULL, /* standard error */
-		&error);
-#endif
   return pid;
 } /* </spawn> */
 

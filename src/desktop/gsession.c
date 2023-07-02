@@ -224,15 +224,22 @@ session_backend(const char *name)
 int
 session_monitor(const char *name)
 {
-  int idx;		/* SessionMonitor monitor_[] index */
-  const char *monitor = getenv("GOULD_MONITOR");
-  char procfile[MAX_LABEL];
   bool gmonitor = false;
+  const char *monitor = getenv("GOULD_MONITOR");
+
+  int idx;		/* SessionMonitor monitor_[] index */
+  char procfile[MAX_LABEL];
   pid_t pid = fork();
 
   if (pid < 0) {
     perror("session_monitor: fork() failed.");
     _exit (EX_OSERR);
+  }
+
+  if (monitor && strcasecmp(monitor, "yes") == 0) {
+    sessionlog_stamp(1, "[%s] ping every %d seconds {DESKTOP}\n",
+			name, _monitor_seconds_interval);
+    gmonitor = true;
   }
 
   if (pid > 0) {	/* not in spawned process */
@@ -245,8 +252,6 @@ session_monitor(const char *name)
     perror("session_monitor: setsid() failed.");
     _exit (EX_SOFTWARE);
   }
-
-  if(monitor && strcasecmp(monitor, "yes") == 0) gmonitor = true;
   prctl(PR_SET_NAME, (unsigned long)name, 0, 0);
 
   /* {WINDOWMANAGER}, {SCREENSAVER}, {LAUNCHER}, {DESKTOP} */

@@ -18,8 +18,6 @@
  */
 
 #include "gould.h"
-#include "xutil.h"
-#include "xpmglyphs.h"
 #include "tasklist.h"
 
 #include <X11/Xatom.h>
@@ -233,6 +231,7 @@ tasklist_event_string(TasklistEventType event)
   }
   return string;
 } /* </tasklist_event_string> */
+
 /*
 * tasklist_item_pixbuf_glow
 * tasklist_item_button_glow
@@ -1485,6 +1484,29 @@ tasklist_update_active_list (Tasklist *tasklist, int workspace)
   }
 } /* </tasklist_update_active_list> */
 
+/*
+* on_widget_realize
+* on_widget_deleted
+*/
+void
+on_widget_realize(GtkWidget* widget, GdkWindow *gdkwindow)
+{
+  Window xid = GDK_WINDOW_XWINDOW (GTK_WIDGET (widget)->window);
+  vdebug(1, "%s %s, xid => 0x%x\n", timestamp(), __func__, xid);
+  gtk_widget_set_window (widget, gdkwindow);
+} /* </on_widget_realize> */
+
+void
+on_widget_deleted(GtkWidget *widget, TasklistItem *item)
+{
+  GreenWindow *window = item->window;
+  Green *green = green_window_get_green(window);
+  tasklist_window_removed (green, window, item->tasklist);
+
+  Window xid = GDK_WINDOW_XWINDOW (GTK_WIDGET (widget)->window);
+  vdebug(1, "%s %s, xid => 0x%x\n", timestamp(), __func__, xid);
+} /* </on_window_deleted> */
+
 static void
 tasklist_update_lists (Tasklist *tasklist)
 {
@@ -1513,12 +1535,12 @@ tasklist_update_lists (Tasklist *tasklist)
         space = green_window_get_desktop (window);
 
         if (space == -1 || space == idx) {
-          vdebug(3, "GreenWindow %d xid => 0x%x\n", mark++,
-				green_window_get_xid (window));
-
           item = tasklist_item_new (window, TASK_WINDOW, tasklist);
           priv->ungrouped = g_list_append (priv->ungrouped, item);
           g_hash_table_insert (priv->winhash, window, item);
+
+          vdebug(3, "Tasklist::GreenWindow %d xid => 0x%x\n", mark++,
+					green_window_get_xid (window));
         }
       }
     }
@@ -1558,13 +1580,6 @@ tasklist_active_workspace_changed (Green *green, Tasklist *tasklist)
 * tasklist_window_added
 * tasklist_window_removed
 */
-gboolean
-on_gdkwindow_deleted(GtkWidget *widget, GdkEvent *event, gpointer data)
-{
-  gtk_widget_destroy (widget);
-  return TRUE;
-}
-
 static void
 tasklist_window_added (Green *green, GreenWindow* window, Tasklist *tasklist)
 {
@@ -1576,25 +1591,6 @@ tasklist_window_added (Green *green, GreenWindow* window, Tasklist *tasklist)
       break;
 
   if (iter == NULL) {
-#ifdef NEVER
-    GdkWindow *gdkwindow =
-	gdk_x11_window_foreign_new_for_display (gdk_display_get_default(),
-					green_window_get_xid (window));
-
-    g_signal_connect (G_OBJECT (gdkwindow), "destroy",
-			G_CALLBACK (tasklist_window_removed), tasklist);
-
-    g_signal_connect (G_OBJECT (gdkwindow), "delete-event",
-			G_CALLBACK (on_gdkwindow_deleted), tasklist);
-
-    /* DEBUG: experimental code */
-    if (!g_hash_table_lookup (priv->winhash, window)) {
-      TasklistItem *item = tasklist_item_new (window, TASK_WINDOW, tasklist);
-
-      g_hash_table_insert (priv->winhash, window, item);
-      priv->ungrouped = g_list_append (priv->ungrouped, item);
-    }
-#endif
     tasklist_queue_update_lists (tasklist, TASKLIST_WINDOW_ADDED);
     gtk_widget_queue_resize (GTK_WIDGET (tasklist));
 
@@ -1616,16 +1612,6 @@ tasklist_window_removed (Green *green, GreenWindow *window, Tasklist *tasklist)
       vdebug(2, "Tasklist::window_removed: xid => 0x%x\n",
 		green_window_get_xid (window));
 
-#ifdef NEVER
-      /* DEBUG: experimental code */
-      TasklistItem *item = g_hash_table_lookup (priv->winhash, window);
-
-      if (item != NULL ) {
-        g_list_remove (priv->ungrouped, item);
-        g_hash_table_remove (priv->winhash, window);
-        g_free (item);
-      }
-#endif
       tasklist_queue_update_lists (tasklist, TASKLIST_WINDOW_REMOVED);
       gtk_widget_queue_resize (GTK_WIDGET (tasklist));
 
