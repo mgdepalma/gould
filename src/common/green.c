@@ -59,8 +59,9 @@ enum {				/* anonymous window property enum */
 
 struct _GreenPrivate
 {
-  Window  xroot;		  /* Xlib root window */
+  Display *display;		  /* connection to the X server */
   Screen *screen;		  /* Xlib Screen of workspaces */
+  Window  xroot;		  /* Xlib root window */
 
   Pixmap backdrop;		  /* Xlib background pixmap */
 
@@ -331,21 +332,15 @@ green_update_client_list (Green *green)
     for (iter = priv->winlist; iter != NULL; iter = iter->next) {
       if (g_list_find (list, iter->data) == NULL) {   /* not in new list */
         window = g_hash_table_lookup (priv->winhash, iter->data);
-        green_hash_remove ((Window)iter->data, window, green);
 
         vdebug(2, "%s: WINDOW_CLOSED, xid => 0x%x\n", __func__,
 				green_window_get_xid (window));
 
-        char genviron[MAX_LABEL]; // propagate WINDOW_CLOSED event  
-        Window xid = green_window_get_xid (window);
-        sprintf(genviron, "GOULD_WINDOW_CLOSED=%lu", xid);
-        putenv (genviron);
-
-#ifdef NEVER
         g_signal_emit (G_OBJECT (green),
                        signals_[WINDOW_CLOSED],
                        0, window);
-#endif
+
+        green_hash_remove ((Window)iter->data, window, green);
       }
     }
 
@@ -588,6 +583,7 @@ static void
 green_init (Green *green)
 {
   green->priv = g_new0 (GreenPrivate, 1);
+  green->priv->display = XOpenDisplay (NULL);
 } /* </green_init> */
 
 static void
@@ -596,6 +592,7 @@ green_finalize (GObject *object)
   Green *green = GREEN (object);
   GreenPrivate *priv = green->priv;
 
+  XCloseDisplay (priv->display);
   green_idle_cancel (green);	/* inert g_idle_add() */
 
   g_hash_table_destroy (priv->reshash);
@@ -773,9 +770,16 @@ green_get_type (void)
 } /* </green_get_type> */
 
 /*
+* green_get_display
 * green_get_gdk_screen
 * green_get_screen
 */
+Display *
+green_get_display (Green *green)
+{
+  return green->priv->display;
+} /* </green_get_display> */
+
 GdkScreen *
 green_get_gdk_screen (Green *green)
 {
@@ -976,9 +980,7 @@ green_set_window_filter (Green *green, WindowFilter filter)
     priv->stacking = get_window_filter_list (priv->filter, priv->xroot,
                                get_atom_property ("_NET_CLIENT_LIST_STACKING"),
                                              -1, &priv->stacks);
-
     g_hash_table_remove_all (priv->reshash);
-    g_hash_table_remove_all (priv->winhash);
 
     g_list_free (priv->winlist);
     priv->winlist = green_hash_list (green, priv->mapping, priv->clients);

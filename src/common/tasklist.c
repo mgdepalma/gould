@@ -115,9 +115,10 @@ struct _TasklistPrivate {
   gint minimum_width;
   gint minimum_height;
 
-  guint agent;			/* update handler */
+  guint agent;			/* update handler reentrant guard */
 };
 
+/* (private) TaskList methods */
 static gpointer parent_class_;		/* parent class instance */
 
 static void tasklist_item_stop_glow (TasklistItem *item);
@@ -135,24 +136,23 @@ static void tasklist_update_lists (Tasklist *tasklist);
 
 static void tasklist_viewports_changed (Green *green, Tasklist *tasklist);
 
-static void tasklist_window_added (Green *green,
-                                   GreenWindow *window,
-                                   Tasklist *tasklist);
+static void
+tasklist_window_added (Green *green, GreenWindow *window, Tasklist *tasklist);
 
-static void tasklist_window_removed (Green *green,
-                                     GreenWindow *window,
-                                     Tasklist *tasklist);
+static void
+tasklist_window_removed (Green *green, GreenWindow *window, Tasklist *tasklist);
+
 /*
 * tasklist_cleanup
 */
 static inline void
-tasklist_cleanup (Tasklist *tasklist)
+tasklist_cleanup(Tasklist *tasklist)
 {
   TasklistItem *item;
-  TasklistPrivate *priv = tasklist->priv;
+  TasklistPrivate *context = tasklist->priv;
 
-  if (priv->ungrouped) {
-    for (GList *iter = priv->ungrouped; iter != NULL; iter = iter->next) {
+  if (context->ungrouped) {
+    for (GList *iter = context->ungrouped; iter != NULL; iter = iter->next) {
       item = iter->data;
 
       /**
@@ -164,15 +164,15 @@ tasklist_cleanup (Tasklist *tasklist)
       item->window = NULL;	// may be unnecessary
     }
 
-    g_list_free (priv->ungrouped);
-    priv->ungrouped = NULL;
+    g_list_free (context->ungrouped);
+    context->ungrouped = NULL;
   }
 
-  if (priv->visible) {
-    g_list_free (priv->visible);
-    priv->visible = NULL;
+  if (context->visible) {
+    g_list_free (context->visible);
+    context->visible = NULL;
   }
-  g_hash_table_remove_all (priv->winhash);
+  g_hash_table_remove_all (context->winhash);
 } /* </tasklist_cleanup */
 
 /*
@@ -239,7 +239,7 @@ tasklist_event_string(TasklistEventType event)
 * tasklist_item_stop_glow
 */
 static GdkPixbuf *
-tasklist_item_pixbuf_glow (TasklistItem *item, gdouble factor)
+tasklist_item_pixbuf_glow(TasklistItem *item, gdouble factor)
 {
   GdkPixbuf *destination = gdk_pixbuf_copy (item->screenshot);
   
@@ -254,7 +254,7 @@ tasklist_item_pixbuf_glow (TasklistItem *item, gdouble factor)
 } /* </tasklist_item_pixbuf_glow> */
 
 static bool
-tasklist_item_button_glow (TasklistItem *item)
+tasklist_item_button_glow(TasklistItem *item)
 {
   GTimeVal tv;
   GdkPixbuf *glowing_screenshot;
@@ -296,13 +296,13 @@ tasklist_item_button_glow (TasklistItem *item)
 } /* </tasklist_item_button_glow > */
 
 static void
-tasklist_item_clear_glow_timeout (TasklistItem *item)
+tasklist_item_clear_glow_timeout(TasklistItem *item)
 {
   item->glow_button = 0;
 }
 
 static void
-tasklist_item_queue_glow (TasklistItem *item)
+tasklist_item_queue_glow(TasklistItem *item)
 {
   if (item->glow_button == 0) {
     item->glow_start_time = 0.0;
@@ -320,7 +320,7 @@ tasklist_item_queue_glow (TasklistItem *item)
 } /* </tasklist_item_queue_glow> */
 
 static void
-tasklist_item_stop_glow (TasklistItem *item)
+tasklist_item_stop_glow(TasklistItem *item)
 {
   if (item->glow_button != 0) {
     g_source_remove (item->glow_button);
@@ -334,7 +334,7 @@ tasklist_item_stop_glow (TasklistItem *item)
 * tasklist_item_screenshot
 */
 static void
-tasklist_item_draw_dot (GdkWindow *window, GdkGC *lgc, GdkGC *dgc, int x, int y)
+tasklist_item_draw_dot(GdkWindow *window, GdkGC *lgc, GdkGC *dgc, int x, int y)
 {
   gdk_draw_point (window, dgc, x,   y);
   gdk_draw_point (window, lgc, x+1, y+1);
@@ -370,7 +370,7 @@ tasklist_item_expose_widget (GtkWidget *widget,
 } /* </tasklist_item_expose_widget> */
 
 static GdkPixbuf*
-tasklist_item_screenshot (TasklistItem *item)
+tasklist_item_screenshot(TasklistItem *item)
 {
   Tasklist  *tasklist = item->tasklist;
   GtkWidget *widget = GTK_WIDGET (tasklist);
@@ -438,7 +438,7 @@ tasklist_item_screenshot (TasklistItem *item)
 } /* </tasklist_item_screenshot> */
 
 static void
-tasklist_item_cleanup_screenshots (TasklistItem *item)
+tasklist_item_cleanup_screenshots(TasklistItem *item)
 {
   if (item->screenshot) {
     g_object_unref (item->screenshot);
@@ -454,9 +454,9 @@ tasklist_item_cleanup_screenshots (TasklistItem *item)
 * tasklist_item_expose
 */
 static bool
-tasklist_item_expose (GtkWidget *widget,
-                      GdkEventExpose *event,
-                      TasklistItem *item)
+tasklist_item_expose(GtkWidget *widget,
+		     GdkEventExpose *event,
+		     TasklistItem *item)
 {
   GtkStyle *style;
   GdkGC *lgc, *dgc;
@@ -511,7 +511,7 @@ tasklist_item_expose (GtkWidget *widget,
 * tasklist_item_activate_window
 */
 static void
-tasklist_item_activate_window (TasklistItem *item, guint32 stamp)
+tasklist_item_activate_window(TasklistItem *item, guint32 stamp)
 {
   Green *green = item->tasklist->priv->green;
   XWindowState *state = green_window_get_state (item->window);
@@ -533,7 +533,7 @@ tasklist_item_activate_window (TasklistItem *item, guint32 stamp)
 * tasklist_item_is_active
 */
 const gchar *
-tasklist_item_get_text (TasklistItem *item, Green *green, bool winame)
+tasklist_item_get_text(TasklistItem *item, Green *green, bool winame)
 {
   const gchar *name, *text = NULL;
 
@@ -558,7 +558,7 @@ tasklist_item_get_text (TasklistItem *item, Green *green, bool winame)
 } /* </tasklist_item_get_text> */
 
 bool
-tasklist_item_is_active (TasklistItem *item, Window window)
+tasklist_item_is_active(TasklistItem *item, Window window)
 {
   bool state = false;
 
@@ -582,7 +582,7 @@ tasklist_item_is_active (TasklistItem *item, Window window)
 * tasklist_item_position_menu
 */
 static void
-tasklist_item_activate_menu (GtkMenuItem *menuitem, TasklistItem *item)
+tasklist_item_activate_menu(GtkMenuItem *menuitem, TasklistItem *item)
 {
   if (menuitem)
     tasklist_item_activate_window (item, gtk_get_current_event_time ());
@@ -615,11 +615,11 @@ tasklist_item_activate_menu (GtkMenuItem *menuitem, TasklistItem *item)
 } /* </tasklist_item_activate_menu> */
 
 static void
-tasklist_item_position_menu (GtkMenu  *menu,
-                             gint     *xpos,
-                             gint     *ypos,
-                             bool     *pushin,
-                             gpointer data)
+tasklist_item_position_menu(GtkMenu  *menu,
+                            gint     *xpos,
+                            gint     *ypos,
+                            bool     *pushin,
+                            gpointer data)
 {
   GtkWidget *widget = GTK_WIDGET (data);
   GtkRequisition requisition;
@@ -659,8 +659,9 @@ tasklist_item_position_menu (GtkMenu  *menu,
 * tasklist_item_action_sticky
 */
 static void
-tasklist_item_action_close (GtkMenuItem *menuitem, TasklistItem *item)
+tasklist_item_action_close(GtkMenuItem *menuitem, TasklistItem *item)
 {
+  vdebug(2, "%s xid => 0x%x\n", __func__, green_window_get_xid(item->window));
   green_window_close (item->window);
 } /* </tasklist_item_action_close> */
 
@@ -672,37 +673,37 @@ tasklist_item_action_desktop (GtkMenuItem *menuitem, TasklistItem *item)
 } /* </tasklist_item_action_desktop> */
 
 static void
-tasklist_item_action_maximize (GtkMenuItem *menuitem, TasklistItem *item)
+tasklist_item_action_maximize(GtkMenuItem *menuitem, TasklistItem *item)
 {
   green_window_maximize (item->window);
 } /* </tasklist_item_action_maximize> */
 
 static void
-tasklist_item_action_minimize (GtkMenuItem *menuitem, TasklistItem *item)
+tasklist_item_action_minimize(GtkMenuItem *menuitem, TasklistItem *item)
 {
   green_window_minimize (item->window);
 } /* </tasklist_item_action_minimize> */
 
 static void
-tasklist_item_action_move (GtkMenuItem *menuitem, TasklistItem *item)
+tasklist_item_action_move(GtkMenuItem *menuitem, TasklistItem *item)
 {
   green_window_move (item->window);
 } /* </tasklist_item_action_move> */
 
 static void
-tasklist_item_action_resize (GtkMenuItem *menuitem, TasklistItem *item)
+tasklist_item_action_resize(GtkMenuItem *menuitem, TasklistItem *item)
 {
   green_window_resize (item->window);
 } /* </tasklist_item_action_resize> */
 
 static void
-tasklist_item_action_sticky (GtkMenuItem *menuitem, TasklistItem *item)
+tasklist_item_action_sticky(GtkMenuItem *menuitem, TasklistItem *item)
 {
   green_window_change_workspace (item->window, ALL_WORKSPACES);
 } /* </tasklist_item_action_sticky> */
 
 static void
-tasklist_item_action_restore (GtkMenuItem *menuitem, TasklistItem *item)
+tasklist_item_action_restore(GtkMenuItem *menuitem, TasklistItem *item)
 {
   Green *green = item->tasklist->priv->green;
   int desktop = green_window_get_desktop (item->window);
@@ -717,7 +718,7 @@ tasklist_item_action_restore (GtkMenuItem *menuitem, TasklistItem *item)
 * tasklist_item_actions_menu_new
 */
 static GtkWidget *
-tasklist_item_actions_menu_new (TasklistItem *item)
+tasklist_item_actions_menu_new(TasklistItem *item)
 {
   Green *green = item->tasklist->priv->green;
   GtkWidget *image, *menuitem, *menu = gtk_menu_new ();
@@ -849,7 +850,7 @@ tasklist_item_actions_menu_new (TasklistItem *item)
 * tasklist_item_members_menu
 */
 static void
-tasklist_item_actions_menu (TasklistItem *item)
+tasklist_item_actions_menu(TasklistItem *item)
 {
   if (item->menu == NULL)
     item->menu = tasklist_item_actions_menu_new (item);
@@ -864,16 +865,17 @@ tasklist_item_actions_menu (TasklistItem *item)
 } /* </tasklist_item_actions_menu> */
 
 static void
-tasklist_item_members_menu (TasklistItem *item)
+tasklist_item_members_menu(TasklistItem *item)
 {
-  TasklistPrivate *priv = item->tasklist->priv;
-  GtkWidget *submenu, *menuitem, *menu = item->members;
+  Window xid;
+  TasklistItem *scan;
+  TasklistPrivate *context = item->tasklist->priv;
+
+  GdkPixbuf *pixbuf;
+  GtkWidget *image, *submenu, *menuitem, *menu = item->members;
 
   GList *iter, *list;
   const gchar *text;
-
-  GdkPixbuf *pixbuf;
-  GtkWidget *image;
 
   if (menu) {		/* remove old menu contents */
     list = gtk_container_get_children (GTK_CONTAINER (menu));
@@ -891,13 +893,12 @@ tasklist_item_members_menu (TasklistItem *item)
   }
 
   /* Obtain the list of same resource class members */
-  list = green_get_group_list (priv->green, item->window);
+  list = green_get_group_list (context->green, item->window);
 
   for (iter = list; iter != NULL; iter = iter->next) {
-    TasklistItem *scan = g_hash_table_lookup (priv->winhash, iter->data);
-    Window xid = green_window_get_xid (scan->window);
-
-    text = tasklist_item_get_text (scan, priv->green, TRUE);
+    xid = green_window_get_xid (scan->window);
+    scan = g_hash_table_lookup (context->winhash, xid);
+    text = tasklist_item_get_text (scan, context->green, TRUE);
     menuitem = gtk_image_menu_item_new_with_label (text);
     g_free ((gchar *)text);
 
@@ -928,9 +929,9 @@ tasklist_item_members_menu (TasklistItem *item)
 * tasklist_item_button_toggled
 */
 static bool
-tasklist_item_button_press (GtkWidget *widget,
-                            GdkEventButton *event,
-                            TasklistItem *item)
+tasklist_item_button_press(GtkWidget *widget,
+                           GdkEventButton *event,
+                           TasklistItem *item)
 {
   switch (item->type) {
     case TASK_CLASS_GROUP:
@@ -952,7 +953,7 @@ tasklist_item_button_press (GtkWidget *widget,
 } /* </tasklist_item_button_press> */
 
 static bool
-tasklist_item_button_toggled (GtkToggleButton *button, TasklistItem *item)
+tasklist_item_button_toggled(GtkToggleButton *button, TasklistItem *item)
 {
   g_return_val_if_fail (GTK_IS_TOGGLE_BUTTON (button), FALSE);
 
@@ -971,19 +972,19 @@ tasklist_item_button_toggled (GtkToggleButton *button, TasklistItem *item)
 * tasklist_item_new
 */
 static void
-tasklist_item_init (TasklistItem *item, Tasklist *tasklist)
+tasklist_item_init(TasklistItem *item, Tasklist *tasklist)
 {
   static const GtkTargetEntry targets[] = {
     { "application/x-gould-window-id", 0, 0 }
   };
 
-  TasklistPrivate *priv = tasklist->priv;
+  TasklistPrivate *context = tasklist->priv;
   Window xid = green_window_get_xid (item->window);
   GtkWidget *label, *image, *box;
   GdkPixbuf *pixbuf;
   gchar *text;
 
-  if (priv->orientation == GTK_ORIENTATION_HORIZONTAL)
+  if (context->orientation == GTK_ORIENTATION_HORIZONTAL)
     box = gtk_hbox_new (FALSE, 0);
   else
     box = gtk_vbox_new (FALSE, 0);
@@ -993,7 +994,7 @@ tasklist_item_init (TasklistItem *item, Tasklist *tasklist)
   else
     item->button = gtk_button_new ();
 
-  gtk_button_set_relief (GTK_BUTTON (item->button), priv->relief);
+  gtk_button_set_relief (GTK_BUTTON (item->button), context->relief);
   gtk_drag_dest_set (GTK_WIDGET(item->button), 0, NULL, 0, 0);
   gtk_widget_set_name (item->button, green_window_get_name (item->window));
 
@@ -1017,12 +1018,12 @@ tasklist_item_init (TasklistItem *item, Tasklist *tasklist)
   item->image = image;
 
   /* Pack the text label to the box container, also set tooltip. */
-  text = (gchar *)tasklist_item_get_text (item, priv->green, FALSE);
-  gtk_tooltips_set_tip (priv->tooltips, item->button, text, NULL);
+  text = (gchar *)tasklist_item_get_text (item, context->green, FALSE);
+  gtk_tooltips_set_tip (context->tooltips, item->button, text, NULL);
   label = gtk_label_new (text);
   g_free (text);
 
-  if (priv->orientation == GTK_ORIENTATION_HORIZONTAL) {
+  if (context->orientation == GTK_ORIENTATION_HORIZONTAL) {
     gtk_misc_set_alignment (GTK_MISC (label), 0.0, 0.5);
     gtk_box_pack_start (GTK_BOX (box), label, TRUE, TRUE, 2);
   }
@@ -1059,10 +1060,12 @@ tasklist_item_init (TasklistItem *item, Tasklist *tasklist)
 * tasklist_item_new
 */
 TasklistItem *
-tasklist_item_new (GreenWindow *window,
-                   TasklistItemType type,
-                   Tasklist *tasklist)
+tasklist_item_new(GreenWindow *window,
+                  TasklistItemType type,
+                  Tasklist *tasklist)
 {
+  pid_t pid;
+  char *command[MAX_COMMAND];
   TasklistItem *item = g_new0 (TasklistItem, 1);
 
   item->window   = window;
@@ -1079,9 +1082,9 @@ tasklist_item_new (GreenWindow *window,
 * tasklist_item_update
 */
 static void
-tasklist_item_update (TasklistItem *item, TasklistEventType event)
+tasklist_item_update(TasklistItem *item, TasklistEventType event)
 {
-  TasklistPrivate *priv = item->tasklist->priv;
+  TasklistPrivate *context = item->tasklist->priv;
   Window xid = green_window_get_xid (item->window);
   GdkPixbuf *pixbuf;
   gchar *text;
@@ -1093,7 +1096,7 @@ tasklist_item_update (TasklistItem *item, TasklistEventType event)
   gtk_image_set_from_pixbuf (GTK_IMAGE (item->image), pixbuf);
   g_object_unref (pixbuf);
 
-  if ((text = (gchar *)tasklist_item_get_text (item, priv->green, FALSE))) {
+  if ((text = (gchar *)tasklist_item_get_text (item, context->green, FALSE))) {
     PangoFontDescription *fontdesc = pango_font_description_new ();
     XWindowState *state = green_window_get_state (item->window);
     bool attention = false;
@@ -1102,10 +1105,11 @@ tasklist_item_update (TasklistItem *item, TasklistEventType event)
     if (state && state->demands_attention)
       attention = true;
     else if (item->type == TASK_CLASS_GROUP) {
-      GList *iter, *list = green_get_group_list (priv->green, item->window);
+      GList *iter, *list = green_get_group_list (context->green, item->window);
 
       for (iter = list; iter; iter = iter->next) {
-        if (g_hash_table_lookup (priv->winhash, iter->data)) {
+        xid = green_window_get_xid (item->window);
+        if (g_hash_table_lookup (context->winhash, xid)) {
           state = green_window_get_state (iter->data);
 
           if (state && state->demands_attention) {
@@ -1141,12 +1145,12 @@ tasklist_item_update (TasklistItem *item, TasklistEventType event)
 *  the width can be smaller)
 */
 static int
-tasklist_layout (GtkAllocation *allocation,
-                 int            max_width,
-                 int            max_height,
-                 int            n_buttons,
-                 int           *n_cols_out,
-                 int           *n_rows_out)
+tasklist_layout(GtkAllocation *allocation,
+                int            max_width,
+                int            max_height,
+                int            n_buttons,
+                int           *n_cols_out,
+                int           *n_rows_out)
 {
   int n_cols, n_rows;
 
@@ -1172,7 +1176,7 @@ tasklist_layout (GtkAllocation *allocation,
 * tasklist_widget_expose
 */
 static void
-tasklist_widget_realize (GtkWidget *widget)
+tasklist_widget_realize(GtkWidget *widget)
 {
   (* GTK_WIDGET_CLASS (parent_class_)->realize) (widget);
   tasklist_queue_update_lists (GREEN_TASKLIST(widget), TASKLIST_REALIZE);
@@ -1189,7 +1193,7 @@ static void
 tasklist_widget_size_request (GtkWidget *widget, GtkRequisition *requisition)
 {
   Tasklist *tasklist = GREEN_TASKLIST (widget);
-  TasklistPrivate *priv = tasklist->priv;
+  TasklistPrivate *context = tasklist->priv;
 
   GtkRequisition measure;
   GList *iter;
@@ -1199,7 +1203,7 @@ tasklist_widget_size_request (GtkWidget *widget, GtkRequisition *requisition)
 
 
   /* Calculate max needed height and width of the buttons */
-  for (iter = priv->visible; iter != NULL; iter = iter->next) {
+  for (iter = context->visible; iter != NULL; iter = iter->next) {
     TasklistItem *item = iter->data;
 
     gtk_widget_size_request (item->button, &measure);
@@ -1208,36 +1212,36 @@ tasklist_widget_size_request (GtkWidget *widget, GtkRequisition *requisition)
     width  = MAX (measure.width, width);
   }
 
-  priv->max_button_width  = MAX (priv->min_button_width, width);
-  priv->max_button_height = height;
+  context->max_button_width  = MAX (context->min_button_width, width);
+  context->max_button_height = height;
 
-  requisition->width  = priv->minimum_width;
-  requisition->height = priv->minimum_height;
+  requisition->width  = context->minimum_width;
+  requisition->height = context->minimum_height;
 } /* </tasklist_widget_size_request> */
 
 static void
-tasklist_widget_size_allocate (GtkWidget *widget, GtkAllocation *allocation)
+tasklist_widget_size_allocate(GtkWidget *widget, GtkAllocation *allocation)
 {
   Tasklist *tasklist = GREEN_TASKLIST (widget);
-  TasklistPrivate *priv = tasklist->priv;
+  TasklistPrivate *context = tasklist->priv;
 
   TasklistItem *item;
   GtkAllocation measure;
   GList *iter;
 
-  int idx, n_items = g_list_length (priv->visible);
+  int idx = 0, n_items = g_list_length (context->visible);
   int max_width, n_cols, n_rows;
 
 
   max_width = tasklist_layout (allocation,
-                               priv->max_button_width,
-                               priv->max_button_height,
+                               context->max_button_width,
+                               context->max_button_height,
                                n_items, &n_cols, &n_rows);
 
-  /* Recalculate max_width using priv->max_button_width for optimal layout. */
-  max_width = MIN (priv->max_button_width * n_cols, allocation->width);
+  /* Recalculate max_width using max_button_width for optimal layout. */
+  max_width = MIN (context->max_button_width * n_cols, allocation->width);
 
-  for (idx = 0,iter = priv->visible; iter != NULL; idx++,iter = iter->next) {
+  for (iter = context->visible; iter != NULL; idx++,iter = iter->next) {
     item = (TasklistItem *)iter->data;
 
     int row = idx % n_rows;
@@ -1261,25 +1265,25 @@ tasklist_widget_size_allocate (GtkWidget *widget, GtkAllocation *allocation)
 } /* </tasklist_widget_size_allocate> */
 
 static gint
-tasklist_widget_expose (GtkWidget *widget, GdkEventExpose *event)
+tasklist_widget_expose(GtkWidget *widget, GdkEventExpose *event)
 {
   g_return_val_if_fail (IS_GREEN_TASKLIST (widget), FALSE);
   g_return_val_if_fail (event != NULL, FALSE);
 
   if (GTK_WIDGET_DRAWABLE (widget)) {
     Tasklist *tasklist = GREEN_TASKLIST (widget);
-    TasklistPrivate *priv = tasklist->priv;
+    TasklistPrivate *context = tasklist->priv;
     GdkGC *gc;
 
-    if (priv->background != NULL)
-      g_object_unref (priv->background);
+    if (context->background != NULL)
+      g_object_unref (context->background);
 
-    priv->background = gdk_pixmap_new (widget->window,
-                                       widget->allocation.width,
-                                       widget->allocation.height,
-                                       -1);
-    gc = gdk_gc_new (priv->background);
-    gdk_draw_drawable (priv->background, gc, widget->window,
+    context->background = gdk_pixmap_new (widget->window,
+                                          widget->allocation.width,
+                                          widget->allocation.height,
+                                          -1);
+    gc = gdk_gc_new (context->background);
+    gdk_draw_drawable (context->background, gc, widget->window,
                        widget->allocation.x, widget->allocation.y, 0, 0,
                        widget->allocation.width, widget->allocation.height);
     g_object_unref (gc);
@@ -1293,17 +1297,17 @@ tasklist_widget_expose (GtkWidget *widget, GdkEventExpose *event)
 * tasklist_container_remove
 */
 static void
-tasklist_container_forall (GtkContainer *container,
-                           bool         internals,
-                           GtkCallback  callback,
-                           gpointer     data)
+tasklist_container_forall(GtkContainer *container,
+                          bool         internals,
+                          GtkCallback  callback,
+                          gpointer     data)
 {
   Tasklist *tasklist = GREEN_TASKLIST (container);
-  TasklistPrivate *priv = tasklist->priv;
+  TasklistPrivate *context = tasklist->priv;
   time_t start = time(0L);
   GList *iter;
 
-  for (iter = priv->visible; iter != NULL; iter = iter->next) {
+  for (iter = context->visible; iter != NULL; iter = iter->next) {
     TasklistItem *item = iter->data;
 
     if (time(0L) - start > 2) { /* do not loop more than 2 seconds, debug */
@@ -1324,19 +1328,19 @@ tasklist_container_forall (GtkContainer *container,
 } /* </tasklist_container_forall> */
 
 static void
-tasklist_container_remove (GtkContainer *container, GtkWidget *widget)
+tasklist_container_remove(GtkContainer *container, GtkWidget *widget)
 {
   Tasklist *tasklist = GREEN_TASKLIST (container);
-  TasklistPrivate *priv = tasklist->priv;
+  TasklistPrivate *context = tasklist->priv;
   TasklistItem *item;
   GList *iter;
 
-  for (iter = priv->visible; iter != NULL; iter = iter->next) {
+  for (iter = context->visible; iter != NULL; iter = iter->next) {
     item = (TasklistItem *)iter->data;
 
     if (item->button == widget) {
-      g_hash_table_remove (priv->winhash, item->window);
-      priv->visible = g_list_remove (priv->visible, item);
+      g_hash_table_remove(context->winhash,green_window_get_xid (item->window));
+      context->visible = g_list_remove (context->visible, item);
       gtk_widget_unparent (widget);
       g_free (item);
       break;
@@ -1352,7 +1356,7 @@ tasklist_container_remove (GtkContainer *container, GtkWidget *widget)
 * tasklist_idle_cancel
 */
 static bool
-tasklist_idle_act (Tasklist *tasklist)
+tasklist_idle_act(Tasklist *tasklist)
 {
   tasklist->priv->agent = 0;      /* reentrancy guard */
   tasklist_update_lists (tasklist);
@@ -1360,25 +1364,27 @@ tasklist_idle_act (Tasklist *tasklist)
 } /* </tasklist_idle_act> */
 
 static void
-tasklist_idle_agent (Tasklist *tasklist, TasklistEventType event)
+tasklist_idle_agent(Tasklist *tasklist, TasklistEventType event)
 {
-  if (tasklist->priv->agent == 0) {
+  TasklistPrivate *context = tasklist->priv;
+
+  if (context->agent == 0) {
     vdebug (2, "Tasklist::idle_agent: event => %s\n",
 					tasklist_event_string (event));
 
-    /* DEBUG: including TASKLIST_WINDOW_{ADDED,REMOVED} causes crashes */
     //if (event != TASKLIST_WINDOW_ADDED && event != TASKLIST_WINDOW_REMOVED)
-      tasklist->priv->agent = g_idle_add ((GSourceFunc)tasklist_idle_act,
-                                         		tasklist);
+      context->agent = g_idle_add ((GSourceFunc)tasklist_idle_act, tasklist);
   }
 } /* </tasklist_idle_agent> */
 
 static void
-tasklist_idle_cancel (Tasklist *tasklist)
+tasklist_idle_cancel(Tasklist *tasklist)
 {
-  if (tasklist->priv->agent != 0) {
-    g_source_remove (tasklist->priv->agent);
-    tasklist->priv->agent = 0;
+  TasklistPrivate *context = tasklist->priv;
+
+  if (context->agent != 0) {
+    g_source_remove (context->agent);
+    context->agent = 0;
   }
 } /* </tasklist_idle_cancel> */
 
@@ -1389,48 +1395,50 @@ tasklist_idle_cancel (Tasklist *tasklist)
 * tasklist_update_lists
 */
 static inline void
-tasklist_queue_update_lists (Tasklist *tasklist, TasklistEventType event)
+tasklist_queue_update_lists(Tasklist *tasklist, TasklistEventType event)
 {
   vdebug(2, "%s: event => %s\n", __func__, tasklist_event_string (event));
   tasklist_idle_agent (tasklist, event);
 } /* </tasklist_queue_update_lists> */
 
 static void
-tasklist_construct_visible_list (Tasklist *tasklist, int desktop)
+tasklist_construct_visible_list(Tasklist *tasklist, int desktop)
 {
   GList *iter, *list;
   TasklistItem *item;
-  TasklistPrivate *priv = tasklist->priv;
+  TasklistPrivate *context = tasklist->priv;
   int space;
 
-  if (priv->visible) {		/* always start with empty priv->visible */
-    g_list_free (priv->visible);
-    priv->visible = NULL;
+  if (context->visible) {	/* always start with empty context->visible */
+    g_list_free (context->visible);
+    context->visible = NULL;
   }
 
-  for (iter = priv->ungrouped; iter != NULL; iter = iter->next) {
+  for (iter = context->ungrouped; iter != NULL; iter = iter->next) {
     item  = iter->data;
     space = green_window_get_desktop (item->window);
 
-    if (priv->include_all_workspaces == FALSE && space >= 0 && space != desktop)
+    if (context->include_all_workspaces == FALSE && space >= 0 && space != desktop)
       continue;
 
-    if (priv->grouping == TASKLIST_NEVER_GROUP)	        /* simple case */
-      priv->visible = g_list_append (priv->visible, item);
+    if (context->grouping == TASKLIST_NEVER_GROUP) /* simple case */
+      context->visible = g_list_append (context->visible, item);
     else {
       GreenWindow *window = item->window;
-      list = green_get_group_list (priv->green, window);
+      list = green_get_group_list (context->green, window);
 
       if (list && g_list_length (list) > 1) {
-        GList *member, *part;
         bool append = true;
+        GList *member, *part;
+        Window xid;
 
         for (member = list; member != NULL; member = member->next) {
-          item = g_hash_table_lookup (priv->winhash, member->data);
+          xid = green_window_get_xid (member->data); //DEBUG
+          item = g_hash_table_lookup (context->winhash, xid);
           gtk_widget_hide (item->button);
 
-          if (append) /* check presence of item in priv->visible list */
-            for (part = priv->visible; part != NULL; part = part->next)
+          if (append) /* check presence of item in context->visible list */
+            for (part = context->visible; part != NULL; part = part->next)
               if (((TasklistItem *)part->data)->window == item->window) {
                 append = false;
                 break;
@@ -1439,29 +1447,29 @@ tasklist_construct_visible_list (Tasklist *tasklist, int desktop)
 
         if (append) {
           item = tasklist_item_new (window, TASK_CLASS_GROUP, tasklist);
-          priv->visible = g_list_append (priv->visible, item);
+          context->visible = g_list_append (context->visible, item);
         }
       }
       else	/* only one client in the resource class group */
-        priv->visible = g_list_append (priv->visible, item);
+        context->visible = g_list_append (context->visible, item);
     }
   }
 } /* </tasklist_construct_visible_list> */
 
 static void
-tasklist_update_active_list (Tasklist *tasklist, int workspace)
+tasklist_update_active_list(Tasklist *tasklist, int workspace)
 {
-  TasklistPrivate *priv = tasklist->priv;
+  TasklistPrivate *context = tasklist->priv;
   GtkWidget *widget = GTK_WIDGET (tasklist);
-  Window active = get_active_window (green_get_root_window (priv->green));
+  Window active = get_active_window (green_get_root_window (context->green));
   GList *iter;
 
-  if (priv->include_all_workspaces)
-    vdebug (3, "Tasklist::update.list (all workspaces)\n");
+  if (context->include_all_workspaces)
+    vdebug (3, "Tasklist::update_active_list (all workspaces)\n");
   else
-    vdebug (3, "Tasklist::update.list (workspace %d)\n", workspace);
+    vdebug (3, "Tasklist::update_active_list (workspace %d)\n", workspace);
 
-  for (iter = priv->visible; iter != NULL; iter = iter->next) {
+  for (iter = context->visible; iter != NULL; iter = iter->next) {
     TasklistItem *item = iter->data;
 
     if (GTK_IS_TOGGLE_BUTTON (item->button) == FALSE)
@@ -1484,72 +1492,47 @@ tasklist_update_active_list (Tasklist *tasklist, int workspace)
   }
 } /* </tasklist_update_active_list> */
 
-/*
-* on_widget_realize
-* on_widget_deleted
-*/
-void
-on_widget_realize(GtkWidget* widget, GdkWindow *gdkwindow)
-{
-  Window xid = GDK_WINDOW_XWINDOW (GTK_WIDGET (widget)->window);
-  vdebug(1, "%s %s, xid => 0x%x\n", timestamp(), __func__, xid);
-  gtk_widget_set_window (widget, gdkwindow);
-} /* </on_widget_realize> */
-
-void
-on_widget_deleted(GtkWidget *widget, TasklistItem *item)
-{
-  GreenWindow *window = item->window;
-  Green *green = green_window_get_green(window);
-  tasklist_window_removed (green, window, item->tasklist);
-
-  Window xid = GDK_WINDOW_XWINDOW (GTK_WIDGET (widget)->window);
-  vdebug(1, "%s %s, xid => 0x%x\n", timestamp(), __func__, xid);
-} /* </on_window_deleted> */
-
 static void
-tasklist_update_lists (Tasklist *tasklist)
+tasklist_update_lists(Tasklist *tasklist)
 {
-  TasklistPrivate *priv = tasklist->priv;
-  int space, workspace = green_get_active_workspace (priv->green);
-  int idx, count = green_get_workspace_count (priv->green);
+  TasklistPrivate *context = tasklist->priv;
+  int space, workspace = green_get_active_workspace (context->green);
+  int idx, count = green_get_workspace_count (context->green);
 
   GList *iter, *list;
   GreenWindow *window;
   TasklistItem *item;
-
-  tasklist_cleanup (tasklist);	/* start fresh everytime */
+  Window xid;
 
   /* Iterate though the windows list creating all new items. */
-  list = green_get_windows (priv->green, WindowTaskbarFilter, -1);
-  priv->windows = list;
+  list = green_get_windows (context->green, WindowTaskbarFilter, -1);
+  context->windows = list;
 
   for (idx = 0; idx < count; idx++) {
     int mark = 1;
-    vdebug(3, "tasklist_update_lists: workspace => %d\n", idx);
+    vdebug(3, "Tasklist::update_lists: workspace => %d\n", idx);
 
     for (iter = list; iter != NULL; iter = iter->next) {
       window = iter->data;
+      xid = green_window_get_xid (window);
 
-      if (!g_hash_table_lookup (priv->winhash, window)) {
+      if (!g_hash_table_lookup (context->winhash, xid)) {
         space = green_window_get_desktop (window);
 
         if (space == -1 || space == idx) {
+          vdebug(3, "Tasklist::GreenWindow %d xid => 0x%x\n", mark++, xid);
           item = tasklist_item_new (window, TASK_WINDOW, tasklist);
-          priv->ungrouped = g_list_append (priv->ungrouped, item);
-          g_hash_table_insert (priv->winhash, window, item);
-
-          vdebug(3, "Tasklist::GreenWindow %d xid => 0x%x\n", mark++,
-					green_window_get_xid (window));
+          context->ungrouped = g_list_append (context->ungrouped, item);
+          g_hash_table_insert (context->winhash, xid, item);
         }
       }
     }
   }
 
-  /* Rebuild priv->visible list of tasklist items. */
+  /* Rebuild context->visible list of tasklist items. */
   tasklist_construct_visible_list (tasklist, workspace);
 
-  /* Iterate priv->visible for the active window. */
+  /* Iterate context->visible for the active window. */
   tasklist_update_active_list (tasklist, workspace);
 } /* </tasklist_update_lists> */
 
@@ -1581,9 +1564,8 @@ tasklist_active_workspace_changed (Green *green, Tasklist *tasklist)
 * tasklist_window_removed
 */
 static void
-tasklist_window_added (Green *green, GreenWindow* window, Tasklist *tasklist)
+tasklist_window_added(Green *green, GreenWindow* window, Tasklist *tasklist)
 {
-  TasklistPrivate *priv = tasklist->priv;
   GList *iter, *list = green_get_windows (green, WindowTaskbarFilter, -1);
 
   for (iter = list; iter != NULL; iter = iter->next)
@@ -1600,23 +1582,19 @@ tasklist_window_added (Green *green, GreenWindow* window, Tasklist *tasklist)
 } /* </tasklist_window_added> */
 
 static void
-tasklist_window_removed (Green *green, GreenWindow *window, Tasklist *tasklist)
+tasklist_window_removed(Green *green, GreenWindow *window, Tasklist *tasklist)
 {
-  TasklistPrivate *priv = tasklist->priv;
   GList *iter, *list = green_get_windows (green, WindowTaskbarFilter, -1);
 
   for (iter = list; iter != NULL; iter = iter->next)
     if (((TasklistItem *)iter->data)->window == window) {
-      //green_remove_window (green, green_window_get_xid (window)); 
+      Window xwindow = green_window_get_xid (window);
+      //DEBUG: green_remove_window (green, xwindow);
 
-      vdebug(2, "Tasklist::window_removed: xid => 0x%x\n",
-		green_window_get_xid (window));
+      vdebug(2, "Tasklist::window_removed: xid => 0x%x\n", xwindow);
 
       tasklist_queue_update_lists (tasklist, TASKLIST_WINDOW_REMOVED);
       gtk_widget_queue_resize (GTK_WIDGET (tasklist));
-
-      vdebug(2, "Tasklist::window_removed: xid => 0x%x\n",
-		green_window_get_xid (window));
       break;
     }
 } /* </tasklist_window_removed> */
@@ -1628,9 +1606,10 @@ tasklist_window_removed (Green *green, GreenWindow *window, Tasklist *tasklist)
 * tasklist_window_workspace_changed
 */
 static void
-tasklist_window_icon_changed (GreenWindow *window, Tasklist *tasklist)
+tasklist_window_icon_changed(GreenWindow *window, Tasklist *tasklist)
 {
-  TasklistItem *item = g_hash_table_lookup (tasklist->priv->winhash, window);
+  Window xid = green_window_get_xid (window);
+  TasklistItem *item = g_hash_table_lookup (tasklist->priv->winhash, xid);
 
   if (item != NULL) {
     tasklist_item_update (item, TASKLIST_WINDOW_ICON_CHANGED);
@@ -1638,9 +1617,10 @@ tasklist_window_icon_changed (GreenWindow *window, Tasklist *tasklist)
 } /* </tasklist_window_icon_changed> */
 
 static void
-tasklist_window_name_changed (GreenWindow *window, Tasklist *tasklist)
+tasklist_window_name_changed(GreenWindow *window, Tasklist *tasklist)
 {
-  TasklistItem *item = g_hash_table_lookup (tasklist->priv->winhash, window);
+  Window xid = green_window_get_xid (window);
+  TasklistItem *item = g_hash_table_lookup (tasklist->priv->winhash, xid);
 
   if (item != NULL) {
     tasklist_item_update (item, TASKLIST_WINDOW_NAME_CHANGED);
@@ -1650,7 +1630,8 @@ tasklist_window_name_changed (GreenWindow *window, Tasklist *tasklist)
 static void
 tasklist_window_state_changed (GreenWindow *window, Tasklist *tasklist)
 {
-  TasklistItem *item = g_hash_table_lookup (tasklist->priv->winhash, window);
+  Window xid = green_window_get_xid (window);
+  TasklistItem *item = g_hash_table_lookup (tasklist->priv->winhash, xid);
 
   if (item != NULL) {
     if (WindowTaskbarFilter (green_window_get_xid (window), -1)) {
@@ -1664,15 +1645,14 @@ tasklist_window_state_changed (GreenWindow *window, Tasklist *tasklist)
 } /* </tasklist_window_state_changed> */
 
 static void
-tasklist_window_workspace_changed (GreenWindow *window, Tasklist *tasklist)
+tasklist_window_workspace_changed(GreenWindow *window, Tasklist *tasklist)
 {
-  int workspace = green_get_active_workspace (tasklist->priv->green);
+  TasklistPrivate *context = tasklist->priv;
+  int workspace = green_get_active_workspace (context->green);
   bool update = (workspace == green_window_get_desktop (window));
 
   if (update == false) {
-    GList *iter;
-
-    for (iter = tasklist->priv->visible; iter != NULL; iter = iter->next)
+    for (GList *iter = context->visible; iter != NULL; iter = iter->next)
       if (((TasklistItem *)iter->data)->window == window) {
         update = true;
       }
@@ -1688,7 +1668,7 @@ tasklist_window_workspace_changed (GreenWindow *window, Tasklist *tasklist)
 * tasklist_viewports_changed
 */
 static void
-tasklist_viewports_changed (Green *green, Tasklist *tasklist)
+tasklist_viewports_changed(Green *green, Tasklist *tasklist)
 {
   tasklist_queue_update_lists (tasklist, TASKLIST_VIEWPORTS_CHANGED);
   gtk_widget_queue_resize (GTK_WIDGET (tasklist));
@@ -1701,7 +1681,7 @@ tasklist_viewports_changed (Green *green, Tasklist *tasklist)
  * tasklist_disconnect_screen
  */
 static void
-tasklist_connect_screen (Tasklist *tasklist, Green *green)
+tasklist_connect_screen(Tasklist *tasklist, Green *green)
 {
   guint *conn = tasklist->priv->connection;
   unsigned short idx = 0;
@@ -1735,7 +1715,7 @@ tasklist_connect_screen (Tasklist *tasklist, Green *green)
 } /* </tasklist_connect_screen> */
 
 static void
-tasklist_connect_window (GreenWindow *window, Tasklist *tasklist)
+tasklist_connect_window(GreenWindow *window, Tasklist *tasklist)
 {
   g_signal_connect_object (G_OBJECT (window), "icon_changed",
                            G_CALLBACK (tasklist_window_icon_changed),
@@ -1761,13 +1741,14 @@ tasklist_disconnect_window(GreenWindow *window, Tasklist *tasklist)
 } /* </tasklist_disconnect_window> */
 
 static void
-tasklist_disconnect_screen (Tasklist *tasklist)
+tasklist_disconnect_screen(Tasklist *tasklist)
 {
-  guint *conn = tasklist->priv->connection;
+  TasklistPrivate *context = tasklist->priv;
+  guint *conn = context->connection;
   unsigned short idx = 0;
 
   for (idx = 0; idx < N_SCREEN_CONNECTIONS; idx++) {
-    g_signal_handler_disconnect (G_OBJECT (tasklist->priv->green), conn[idx]);
+    g_signal_handler_disconnect (G_OBJECT (context->green), conn[idx]);
     conn[idx] = 0;
   }
 } /* </tasklist_disconnect_screen> */
@@ -1776,7 +1757,7 @@ tasklist_disconnect_screen (Tasklist *tasklist)
 * tasklist_remove_startup_sequences
 */
 static void
-tasklist_remove_startup_sequences (Tasklist *tasklist, GreenWindow *window)
+tasklist_remove_startup_sequences(Tasklist *tasklist, GreenWindow *window)
 {
   /* nothing */
 } /* </tasklist_remove_startup_sequences> */
@@ -1785,55 +1766,55 @@ tasklist_remove_startup_sequences (Tasklist *tasklist, GreenWindow *window)
 * Tasklist and TasklistClass implementation.
 */
 static void
-tasklist_init (Tasklist *tasklist)
+tasklist_init(Tasklist *tasklist)
 {
   GtkWidget *widget = GTK_WIDGET (tasklist);
-  TasklistPrivate *priv = g_new0 (TasklistPrivate, 1);
+  TasklistPrivate *context = g_new0 (TasklistPrivate, 1);
 
   GTK_WIDGET_SET_FLAGS (widget, GTK_NO_WINDOW);
   
-  priv->grouping = TASKLIST_NEVER_GROUP;
+  context->grouping = TASKLIST_NEVER_GROUP;
 
-  priv->include_all_workspaces = FALSE;
+  context->include_all_workspaces = FALSE;
 
-  priv->orientation = GTK_ORIENTATION_HORIZONTAL;
+  context->orientation = GTK_ORIENTATION_HORIZONTAL;
 
-  priv->relief = GTK_RELIEF_NORMAL;
+  context->relief = GTK_RELIEF_NORMAL;
 
-  priv->min_button_width  = DEFAULT_BUTTON_WIDTH;
-  priv->min_button_height = MIN_ICON_SIZE;
+  context->min_button_width  = DEFAULT_BUTTON_WIDTH;
+  context->min_button_height = MIN_ICON_SIZE;
 
-  priv->minimum_width  = DEFAULT_WIDTH;
-  priv->minimum_height = DEFAULT_HEIGHT;
+  context->minimum_width  = DEFAULT_WIDTH;
+  context->minimum_height = DEFAULT_HEIGHT;
 
-  priv->tooltips = gtk_tooltips_new ();
-  priv->winhash  = g_hash_table_new (NULL, NULL);
+  context->tooltips = gtk_tooltips_new ();
+  context->winhash  = g_hash_table_new (NULL, NULL);
   
-  tasklist->priv = priv;
+  tasklist->priv = context;
 } /* </tasklist_init> */
 
 static void
-tasklist_finalize (GObject *object)
+tasklist_finalize(GObject *object)
 {
   Tasklist *tasklist = GREEN_TASKLIST (object);
-  TasklistPrivate *priv = tasklist->priv;
+  TasklistPrivate *context = tasklist->priv;
 
   tasklist_idle_cancel (tasklist);	  /* inert g_idle_add() */
   tasklist_disconnect_screen (tasklist);  /* disconnect from GREEN instance */
   tasklist_cleanup (tasklist);
 
-  if (priv->visible) {
-    g_list_free (priv->visible);
-    priv->visible = NULL;
+  if (context->visible) {
+    g_list_free (context->visible);
+    context->visible = NULL;
   }
 
-  if (priv->ungrouped) {
-    g_list_free (priv->ungrouped);
-    priv->ungrouped = NULL;
+  if (context->ungrouped) {
+    g_list_free (context->ungrouped);
+    context->ungrouped = NULL;
   }
 
-  g_hash_table_destroy (priv->winhash);
-  priv->winhash = NULL;
+  g_hash_table_destroy (context->winhash);
+  context->winhash = NULL;
 
   g_free (tasklist->priv);
   tasklist->priv = NULL;  
@@ -1842,7 +1823,7 @@ tasklist_finalize (GObject *object)
 } /* </tasklist_finalize> */
 
 static void
-tasklist_class_init (TasklistClass *klass)
+tasklist_class_init(TasklistClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
@@ -1882,7 +1863,7 @@ tasklist_class_init (TasklistClass *klass)
 * Public methods
 */
 GType
-tasklist_get_type (void)
+tasklist_get_type(void)
 {
   static GType object_type = 0;
   g_type_init ();			/* initialize the type system */
@@ -1915,53 +1896,54 @@ tasklist_get_type (void)
 * tasklist_set_orientation - govern orientation
 */
 void
-tasklist_set_button_relief (Tasklist *tasklist, GtkReliefStyle relief)
+tasklist_set_button_relief(Tasklist *tasklist, GtkReliefStyle relief)
 {
   g_return_if_fail (IS_GREEN_TASKLIST (tasklist));
+  TasklistPrivate *context = tasklist->priv;
 
-  if (tasklist->priv->relief != relief) {
-    TasklistPrivate *priv = tasklist->priv;
-    GList *iter;
-
-    for (iter = priv->ungrouped; iter; iter = iter->next) {
+  if (context->relief != relief) {
+    for (GList *iter = context->ungrouped; iter; iter = iter->next) {
       TasklistItem *item = iter->data;
       gtk_button_set_relief (GTK_BUTTON (item->button), relief);
     }
-    priv->relief = relief;	/* save the setting */
+    context->relief = relief;	/* save the setting */
   }
 } /* </tasklist_set_button_relief> */
 
 void
-tasklist_set_grouping (Tasklist *tasklist, TasklistGroupingType grouping)
+tasklist_set_grouping(Tasklist *tasklist, TasklistGroupingType grouping)
 {
   g_return_if_fail (IS_GREEN_TASKLIST (tasklist));
+  TasklistPrivate *context = tasklist->priv;
 
-  if (tasklist->priv->grouping != grouping) {
-    tasklist->priv->grouping = grouping;
+  if (context->grouping != grouping) {
+    context->grouping = grouping;
     tasklist_queue_update_lists (tasklist, TASKLIST_SET_GROUPING);
     gtk_widget_queue_resize (GTK_WIDGET (tasklist));
   }
 } /* </tasklist_set_grouping> */
 
 void
-tasklist_set_include_all_workspaces (Tasklist *tasklist, bool include_all)
+tasklist_set_include_all_workspaces(Tasklist *tasklist, bool include_all)
 {
   g_return_if_fail (IS_GREEN_TASKLIST (tasklist));
+  TasklistPrivate *context = tasklist->priv;
 
-  if (tasklist->priv->include_all_workspaces != include_all) {
-    tasklist->priv->include_all_workspaces = include_all;
+  if (context->include_all_workspaces != include_all) {
+    context->include_all_workspaces = include_all;
     tasklist_queue_update_lists (tasklist, TASKLIST_SET_INCLUDE_ALL_WORKSPACES);
     gtk_widget_queue_resize (GTK_WIDGET (tasklist));
   }
 } /* </tasklist_set_include_all_workspaces> */
 
 void
-tasklist_set_orientation (Tasklist *tasklist, GtkOrientation orientation)
+tasklist_set_orientation(Tasklist *tasklist, GtkOrientation orientation)
 {
   g_return_if_fail (IS_GREEN_TASKLIST (tasklist));
+  TasklistPrivate *context = tasklist->priv;
 
-  if (tasklist->priv->orientation != orientation) {
-    tasklist->priv->orientation = orientation;
+  if (context->orientation != orientation) {
+    context->orientation = orientation;
     gtk_widget_queue_resize (GTK_WIDGET (tasklist));
   }
 } /* </tasklist_set_orientation> */
@@ -1970,18 +1952,18 @@ tasklist_set_orientation (Tasklist *tasklist, GtkOrientation orientation)
  * tasklist_new - constructor and activator
  */
 Tasklist *
-tasklist_new (Green *green)
+tasklist_new(Green *green)
 {
   Tasklist *tasklist = g_object_new (GREEN_TYPE_TASKLIST, NULL);
-  TasklistPrivate *priv = tasklist->priv;
+  TasklistPrivate *context = tasklist->priv;
 
-  gtk_object_ref (GTK_OBJECT (priv->tooltips));
-  gtk_object_sink (GTK_OBJECT (priv->tooltips));
+  gtk_object_ref (GTK_OBJECT (context->tooltips));
+  gtk_object_sink (GTK_OBJECT (context->tooltips));
 
-  tasklist->priv->green = green;		/* complete initialization */
-  tasklist_connect_screen (tasklist, green);	/* connect to GREEN instance */
+  context->green = green;			// complete initialization
+  tasklist_connect_screen (tasklist, green);	// connect to GREEN instance
 
-#if 0	/* CONSIDER */
+#ifdef CONSIDER
   /* callback when there is a scroll-event for switching to the next window  */
   g_signal_connect_object (G_OBJECT (tasklist),
                            "scroll-event",

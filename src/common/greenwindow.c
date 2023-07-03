@@ -20,10 +20,19 @@
 #include "gould.h"
 #include "greenwindow.h"
 
+#include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
+#include <ctype.h>
 
+#include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <X11/Xfuncs.h>
+#include <X11/Xutil.h>
+#include <X11/Xos.h>
+
 #include <gtk/gtkmain.h>
 #include <gdk/gdkx.h>
 
@@ -76,8 +85,6 @@ struct _GreenWindowPrivate
 
   bool	update[LAST_PROPERTY];	/* window property enum */
   guint agent;			/* update handler */
-
-  pid_t spy;			/* xprop -spy -id <xid> */
 };
 
 static gpointer parent_class_;		/* parent class instance */
@@ -375,7 +382,7 @@ void
 green_window_activate(GreenWindow *window, Time stamp)
 {
   Screen *screen = green_get_screen (window->priv->green);
-  Window xwindow = window->priv->xid;
+  Window xwindow = green_window_get_xid (window);
 
   XEvent xev;			/* carefully populated XEvent structure */
 
@@ -404,7 +411,7 @@ void
 green_window_change_workspace(GreenWindow *window, int desktop)
 {
   Screen *screen = green_get_screen (window->priv->green);
-  Window xwindow = window->priv->xid;
+  Window xwindow = green_window_get_xid (window);
 
   XEvent xev;			/* carefully populated XEvent structure */
 
@@ -433,7 +440,7 @@ void
 green_window_change_state(GreenWindow *window, bool enable, const char *prop)
 {
   Screen *screen = green_get_screen (window->priv->green);
-  Window xwindow = window->priv->xid;
+  Window xwindow = green_window_get_xid (window);
 
   XEvent xev;			/* carefully populated XEvent structure */
 
@@ -470,7 +477,8 @@ void
 green_window_close(GreenWindow *window)
 {
   Screen *screen = green_get_screen (window->priv->green);
-  Window xwindow = window->priv->xid;
+  Window xwindow = green_window_get_xid (window);
+  vdebug(2, "%s xid => 0x%x\n", __func__, xwindow);
 
   XEvent xev;			/* carefully populated XEvent structure */
 
@@ -520,7 +528,7 @@ green_window_maximize(GreenWindow *window)
 } /* </green_window_maximize> */
 
 void
-green_window_move (GreenWindow *window)
+green_window_move(GreenWindow *window)
 {
   GreenWindowPrivate *priv = window->priv;
   Screen *screen = green_get_screen (priv->green);
@@ -665,8 +673,9 @@ green_window_get_desktop(GreenWindow *window)
  * green_window_new
  */
 GreenWindow *
-green_window_new (Window xid, Green *green)
+green_window_new(Window xid, Green *green)
 {
+  Display *display = green_get_display (green);
   GreenWindow *window = g_object_new (GREEN_TYPE_WINDOW, NULL);
   GreenWindowPrivate *priv = window->priv;
   int idx;
@@ -690,3 +699,4 @@ green_window_new (Window xid, Green *green)
 
   return window;
 } /* </green_window_new> */
+

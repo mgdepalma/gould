@@ -94,6 +94,7 @@ typedef enum
  */
 GType green_get_type (void) G_GNUC_CONST;
 
+Display   *green_get_display (Green *green);
 GdkScreen *green_get_gdk_screen (Green *green);
 Screen    *green_get_screen  (Green *green);
 
