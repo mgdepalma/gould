@@ -216,23 +216,23 @@ int panel_loader (GlobalPanel *panel);
 void panel_config_orientation (GlobalPanel *panel);
 void panel_update_pack_position (GlobalPanel *panel, Modulus *applet);
 
-void pager_init (Modulus *applet, GlobalPanel *panel);
-void pager_open (Modulus *applet);
-void pager_close (Modulus *applet);
+void pager_module_init (Modulus *applet, GlobalPanel *panel);
+void pager_module_open (Modulus *applet);
+void pager_module_close (Modulus *applet);
 
-void tasklist_init (Modulus *applet, GlobalPanel *panel);
-void tasklist_open (Modulus *applet);
-void tasklist_close (Modulus *applet);
+void tasklist_module_init (Modulus *applet, GlobalPanel *panel);
+void tasklist_module_open (Modulus *applet);
+void tasklist_module_close (Modulus *applet);
 
-bool saver_init (Modulus *applet, GlobalPanel *panel);
-void saver_open (Modulus *applet);
-void saver_close (Modulus *applet);
+bool screensaver_module_init (Modulus *applet, GlobalPanel *panel);
+void screensaver_module_open (Modulus *applet);
+void screensaver_module_close (Modulus *applet);
 
-const char *saver_get_mode (void);
-const int saver_get_selection (void);
+const char *screensaver_get_mode (void);
+const int screensaver_get_selection (void);
 
-GtkWidget *saver_settings (Modulus *applet, GlobalPanel *panel);
-void saver_wake (GtkWidget *widget, GlobalPanel *panel);
+GtkWidget *screensaver_settings (Modulus *applet, GlobalPanel *panel);
+void screensaver_wake (GtkWidget *widget, GlobalPanel *panel);
 
 GtkWidget *settings_manpage_new (Modulus *applet, GlobalPanel *panel);
 GtkWidget *settings_missing_new (Modulus *applet, GlobalPanel *panel);

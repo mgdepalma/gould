@@ -332,6 +332,7 @@ green_update_client_list (Green *green)
     for (iter = priv->winlist; iter != NULL; iter = iter->next) {
       if (g_list_find (list, iter->data) == NULL) {   /* not in new list */
         window = g_hash_table_lookup (priv->winhash, iter->data);
+        green_hash_remove ((Window)iter->data, window, green);
 
         vdebug(2, "%s: WINDOW_CLOSED, xid => 0x%x\n", __func__,
 				green_window_get_xid (window));
@@ -339,8 +340,6 @@ green_update_client_list (Green *green)
         g_signal_emit (G_OBJECT (green),
                        signals_[WINDOW_CLOSED],
                        0, window);
-
-        green_hash_remove ((Window)iter->data, window, green);
       }
     }
 
@@ -930,14 +929,15 @@ green_request_workspace_layout (Green *green, int token, int rows, int cols)
 /*
 * green_remove_window - draconian Xlib window removal
 */
-void
+bool
 green_remove_window (Green *green, Window xid)
 {
   GreenPrivate *priv = green->priv;
   GreenWindow *window = g_hash_table_lookup (priv->winhash,
                                              GUINT_TO_POINTER (xid));
+  bool present = (window) ? true : false;
 
-  if (window) {
+  if (present) {
     Window *mapping = g_new (Window, priv->clients - 1);
     Window *stacking = g_new (Window, priv->stacks - 1);
     int count, idx;
@@ -960,6 +960,7 @@ green_remove_window (Green *green, Window xid)
 
     green_hash_remove (xid, window, green);
   }
+  return present;
 } /* </green_remove_window> */
 
 /*

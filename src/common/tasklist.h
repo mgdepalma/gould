@@ -47,6 +47,7 @@ G_BEGIN_DECLS
 typedef struct _Tasklist        Tasklist;
 typedef struct _TasklistClass   TasklistClass;
 typedef struct _TasklistPrivate TasklistPrivate;
+typedef struct _TasklistItem    TasklistItem;
 
 struct _Tasklist
 {
@@ -88,7 +89,7 @@ void tasklist_set_grouping (Tasklist *tasklist, TasklistGroupingType grouping);
 void tasklist_set_orientation (Tasklist *tasklist, GtkOrientation orien);
 void tasklist_set_include_all_workspaces (Tasklist *tasklist, bool all);
 
-Tasklist *tasklist_new (Green *screen);
+Tasklist *tasklist_new (Green *green);
 
 G_END_DECLS
 

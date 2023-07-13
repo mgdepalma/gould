@@ -740,7 +740,12 @@ spawn (const char* command)
   }
 
   if (pid == 0) {	/* child process */
+    const char *path  = "/bin:/sbin:/usr/bin:/usr/bin/X11:/usr/local/bin";
     const char *shell = "/bin/sh";
+
+    char searchpath[MAX_COMMAND];
+    sprintf(searchpath, "PATH=%s", path);
+    putenv(searchpath);
 
     setsid();
     execlp(shell, shell, "-f", "-c", command, NULL);
@@ -756,7 +761,7 @@ char *
 get_process_name(pid_t pid)
 {
   FILE *stream;
-  char command[MAX_LABEL], name = NULL;
+  char command[MAX_LABEL], *name = NULL;
   static char answer[MAX_LABEL];
 
   sprintf(command, "ps -p %d -o comm=", pid);

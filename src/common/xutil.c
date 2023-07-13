@@ -29,6 +29,8 @@
 #include <X11/Xutil.h>
 #include <gdk/gdkx.h>
 
+#define DEBUG 1	// only during development/validation
+
 /* X11 data types */
 Atom _UTF8_STRING;
 Atom _XROOTPMAP_ID;
@@ -57,14 +59,15 @@ Atom _NET_CLIENT_LIST;
 Atom _NET_CLIENT_LIST_STACKING;
 Atom _NET_CURRENT_DESKTOP;
 Atom _NET_DESKTOP_NAMES;
-Atom _NET_NUMBER_OF_DESKTOPS;
 Atom _NET_CLOSE_WINDOW;
+Atom _NET_NUMBER_OF_DESKTOPS;
 Atom _NET_SUPPORTED;
 Atom _NET_WM_DESKTOP;
 Atom _NET_WM_ICON;
 Atom _NET_WM_ICON_NAME;
 Atom _NET_WM_MOVERESIZE;
 Atom _NET_WM_NAME;
+Atom _NET_WM_PID;
 Atom _NET_WM_STATE;
 Atom _NET_WM_STATE_ABOVE;
 Atom _NET_WM_STATE_BELOW;
@@ -132,8 +135,9 @@ initialize_properties (Display *dpy)
   _NET_CLIENT_LIST_STACKING     = xintern(dpy, "_NET_CLIENT_LIST_STACKING");
   _NET_CURRENT_DESKTOP          = xintern(dpy, "_NET_CURRENT_DESKTOP");
   _NET_DESKTOP_NAMES            = xintern(dpy, "_NET_DESKTOP_NAMES");
-  _NET_NUMBER_OF_DESKTOPS       = xintern(dpy, "_NET_NUMBER_OF_DESKTOPS");
   _NET_CLOSE_WINDOW             = xintern(dpy, "_NET_CLOSE_WINDOW");
+  _NET_NUMBER_OF_DESKTOPS       = xintern(dpy, "_NET_NUMBER_OF_DESKTOPS");
+  _NET_NUMBER_OF_DESKTOPS       = xintern(dpy, "_NET_NUMBER_OF_DESKTOPS");
   _NET_SUPPORTED                = xintern(dpy, "_NET_SUPPORTED");
 
   _NET_WM_DESKTOP               = xintern(dpy, "_NET_WM_DESKTOP");
@@ -141,6 +145,7 @@ initialize_properties (Display *dpy)
   _NET_WM_ICON_NAME             = xintern(dpy, "_NET_WM_ICON_NAME");
   _NET_WM_MOVERESIZE            = xintern(dpy, "_NET_WM_MOVERESIZE");
   _NET_WM_NAME                  = xintern(dpy, "_NET_WM_NAME");
+  _NET_WM_PID                   = xintern(dpy, "_NET_WM_PID");
 
   _NET_WM_STATE                 = xintern(dpy, "_NET_WM_STATE");
   _NET_WM_STATE_ABOVE           = xintern(dpy, "_NET_WM_STATE_ABOVE");
@@ -172,12 +177,11 @@ initialize_properties (Display *dpy)
 
   _UTF8_STRING                  = xintern(dpy, "UTF8_STRING");
   _XROOTPMAP_ID                 = xintern(dpy, "XROOTPMAP_ID");
-} /* </resolve_atoms> */
-
+} /* </initialize_properties> */
 
 /*
-* argbdata_to_pixdata
-* free_pixels
+* (private) argbdata_to_pixdata
+* (private) free_pixels
 */
 static guchar *
 argbdata_to_pixdata (gulong *data, int len)
@@ -202,7 +206,6 @@ argbdata_to_pixdata (gulong *data, int len)
       *pix = rgba & 0xff;         ++pix;
     }
   }
-
   return value;
 } /* </argbdata_to_pixdata> */
 
@@ -210,7 +213,7 @@ static void
 free_pixels (guchar *pixels, gpointer data)
 {
   g_free (pixels);
-}
+} /* </free_pixels> */
 
 /*
 * (private) get_text_property_to_utf8
@@ -232,7 +235,6 @@ get_text_property_to_utf8 (const XTextProperty *prop)
     list[0] = g_strdup ("");	/* something to free */
     g_strfreev (list);
   }
-
   return value;
 } /* </get_text_property_to_utf8> */
 
@@ -240,14 +242,13 @@ get_text_property_to_utf8 (const XTextProperty *prop)
 * (private) get_utf8_property
 */
 static void *
-get_utf8_property (Window xid, Atom atom)
+get_utf8_property (Window xid, Atom prop)
 {
+  Atom cast;	/* Atom return type */
+  gchar *value = NULL;
   unsigned char *data;
   unsigned long length, after;
-  gchar *value = NULL;
-  int error, result;
-  int format;
-  Atom cast;
+  int format, status, result;
 
   if (initialize_) {
     initialize_properties (gdk_display);
@@ -255,12 +256,13 @@ get_utf8_property (Window xid, Atom atom)
   }
 
   gdk_error_trap_push ();
-  result = XGetWindowProperty (gdk_display, xid, atom, 0, G_MAXLONG, False,
+  status = XGetWindowProperty (gdk_display, xid, prop, 0, X_MAXBYTES, False,
                                _UTF8_STRING, &cast, &format, &length, &after,
                                (void*)&data);
-  error = _x_error_trap_pop ("get_utf8_property(xid => 0x%x)", xid);
 
-  if (error == Success && result == Success)
+  result = _x_error_trap_pop ("get_utf8_property(xid => 0x%lx)", xid);
+
+  if (status == Success && result == Success)
     if (cast == _UTF8_STRING && format == 8 && length != 0 && data) {
       value = g_strndup ((gchar *)data, length);
       XFree (data);
@@ -270,7 +272,7 @@ get_utf8_property (Window xid, Atom atom)
 } /* </get_utf8_property> */
 
 /*
-* latin1_to_utf8
+* (private) latin1_to_utf8
 */
 static gchar *
 latin1_to_utf8 (const gchar *latin1)
@@ -285,7 +287,7 @@ latin1_to_utf8 (const gchar *latin1)
 } /* </latin1_to_utf8> */
 
 /*
-* WindowArrayCompare
+* (private) WindowArrayCompare
 */
 static int
 WindowArrayCompare (const void *a, const void *b)
@@ -358,69 +360,101 @@ WindowGListEqual (GList *alist, GList *blist)
 } /* </WindowGListEqual> */
 
 /*
-* WindowDesktopFilter
+* WindowValidate (Window xid valid) ? true : false
+*/
+bool
+WindowValidate (Window xid)
+{
+  Atom *list;
+  int count, result;
+
+  gdk_error_trap_push ();
+  list = XListProperties (gdk_display, xid, &count);
+  result = _x_error_trap_pop ("WindowValidate(xid => 0x%lx", xid);
+  XFree (list);
+
+  return (result == Success && count > 0);
+} /* </WindowValidate> */
+
+/*
+* Window{Desktop,Pager,Taskbar}Filter - reject (or not) based on logic
 */
 bool
 WindowDesktopFilter (Window xid, int desktop)
 {
-  bool result = false;	     /* true => reject */
+  if (WindowValidate(xid) == false) {
+    vdebug(3, "%s: BadWindow xid => 0x%lx\n", __func__, xid);
+    return true;
+  }
+
+  bool reject = false;
   int space = get_window_desktop (xid);
 
   if (space >= 0 && desktop >= 0 && desktop != space)
-    result = true;
+    reject = true;
   else {
     XWindowState xws;
     XWindowType  xwt;
 
     if (get_window_state (xid, &xws) && (xws.skip_pager || xws.skip_taskbar))
-      result = true;
+      reject = true;
 
     if (get_window_type (xid, &xwt) && (xwt.desktop || xwt.dock || xwt.splash))
-      result = true;
+      reject = true;
   }
-  return result;
+  return reject;
 } /* </WindowDesktopFilter> */
 
 bool
 WindowPagerFilter (Window xid, int desktop)
 {
-  bool result = false;	     /* true => reject */
+  if (WindowValidate(xid) == false) {
+    vdebug(3, "%s: BadWindow xid => 0x%lx\n", __func__, xid);
+    return true;
+  }
+
+  bool reject = false;
   int space = get_window_desktop (xid);
 
   if (space >= 0 && desktop >= 0 && desktop != space)
-    result = true;
+    reject = true;
   else {
     XWindowState xws;
     XWindowType  xwt;
 
     if (get_window_state (xid, &xws) && xws.skip_pager)
-      result = true;
+      reject = true;
 
     if (get_window_type (xid, &xwt) && (xwt.desktop || xwt.dock || xwt.splash))
-      result = true;
+      reject = true;
   }
-  return result;
+  return reject;
 } /* </WindowPagerFilter> */
 
 bool
 WindowTaskbarFilter (Window xid, int desktop)
 {
-  bool result = false;	     /* true => reject */
+  if (WindowValidate(xid) == false) {
+    vdebug(3, "%s: xid => 0x%lx BadWindow\n", __func__, xid);
+    return true;
+  }
+
+  bool reject = false;
   int space = get_window_desktop (xid);
 
   if (space >= 0 && desktop >= 0 && desktop != space)
-    result = true;
+    reject = true;
   else {
     XWindowState xws;
     XWindowType  xwt;
 
     if (get_window_state (xid, &xws) && xws.skip_taskbar)
-      result = true;
+      reject = true;
 
     if (get_window_type (xid, &xwt) && (xwt.desktop || xwt.dock || xwt.splash))
-      result = true;
+      reject = true;
   }
-  return result;
+  return reject;
 } /* </WindowTaskbarFilter> */
 
 /*
@@ -429,44 +463,44 @@ WindowTaskbarFilter (Window xid, int desktop)
 Atom
 get_atom_property (const char *name)
 {
-  Atom     atom;
-  gpointer prop;
+  Atom atom, prop;
 
   if (initialize_) {
     initialize_properties (gdk_display);
     initialize_ = false;
   }
 
-  prop = g_hash_table_lookup (atoms_, name);
-  atom = (prop != NULL) ? (Atom)prop : xintern (gdk_display, name);
+  atom = g_hash_table_lookup (atoms_, name);
+  prop = (prop != NULL) ? prop : xintern (gdk_display, name);
 
-  return atom;
+  return prop;
 } /* </get_atom_property> */
 
+/*
+* get_atom_list - memory allocation for return Atom *list
+*/
 Atom *
-get_atom_list (Window xid, Atom atom, int *count)
+get_atom_list (Window xid, Atom prop, int *count)
 {
   Atom cast, *data, *list = NULL;
   unsigned long length, after;
-  int error, result;
-  int format;
+  int format, status, result;
 
   gdk_error_trap_push ();
-  result = XGetWindowProperty (gdk_display, xid, atom, 0, G_MAXLONG, False,
+  status = XGetWindowProperty (gdk_display, xid, prop, 0, X_MAXBYTES, False,
                                XA_ATOM, &cast, &format, &length, &after,
-                               (void*)&data);
-  error = _x_error_trap_pop ("get_atom_list(xid => 0x%x)", xid);
+                               (void *)&data);
 
-  if (error == Success && result == Success) {
+  result = _x_error_trap_pop ("get_atom_list(xid => 0x%x)", xid);
+
+  if (status == Success && result == Success) {
     if (cast == XA_ATOM) {
       list = g_new (Atom, length);
       memcpy (list, data, sizeof (Atom) * length);
       *count = length;
     }
-
     XFree (data);
   }
-
   return list;
 } /* </get_atom_list> */
 
@@ -481,22 +515,20 @@ get_active_window (Window xroot)
   Window value = None;
   Window *data;
 
-  int error, result;
+  int status, result;
   int format;
   
   gdk_error_trap_push ();
-  result = XGetWindowProperty (gdk_display, xroot, prop, 0, G_MAXLONG,
+  status = XGetWindowProperty (gdk_display, xroot, prop, 0, X_MAXBYTES,
                                False, XA_WINDOW, &cast, &format, &length,
-                               &after, (void*)&data);
-  error = _x_error_trap_pop ("get_active_window(xroot => 0x%x", xroot);
+                               &after, (void *)&data);
 
-  if (error == Success && result == Success) {
-    if (cast == XA_WINDOW)
-      value = *data;
+  result = _x_error_trap_pop ("get_active_window(xroot => 0x%lx", xroot);
 
+  if (status == Success && result == Success) {
+    if(cast == XA_WINDOW) value = *data;
     XFree (data);
   }
-
   return value;
 } /* </get_active_window> */
 
@@ -508,60 +540,60 @@ get_active_window (Window xroot)
 Window *
 get_window_client_list (Window xroot, int desktop, int *count)
 {
-  Atom atom = get_atom_property ("_NET_CLIENT_LIST");
+  /* Window list is from "_NET_CLIENT_LIST" property value. */
+  Atom prop = get_atom_property ("_NET_CLIENT_LIST");
 
-  /* The windows array is from "_NET_CLIENT_LIST" property value. */
-  return get_window_list (xroot, atom, desktop, count);
+  return get_window_list (xroot, prop, desktop, count);
 } /* </get_window_client_list> */
 
 Window *
 get_window_client_list_stacking (Window xroot, int desktop, int *count)
 {
-  Atom atom = get_atom_property ("_NET_CLIENT_LIST_STACKING");
+  /* Window list is from "_NET_CLIENT_LIST_STACKING" property value. */
+  Atom prop = get_atom_property ("_NET_CLIENT_LIST_STACKING");
 
-  /* The windows array is from "_NET_CLIENT_LIST_STACKING" property value. */
-  return get_window_list (xroot, atom, desktop, count);
+  return get_window_list (xroot, prop, desktop, count);
 } /* </get_window_client_list_stacking> */
 
 Window *
-get_window_filter_list (WindowFilter filter,
-                        Window xroot, Atom atom, int desktop, int *count)
+get_window_filter_list (WindowFilter filter, Window xroot,
+			Atom atom, int desktop, int *count)
 {
-  Window *clone, *wins =  get_window_list (xroot, atom, desktop, count);
+  Window *clone, *list = get_window_list (xroot, atom, desktop, count);
   int idx, length = 0;
 
   for (idx = 0; idx < *count; idx++) {	/* determine new array length */
-    if ((*filter)(wins[idx], -1))
+    if ((*filter)(list[idx], -1))
       continue;
 
     ++length;
   }
 
-  clone = g_new0 (Window, length);
+  clone = g_new0 (Window, length);	/* memory allocated */
   length = 0;
 
   for (idx = 0; idx < *count; idx++) {	/* populate new array */
-    if ((*filter)(wins[idx], -1))
+    if ((*filter)(list[idx], -1))
       continue;
 
-    clone[length++] = wins[idx];
+    clone[length++] = list[idx];
   }
 
   *count = length;
-  g_free (wins);
+  g_free (list);			/* memory deallocated */
 
   return clone;
 } /* </get_window_filter_list> */
 
 Window *
-get_window_list (Window xroot, Atom atom, int desktop, int *count)
+get_window_list (Window xroot, Atom prop, int desktop, int *count)
 {
-  Atom cast;
+  Atom cast;		/* Atom return type */
   Window *data;		/* XGetWindowProperty return value */
-  Window *wins = NULL;
+  Window *list = NULL;
 
   unsigned long length, after;
-  int error, result;
+  int status, result;
   int format;
 
   if (initialize_) {
@@ -570,23 +602,31 @@ get_window_list (Window xroot, Atom atom, int desktop, int *count)
   }
 
   gdk_error_trap_push ();
-  result = XGetWindowProperty (gdk_display, xroot, atom, 0, G_MAXLONG,
+  status = XGetWindowProperty (gdk_display, xroot, prop, 0, X_MAXBYTES,
                                False, XA_WINDOW, &cast, &format, &length,
-                               &after, (void*)&data);
-  error = _x_error_trap_pop ("get_window_list(xroot => 0x%x", xroot);
+                               &after, (void *)&data);
 
-  if (error == Success && result == Success) {
+  result = _x_error_trap_pop ("get_window_list(xroot => 0x%lx", xroot);
+
+  if (status == Success && result == Success) {
     if (cast == XA_WINDOW) {
-      wins = g_new0 (Window, length);
-      memcpy (wins, data, sizeof (Window) * length);
+      list = g_new0 (Window, length);
+      memcpy (list, data, sizeof (Window) * length);
       *count = length;
     }
-
     XFree (data);
   }
-
-  return wins;
+  return list;
 } /* </get_window_list> */
+
+/*
+* get_window_pid - note root window has pid => 0
+*/
+pid_t
+get_window_pid (Window xid)
+{
+  return get_xprop_cardinal (xid, "_NET_WM_PID");
+} /* </get_window_pid> */
 
 /*
 * get_current_desktop
@@ -611,12 +651,11 @@ get_window_desktop (Window xid)
 gchar **
 get_desktop_names (Window xroot)
 {
+  gchar **value = NULL;
   unsigned char *data;
   unsigned long length, after;
-  gchar **value = NULL;
-  int error, result;
-  int format;
-  Atom cast;
+  int format, status, result;
+  Atom cast;	/* Atom return type */
 
   if (initialize_) {
     initialize_properties (gdk_display);
@@ -624,12 +663,13 @@ get_desktop_names (Window xroot)
   }
 
   gdk_error_trap_push ();
-  result = XGetWindowProperty (gdk_display, xroot, _NET_DESKTOP_NAMES,
-                               0, G_MAXLONG, False, _UTF8_STRING, &cast,
+  status = XGetWindowProperty (gdk_display, xroot, _NET_DESKTOP_NAMES,
+                               0, X_MAXBYTES, False, _UTF8_STRING, &cast,
                                &format, &length, &after, &data);
-  error = _x_error_trap_pop ("get_desktop_names(xroot => 0x%x", xroot);
 
-  if (error == Success && result == Success)
+  result = _x_error_trap_pop ("get_desktop_names(xroot => 0x%lx", xroot);
+
+  if (status == Success && result == Success)
     if (cast == _UTF8_STRING && format == 8 && length != 0 && data) {
       gchar *scan = (gchar *)data;
       int idx, count = 0;
@@ -668,20 +708,19 @@ Pixmap
 get_window_pixmap (Window xid)
 {
   Atom cast, prop = get_atom_property ("_XROOTPMAP_ID");
+  int format, status, result;
   unsigned long after, length;
   Pixmap pixmap = None;
   unsigned char *data;
-
-  int error, result;
-  int format;
   
   gdk_error_trap_push ();
-  result = XGetWindowProperty (gdk_display, xid, prop, 0L, 1L,
+  status = XGetWindowProperty (gdk_display, xid, prop, 0L, 1L,
                                False, XA_PIXMAP, &cast, &format, &length,
                                &after, (void*)&data);
-  error = _x_error_trap_pop ("get_window_pixmap(xid => 0x%x)", xid);
 
-  if (error == Success && result == Success) {
+  result = _x_error_trap_pop ("get_window_pixmap(xid => 0x%lx)", xid);
+
+  if (status == Success && result == Success) {
     if (cast == XA_PIXMAP && format == 32 && length == 1 && after == 0)
       pixmap = (Pixmap)(*(long *)data);
 
@@ -698,25 +737,25 @@ const gchar *
 get_window_class (Window xid)
 {
   XClassHint hint;
-  const gchar *result = NULL;
-  int error, status;
+  const gchar *class = NULL;
+  int result, status;
 
   gdk_error_trap_push ();
   status = XGetClassHint (gdk_display, xid, &hint);
-  error = _x_error_trap_pop ("get_window_class(xid => 0x%x)", xid);
+  result = _x_error_trap_pop ("get_window_class(xid => 0x%lx)", xid);
 
-  if (error == Success && status) {
+  if (result == Success && status) {
     if (hint.res_name) {
       XFree (hint.res_name);
     }
 
     if (hint.res_class) {
-      result = latin1_to_utf8 (hint.res_class);
+      class = latin1_to_utf8 (hint.res_class);
       XFree (hint.res_class);
     }
   }
 
-  return result;
+  return class;
 } /* </get_window_class> */
 
 /*
@@ -729,7 +768,7 @@ get_window_geometry (Window xid, GdkRectangle *geometry)
   XWindowAttributes xwa;
   Window ignore;
 
-  int error, xpos, ypos;
+  int result, xpos, ypos;
   unsigned int xres, yres;
 
   gdk_error_trap_push ();
@@ -744,20 +783,18 @@ get_window_geometry (Window xid, GdkRectangle *geometry)
   else {
     guint border, depth;
 
-    if (!XGetGeometry (display, xid, &ignore,
-                       &xpos, &ypos, &xres, &yres,
-                       &border, &depth))
+    if (!XGetGeometry (display, xid, &ignore, &xpos, &ypos,
+				&xres, &yres, &border, &depth))
       xpos = ypos = xres = yres = 2;
   }
-
-  error = _x_error_trap_pop ("get_window_geometry(xid => 0x%x)", xid);
+  result = _x_error_trap_pop ("get_window_geometry(xid => 0x%lx)", xid);
 
   geometry->x = xpos;
   geometry->y = ypos;
   geometry->width = xres;
   geometry->height = yres;
 
-  return true;
+  return (result == Success);
 } /* </get_window_geometry> */
 
 /*
@@ -782,6 +819,11 @@ get_window_icon_scaled (Window xid, int width, int height)
   if (initialize_) {
     initialize_properties (gdk_display);
     initialize_ = false;
+  }
+
+  if (WindowValidate(xid) == false) {
+    gould_diagnostics ("%s xid => 0xlx\n", __func__, xid);
+    return NULL;
   }
 
   /* If possible retrieve the icon from the _NET_WM_ICON window property. */
@@ -813,7 +855,7 @@ get_window_icon_scaled (Window xid, int width, int height)
 
     gdk_error_trap_push ();
     hints = XGetWMHints (gdk_display, xid);
-    _x_error_trap_pop ("get_window_icon_scaled(xid => 0x%x)", xid);
+    _x_error_trap_pop ("get_window_icon_scaled(xid => 0x%lx)", xid);
 
     /*
     * IconPixmapHint flag indicates that hints->icon_pixmap contains
@@ -844,7 +886,7 @@ get_window_icon_scaled (Window xid, int width, int height)
 const gchar *
 get_window_icon_name (Window xid)
 {
-  gchar *name;
+  gchar *name;	/* note: g_strndup() used by get_utf8_property */
 
   if (initialize_) {
     initialize_properties (gdk_display);
@@ -860,19 +902,18 @@ get_window_icon_name (Window xid)
 const gchar *
 get_window_name (Window xid)
 {
-  gchar *name;
+  gchar *name;	/* note: g_strndup() used by get_utf8_property */
 
   if (initialize_) {
     initialize_properties (gdk_display);
     initialize_ = false;
   }
 
-  if ((name = get_utf8_property (xid, _NET_WM_NAME)) == NULL)
+  if ((name = get_utf8_property (xid, _NET_WM_NAME)) == NULL) {
     name = get_xprop_text (xid, XA_WM_NAME);
-
+  }
   return name;
 } /* </get_window_name> */
-
 
 /*
 * get_window_state
@@ -963,18 +1004,17 @@ get_window_type (Window xid, XWindowType *xwt)
 
 /*
 * get_xprop_atom - obtain the Atom value
-* get_xprop_name - obtain the Atom value by name
+* get_xprop_cardinal - obtain the cardinal Atom value by name
+* get_xprop_name - obtain the unsigned char* Atom value by name
 * get_xprop_text - obtain the Atom text value
 */
 void *
 get_xprop_atom (Window xid, Atom prop, Atom type, int *count)
 {
-  unsigned char *data;
-  unsigned char *value = NULL;
+  Atom cast;	/* Atom return type */
+  int format, status, result;
+  unsigned char *data, *value = NULL;
   unsigned long length, after;
-  int error, result;
-  int format;
-  Atom cast;
 
   if (initialize_) {
     initialize_properties (gdk_display);
@@ -982,71 +1022,75 @@ get_xprop_atom (Window xid, Atom prop, Atom type, int *count)
   }
 
   gdk_error_trap_push ();
-  result = XGetWindowProperty(gdk_display, xid, prop, 0, G_MAXLONG, False,
+  status = XGetWindowProperty(gdk_display, xid, prop, 0, X_MAXBYTES, False,
                               type, &cast, &format, &length, &after, &data);
-  error = _x_error_trap_pop ("get_xprop_atom(xid => 0x%x)", xid);
 
-  if (error == Success && result == Success) {
+  result = _x_error_trap_pop ("get_xprop_atom(xid => 0x%lx)", xid);
+
+  if (status == Success && result == Success) {
     value = data;
 
     if (count)
       *count = length;
   }
-
   return value;
 } /* </get_xprop_atom> */
 
 int
 get_xprop_cardinal (Window xid, const char *name)
 {
-  int value = -1;
+  int cardinal = -1;
   unsigned char *data = get_xprop_name (xid, name);
 
   if (data) {
-    value = *(unsigned long *)data;
+    cardinal = *(unsigned long *)data;
     XFree(data);
   }
-
-  return value;
+  else {
+    vdebug(1, "%s: xid => 0x%lx BadWindow\n", __func__, xid);
+  }
+  return cardinal;
 } /* </get_xprop_cardinal> */
 
 void *
 get_xprop_name (Window xid, const char *name)
 {
+  Atom atom;		/* Atom g_hash_table_lookup*/
+  Atom cast;		/* Atom return type */
+  Atom prop;		/* Atom property */
+
   unsigned char *data;
   unsigned char *value = NULL;
   unsigned long length, after;
-  gpointer prop;
 
-  int error, result;
-  int format;
-
-  Atom atom;		/* Atom property */
-  Atom cast;		/* Atom type */
+  int format, status, result;
 
   if (initialize_) {
     initialize_properties (gdk_display);
     initialize_ = false;
   }
+  //Window xroot = DefaultRootWindow (gdk_display);
 
-  prop = g_hash_table_lookup (atoms_, name);
-  atom = (prop != NULL) ? (Atom)prop : xintern (gdk_display, name);
+  if (WindowValidate (xid)) {
+    atom = g_hash_table_lookup (atoms_, name);
+    prop = (atom != NULL) ? atom : xintern (gdk_display, name);
 
-  gdk_error_trap_push ();
-  result = XGetWindowProperty (gdk_display, xid, atom, 0L, 1L, False,
-                               AnyPropertyType, &cast, &format, &length,
-                               &after, &data);
-  error = _x_error_trap_pop ("get_xprop_name(xid => 0x%x)", xid);
+    gdk_error_trap_push ();
+    status = XGetWindowProperty (gdk_display, xid, prop, 0L, 1L, False,
+                                 AnyPropertyType, &cast, &format, &length,
+                                 &after, (void *)&data);
 
-  if (error == Success && result == Success)
-    if ((cast == XA_CARDINAL) && (format == 32) && data)
-      value = data;
+    result = _x_error_trap_pop ("get_xprop_name(xid => 0x%lx)", xid);
 
+    if (status == Success && result == Success)
+      if ((cast == XA_CARDINAL) && (format == 32) && data)
+        value = data;
+  }
   return value;
 } /* </get_xprop_name> */
 
 char *
-get_xprop_text (Window xid, Atom atom)
+get_xprop_text (Window xid, Atom prop)
 {
   XTextProperty text;
   gchar *value = NULL;
@@ -1059,13 +1103,13 @@ get_xprop_text (Window xid, Atom atom)
   gdk_error_trap_push ();
   text.nitems = 0;
 
-  if (XGetTextProperty (gdk_display, xid, &text, atom)) {
+  if (XGetTextProperty (gdk_display, xid, &text, prop)) {
     value = get_text_property_to_utf8 (&text);
 
     if (text.nitems > 0)
       XFree(text.value);
   }
-  _x_error_trap_pop ("get_xprop_text(xid => 0x%x)", xid);
+  _x_error_trap_pop ("get_xprop_text(xid => 0x%lx)", xid);
 
   return value;
 } /* </get_xprop_text> */
@@ -1081,5 +1125,5 @@ set_window_allowed_actions (Window xid, Atom *actions, int length)
   XChangeProperty (gdk_display, xid, _NET_WM_ALLOWED_ACTIONS, XA_ATOM, 32,
                    PropModeReplace, (unsigned char *)actions, length);
 
-  _x_error_trap_pop (NULL);
+  _x_error_trap_pop ("set_window_allowed_actions(xid => 0x%lx)", xid);
 } /* </set_window_allowed_actions> */

@@ -26,6 +26,8 @@
 #include <gdk/gdkx.h>
 #include <gdk/gdk.h>
 
+#define X_MAXBYTES 65536  // XGetWindowProperty long_length parameter
+
 G_BEGIN_DECLS
 
 /**
@@ -63,8 +65,8 @@ struct _XWindowType {
 };
 
 /*
- * _x_error_trap_pop - gdk_error_trap_pop() wrapper.
- */
+* _x_error_trap_pop - gdk_error_trap_pop() wrapper.
+*/
 static inline int
 _x_error_trap_pop (const char *format, ...)
 {
@@ -88,8 +90,10 @@ _x_error_trap_pop (const char *format, ...)
 } /* </_x_error_trap_pop> */
 
 /**
- * Public methods (xutil.c) exported in the implementation.
- */
+* Public methods (xutil.c) exported in the implementation.
+*/
+bool WindowValidate (Window xid);
+
 bool WindowArraysEqual (Window *a, int a_len, Window *b, int b_len);
 bool WindowGListEqual (GList *alist, GList *blist);
 
@@ -97,8 +101,8 @@ bool WindowDesktopFilter (Window xid, int desktop);
 bool WindowTaskbarFilter (Window xid, int desktop);
 bool WindowPagerFilter (Window xid, int desktop);
 
+Atom *get_atom_list (Window xid, Atom prop, int *count);
 Atom get_atom_property (const char *name);
-Atom* get_atom_list (Window xid, Atom prop, int *count);
 
 Window get_active_window (Window xroot);
 
@@ -109,6 +113,7 @@ Window *get_window_filter_list (WindowFilter filter,
                         Window xroot, Atom atom, int desktop, int *count);
 
 Window *get_window_list (Window xroot, Atom atom, int desktop, int *count);
+pid_t get_window_pid (Window xid);
 
 gchar **get_desktop_names (Window xroot);
 

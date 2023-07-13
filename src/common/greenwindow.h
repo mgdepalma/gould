@@ -43,6 +43,8 @@ G_BEGIN_DECLS
 #define GREEN_WINDOW_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), \
                                       GREEN_TYPE_WINDOW, GreenClass))
 
+#define N_WINDOW_CONNECTIONS 4
+
 typedef struct _GreenWindow        GreenWindow;
 typedef struct _GreenWindowClass   GreenWindowClass;
 typedef struct _GreenWindowPrivate GreenWindowPrivate;
@@ -51,6 +53,8 @@ struct _GreenWindow
 {
   GObject instance;		/* parent instance */
   GreenWindowPrivate *priv;	/* private data */
+
+  guint connection[N_WINDOW_CONNECTIONS];
 };
 
 struct _GreenWindowClass

@@ -578,11 +578,11 @@ pager_settings_new (Modulus *applet, PagerConfig *config)
 } /* </pager_settings_new> */
 
 /*
-* pager_init
-* pager_open
+* pager_module_init
+* pager_module_open
 */
 void
-pager_init (Modulus *applet, GlobalPanel *panel)
+pager_module_init (Modulus *applet, GlobalPanel *panel)
 {
   PagerConfig *config = local_.pager_data;
 
@@ -608,10 +608,10 @@ pager_init (Modulus *applet, GlobalPanel *panel)
                         _("Settings"), pager_settings_new (applet, config),
                         _("About"), settings_manpage_new (applet, panel),
                         -1);
-} /* </pager_init> */
+} /* </pager_module_init> */
 
 void
-pager_open (Modulus *applet)
+pager_module_open (Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
   Pager *pager = pager_new (panel->green);
@@ -623,7 +623,7 @@ pager_open (Modulus *applet)
   pager_set_shadow_type (pager, GTK_SHADOW_IN);
 
   applet->widget = GTK_WIDGET (pager);
-} /* </pager_open> */
+} /* </pager_module_open> */
 
 /*
 * tasklist_configuration_read
@@ -741,10 +741,10 @@ tasklist_settings_cancel (Modulus *applet)
 } /* </tasklist_settings_cancel> */
 
 /*
-* tasklist_enable
+* tasklist_module_enable
 */
 static void
-tasklist_enable (GtkWidget *button, Modulus *applet)
+tasklist_module_enable (GtkWidget *button, Modulus *applet)
 {
   gboolean state = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON(button));
 
@@ -764,11 +764,11 @@ tasklist_enable (GtkWidget *button, Modulus *applet)
 } /* </tasklist_enable> */
 
 /*
-* tasklist_allspaces
-* tasklist_grouping
+* tasklist_module_allspaces
+* tasklist_module_grouping
 */
 static void
-tasklist_allspaces (GtkWidget *button, Modulus *applet)
+tasklist_module_allspaces (GtkWidget *button, Modulus *applet)
 {
   gboolean state = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (button));
 
@@ -785,10 +785,10 @@ tasklist_allspaces (GtkWidget *button, Modulus *applet)
 
     local_.tasklist_cache.allspaces = state;
   }
-} /* </tasklist_allspaces> */
+} /* </tasklist_module_allspaces> */
 
 static void
-tasklist_grouping (GtkComboBox *options, Modulus *applet)
+tasklist_module_grouping (GtkComboBox *options, Modulus *applet)
 {
   TasklistGroupingType grouping = gtk_combo_box_get_active (options);
 
@@ -805,7 +805,7 @@ tasklist_grouping (GtkComboBox *options, Modulus *applet)
 
     local_.tasklist_cache.grouping = grouping;
   }
-} /* </tasklist_grouping> */
+} /* </tasklist_module_grouping> */
 
 GtkWidget *
 tasklist_settings_new (Modulus *applet, TasklistConfig *config)
@@ -850,7 +850,7 @@ tasklist_settings_new (Modulus *applet, TasklistConfig *config)
   gtk_widget_set_sensitive (widget, FALSE);	/* disallow tasklist disable */
 
   g_signal_connect (G_OBJECT(widget), "toggled",
-                    G_CALLBACK(tasklist_enable), applet);
+                    G_CALLBACK(tasklist_module_enable), applet);
 
   if (applet->icon != NULL) {
     GlobalPanel *panel = applet->data;
@@ -880,7 +880,7 @@ tasklist_settings_new (Modulus *applet, TasklistConfig *config)
   gtk_widget_show (widget);
 
   g_signal_connect (G_OBJECT(widget), "toggled",
-                    G_CALLBACK(tasklist_allspaces), applet);
+                    G_CALLBACK(tasklist_module_allspaces), applet);
 
   /* Add selection list for grouping. */
   layer = gtk_hbox_new (FALSE, 6);
@@ -905,17 +905,17 @@ tasklist_settings_new (Modulus *applet, TasklistConfig *config)
   gtk_widget_show (widget);
 
   g_signal_connect (G_OBJECT(widget), "changed",
-                    G_CALLBACK(tasklist_grouping), applet);
+                    G_CALLBACK(tasklist_module_grouping), applet);
 
   return layout;
 } /* </tasklist_settings_new> */
 
 /*
-* tasklist_init
-* tasklist_open
+* tasklist_module_init
+* tasklist_module_open
 */
 void
-tasklist_init (Modulus *applet, GlobalPanel *panel)
+tasklist_module_init (Modulus *applet, GlobalPanel *panel)
 {
   TasklistConfig *config = local_.tasklist_data;
 
@@ -940,10 +940,10 @@ tasklist_init (Modulus *applet, GlobalPanel *panel)
                         _("Settings"), tasklist_settings_new (applet, config),
                         _("About"), settings_manpage_new (applet, panel),
                         -1);
-} /* </tasklist_init> */
+} /* </tasklist_module_init> */
 
 void
-tasklist_open (Modulus *applet)
+tasklist_module_open (Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
   Tasklist *tasklist = tasklist_new (panel->green);
@@ -954,4 +954,4 @@ tasklist_open (Modulus *applet)
   tasklist_set_orientation (tasklist, panel->orientation);
 
   applet->widget = GTK_WIDGET (tasklist);
-} /* </tasklist_open> */
+} /* </tasklist_module_open> */

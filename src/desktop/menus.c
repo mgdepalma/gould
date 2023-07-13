@@ -264,7 +264,7 @@ static void
 screenlock (GtkWidget *button, GlobalPanel *panel)
 {
   char command[MAX_COMMAND];
-  int idx = saver_get_selection();
+  int idx = screensaver_get_selection();
 
   if (idx >= 0)
     sprintf(command, "%s --select %d", _SCREENSAVER_COMMAND, idx);

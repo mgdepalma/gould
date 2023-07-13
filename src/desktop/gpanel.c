@@ -206,14 +206,14 @@ applets_builtin(GlobalPanel *panel)
 
   /* Add pager applet. */
   applet = panel->pager = g_new0 (Modulus, 1);
-  applet->module_open = pager_open;
-  pager_init (applet, panel);
+  applet->module_open = pager_module_open;
+  pager_module_init (applet, panel);
   list = g_list_append (list, applet);
 
   /* Add tasklist applet. */
   applet = panel->tasklist = g_new0 (Modulus, 1);
-  applet->module_open = tasklist_open;
-  tasklist_init (applet, panel);
+  applet->module_open = tasklist_module_open;
+  tasklist_module_init (applet, panel);
   list = g_list_append (list, applet);
 
   /* Set fallback/initial defaults. */
@@ -383,11 +383,9 @@ panel_quicklaunch(GtkWidget *widget, Modulus *applet)
   const gchar *command = path_finder(panel->path, applet->label);
   vdebug(2, "%s: command => %s\n", __func__, command);
 
-  if (strcmp(applet->label, "email") == 0) /* cannot dispatch(.., email) */
-    system_command (applet->label);
-  else
   if (command)
-    dispatch (panel->session, command);
+    //dispatch (panel->session, command);
+    system_command (command);
   else
      gpanel_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
                	Program, applet->label, _("command not found"));
@@ -443,11 +441,11 @@ panel_config_moduli(GlobalPanel *panel, GList *builtin, GList *plugins)
 
   /* Screen saver applet. */
   applet = panel->screensaver = g_new0 (Modulus, 1);
-  applet->module_close = saver_close;
-  applet->module_open = saver_open;
+  applet->module_close = screensaver_module_close;
+  applet->module_open = screensaver_module_open;
   applet->enable = true;
 
-  if (saver_init (applet, panel)) 	/* sanity check.. */
+  if (screensaver_module_init (applet, panel)) 	/* sanity check.. */
     list = g_list_append (list, applet);
 
   /* Add quicklaunch shortcuts to the list. */

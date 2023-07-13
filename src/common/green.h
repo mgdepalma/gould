@@ -117,7 +117,7 @@ void green_change_workspace_count (Green *green, int count);
 void green_release_workspace_layout (Green *green, int token);
 int  green_request_workspace_layout (Green *green, int token,int rows,int cols);
 
-void green_remove_window (Green *green, Window xid);
+bool green_remove_window (Green *green, Window xid);
 
 void green_set_window_filter (Green *green, WindowFilter filter);
 

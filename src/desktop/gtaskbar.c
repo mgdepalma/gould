@@ -210,7 +210,7 @@ interface (void)
 } /* </interface> */
 
 /*
-* prova main program
+* gtaskbar main program
 */
 int
 main(int argc, char *argv[])
@@ -302,4 +302,4 @@ main(int argc, char *argv[])
   gtk_main ();		/* main event loop */
 
   return 0;
-} /* </prova> */
+} /* </gtaskbar> */
