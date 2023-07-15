@@ -1619,14 +1619,15 @@ tasklist_window_closed(Green *green, GreenWindow *window, Tasklist *tasklist)
   TasklistItem *item = tasklist_item_lookup (window, tasklist);
   Window xwindow = green_window_get_xid (window);
 
-  // Handle both "delete-event" and "destroy" together.
-  vdebug(2, "%s: WINDOW_CLOSED, xid => 0x%lx\n", __func__, xwindow);
-  if (xwindow == 0) { // DEBUG should never happen
+  if (xwindow == 0)  { // DEBUG why are we being called
     gould_diagnostics ("%s %s: %s\n", timestamp(), Program, __func__);
     return;
   }
+  // Handle both "delete-event" and "destroy" together.
+  vdebug(2, "%s: WINDOW_CLOSED, xid => 0x%lx\n", __func__, xwindow);
+
   tasklist_disconnect_window (window);
-  tasklist_item_free (item, tasklist);
+  if(item) tasklist_item_free (item, tasklist); // not being tracked ex. gpanel
 
   tasklist_construct_visible_list (tasklist, workspace);
   tasklist_queue_update_lists (tasklist, TASKLIST_WINDOW_REMOVED);
@@ -1742,12 +1743,12 @@ tasklist_disconnect_screen(Tasklist *tasklist)
 {
   TasklistPrivate *context = tasklist->priv;
   guint *conn = context->connection;
-  unsigned short idx = 0;
 
-  for (idx = 0; idx < N_SCREEN_CONNECTIONS; idx++) {
-    g_signal_handler_disconnect (G_OBJECT (context->green), conn[idx]);
-    conn[idx] = 0;
-  }
+  for (int idx = 0; idx < N_SCREEN_CONNECTIONS; idx++)
+    if (conn[idx] > 0) {
+      g_signal_handler_disconnect (G_OBJECT (context->green), conn[idx]);
+      conn[idx] = 0;
+    }
 } /* </tasklist_disconnect_screen> */
 
 /*
@@ -1784,10 +1785,11 @@ tasklist_disconnect_window(GreenWindow *window)
 {
   guint *conn = window->connection;
 
-  for (int idx = 0; idx < N_WINDOW_CONNECTIONS; idx++) {
-    g_signal_handler_disconnect (G_OBJECT (window), conn[idx]);
-    conn[idx] = 0;
-  }
+  for (int idx = 0; idx < N_WINDOW_CONNECTIONS; idx++)
+    if (conn[idx] > 0) {
+      g_signal_handler_disconnect (G_OBJECT (window), conn[idx]);
+      conn[idx] = 0;
+    }
 } /* </tasklist_disconnect_window> */
 
 /*

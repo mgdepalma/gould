@@ -335,18 +335,16 @@ green_update_client_list (Green *green)
     for (iter = priv->winlist; iter != NULL; iter = iter->next) {
       if (g_list_find (list, iter->data) == NULL) {   /* not in new list */
         window = g_hash_table_lookup (priv->winhash, iter->data);
-	xid = green_window_get_xid (window);
 
-        vdebug(2, "%s: WINDOW_CLOSED, xid => 0x%lx\n", __func__, xid);
-        if (xid == 0) { // DEBUG should never happen
-           gould_diagnostics ("%s %s: %s\n", timestamp(), Program, __func__);
-           return;
-         }
-        green_hash_remove ((Window)iter->data, window, green);
+        if (window) {
+	  xid = green_window_get_xid (window);
+          vdebug(2, "%s: WINDOW_CLOSED, xid => 0x%lx\n", __func__, xid);
+          green_hash_remove (xid, window, green);
 
-        g_signal_emit (G_OBJECT (green),
-                       signals_[WINDOW_CLOSED],
-                       0, window);
+          g_signal_emit (G_OBJECT (green),
+                         signals_[WINDOW_CLOSED],
+                         0, window);
+        }
       }
     }
 
