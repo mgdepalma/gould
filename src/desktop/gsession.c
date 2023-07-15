@@ -283,14 +283,16 @@ session_monitor(const char *name)
         if (access(procfile, R_OK) != 0) {
           sessionlog_stamp(1, "[%s] pid => missing\n",
 				session_monitor_tag (idx));
-          session_respawn(idx);
+          session_respawn (idx);
         }
       }
     }
     if (gmonitor)	/* acknowledgement expected */
       kill(monitor_[_DESKTOP].process, SIGUSR3);
-    else
+    else {
+      killall (_GSESSION_DESKTOP, SIGUSR3); // gpanel may need refresh
       sleep (_monitor_seconds_interval);
+    }
   }
   return 0;
 } /* </session_monitor> */

@@ -32,6 +32,7 @@
 #define _GSESSION_MANAGER  "gsession"	/* gsession main process    */
 #define _GSESSION_MONITOR  "monitor"	/* gsession monitor process */
 #define _GSESSION_BACKEND  "backend"	/* gsession backend process */
+#define _GSESSION_DESKTOP  "gpanel"	/* gpanel main process */
 
 #define _WINDOWMANAGER	    0		/* SessionMonitor monitor_[0] */
 #define _SCREENSAVER	    1		/* SessionMonitor monitor_[1] */

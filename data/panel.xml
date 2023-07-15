@@ -28,9 +28,6 @@
     <item name="Console Window" icon="terminal.png">
      <exec>terminal</exec>
     </item>
-    <item name="Network Browser" icon="gftp.png">
-     <exec>gftp</exec>
-    </item>
     <item name="Remote Desktop" icon="rdesktop.png">
      <exec>grdesktop</exec>
     </item>
@@ -86,6 +83,9 @@
     </item>
     <item name="Electronic Mail" icon="email.png">
      <exec>email</exec>
+    </item>
+    <item name="File Transfer" icon="gftp.png">
+     <exec>gftp</exec>
     </item>
     <item name="Instant Messaging" icon="pidgin.png" check="/opt/pidgin">
      <exec>pidgin -n</exec>

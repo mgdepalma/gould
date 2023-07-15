@@ -822,7 +822,7 @@ get_window_icon_scaled (Window xid, int width, int height)
   }
 
   if (WindowValidate(xid) == false) {
-    gould_diagnostics ("%s xid => 0xlx\n", __func__, xid);
+    gould_diagnostics ("%s %s xid => 0x%lx\n", timestamp(), __func__, xid);
     return NULL;
   }
 

@@ -1615,13 +1615,16 @@ tasklist_window_opened(Green *green, GreenWindow* window, Tasklist *tasklist)
 static void
 tasklist_window_closed(Green *green, GreenWindow *window, Tasklist *tasklist)
 {
-  Window xwindow = green_window_get_xid (window);
-  TasklistItem *item = tasklist_item_lookup (window, tasklist);
   int workspace = green_get_active_workspace (green);
+  TasklistItem *item = tasklist_item_lookup (window, tasklist);
+  Window xwindow = green_window_get_xid (window);
 
   // Handle both "delete-event" and "destroy" together.
   vdebug(2, "%s: WINDOW_CLOSED, xid => 0x%lx\n", __func__, xwindow);
-
+  if (xwindow == 0) { // DEBUG should never happen
+    gould_diagnostics ("%s %s: %s\n", timestamp(), Program, __func__);
+    return;
+  }
   tasklist_disconnect_window (window);
   tasklist_item_free (item, tasklist);
 
