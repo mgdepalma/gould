@@ -381,13 +381,13 @@ panel_quicklaunch(GtkWidget *widget, Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
   const gchar *command = path_finder(panel->path, applet->label);
-  vdebug(2, "%s: command => %s\n", __func__, command);
 
-  if (command)
-    //dispatch (panel->session, command);
-    system_command (command);
+  if (command) {
+    vdebug(2, "%s: command => %s\n", __func__, command);
+    dispatch (panel->session, command);
+  }
   else
-     gpanel_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
+    gpanel_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
                	Program, applet->label, _("command not found"));
 
 } /* </panel_quicklaunch> */
@@ -865,6 +865,7 @@ void
 gpanel_instance(GlobalPanel *panel)
 {
   memset(panel, 0, sizeof(GlobalPanel));
+  _desktop = panel;		/* save GlobalPanel data structure */
 
   if (panel_loader(panel) != EX_OK) {
     printf("%s: %s.", Program, _("cannot find configuration file"));
@@ -876,7 +877,6 @@ gpanel_instance(GlobalPanel *panel)
     vdebug(debug, "system manager pid => %d (_GET_SESSION_PID => %d)\n",
 		get_process_id (_GSESSION_MANAGER), pid);
   }
-  _desktop = panel;		/* save GlobalPanel data structure */
 } /* </gpanel_instance> */
 
 /*
