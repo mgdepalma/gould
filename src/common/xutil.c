@@ -1046,9 +1046,6 @@ get_xprop_cardinal (Window xid, const char *name)
     cardinal = *(unsigned long *)data;
     XFree(data);
   }
-  else {
-    vdebug(1, "%s: xid => 0x%lx BadWindow\n", __func__, xid);
-  }
   return cardinal;
 } /* </get_xprop_cardinal> */
 

@@ -1,22 +1,22 @@
 /**
- * Copyright (C) Generations Linux <bugs@softcraft.org>
- * All Rights Reserved.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Library General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Library General Public License for more details.
- *
- * You should have received a copy of the GNU Library General Public
- * License along with this library; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
- */
+* Copyright (C) Generations Linux <bugs@softcraft.org>
+* All Rights Reserved.
+*
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Library General Public
+* License as published by the Free Software Foundation; either
+* version 2 of the License, or (at your option) any later version.
+*
+* This library is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Library General Public License for more details.
+*
+* You should have received a copy of the GNU Library General Public
+* License along with this library; if not, write to the
+* Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+* Boston, MA 02111-1307, USA.
+*/
 
 #include "gould.h"
 #include "filechooser.h"
@@ -29,8 +29,8 @@ extern const char *Program;	/* see, gpanel.c and possibly others */
 extern unsigned short debug;	/* must be declared in main program */
 
 /*
- * (private) variables
- */
+* (private) variables
+*/
 static GtkObjectClass *parent = NULL;
 
 static FileChooserTypes filetypes[] = {
@@ -71,22 +71,19 @@ static FileChooserTypes filetypes[] = {
 
 
 /*
- * (private) dump_names_list
- */
+* (private) dump_names_list
+*/
 static void
-dump_names_list (void)
+dump_names_list(FileChooser *self)
 {
-#ifdef DEBUG
-  GList *iter;
-  for (iter = self->_names; iter != NULL; iter = iter->next) {
-      printf("%s\n", iter->data);
+  for (GList *iter = self->_names; iter != NULL; iter = iter->next) {
+    printf("%s\n", iter->data);
   }
-#endif
 } /* </dump_names_list> */
 
 /*
- * (private) agent
- */
+* (private) agent
+*/
 static void
 agent(GtkIconView *iconview, FileChooser *self)
 {
@@ -120,9 +117,9 @@ agent(GtkIconView *iconview, FileChooser *self)
 } /* </agent> */
 
 /*
- * (private) dirup
- * (private) dirhome
- */
+* (private) dirup
+* (private) dirhome
+*/
 static void
 dirup(GtkWidget *button, FileChooser *self)
 {
@@ -153,9 +150,9 @@ dirhome(GtkWidget *button, FileChooser *self)
 } /* </dirhome> */
 
 /*
- * (private) showhidden
- * (private) showthumbs
- */
+* (private) showhidden
+* (private) showthumbs
+*/
 static void
 showhidden(GtkWidget *button, FileChooser *self)
 {
@@ -194,8 +191,8 @@ showthumbs(GtkWidget *button, FileChooser *self)
 } /* </showthumbs> */
 
 /*
- * (private) get_icon_from_type
- */
+* (private) get_icon_from_type
+*/
 static IconIndex
 get_icon_from_type(const gchar *pathname)
 {
@@ -228,8 +225,8 @@ get_icon_from_type(const gchar *pathname)
 } /* </get_icon_from_type> */
 
 /*
- * (private) icon_pixbuf
- */
+* (private) icon_pixbuf
+*/
 static GdkPixbuf *
 icon_pixbuf(FileChooser *self, IconIndex index, const char *pathname)
 {
@@ -256,8 +253,8 @@ icon_pixbuf(FileChooser *self, IconIndex index, const char *pathname)
 } /* </icon_pixbuf> */
 
 /*
- * (private) filechooser_class_init
- */
+* (private) filechooser_class_init
+*/
 static void
 filechooser_class_init (FileChooserClass *klass)
 {
@@ -265,8 +262,8 @@ filechooser_class_init (FileChooserClass *klass)
 }
 
 /*
- * (private) filechooser_init
- */
+* (private) filechooser_init
+*/
 static void
 filechooser_init (FileChooser *self)
 {
@@ -300,8 +297,8 @@ filechooser_init (FileChooser *self)
 } /* </filechooser_init> */
 
 /*
- * filechooser_get_type
- */
+* filechooser_get_type
+*/
 GType
 filechooser_get_type (void)
 {
@@ -327,8 +324,8 @@ filechooser_get_type (void)
 } /* </filechooser_get_type> */
 
 /*
- * filechooser_new
- */
+* filechooser_new
+*/
 FileChooser *
 filechooser_new (const gchar *dirname)
 {
@@ -408,8 +405,8 @@ filechooser_new (const gchar *dirname)
 } /* </filechooser_new> */
 
 /*
- * filechooser_update
- */
+* filechooser_update
+*/
 bool
 filechooser_update (FileChooser *self, const gchar *path, bool clearname)
 {
@@ -491,7 +488,10 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
   gtk_label_set_text (GTK_LABEL(self->path), path);
   if (clearname) gtk_entry_set_text (GTK_ENTRY(self->name), "");
 
-  dump_names_list();		/* only with -DDEBUG */
+#ifdef DEBUG
+  dump_names_list(self);
+#endif
+
   if (GDK_IS_WINDOW(window))
     gdk_window_set_cursor (window, (self->iconbox)->cursor);
 
@@ -499,8 +499,8 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
 } /* </filechooser_update> */
 
 /*
- * filechooser_get_selected_name
- */
+* filechooser_get_selected_name
+*/
 gchar *
 filechooser_get_selected_name (FileChooser *self)
 {
@@ -525,9 +525,9 @@ filechooser_get_selected_name (FileChooser *self)
 } /* </filechooser_get_selected_name> */
 
 /*
- * filechooser_get_index
- * filechooser_get_count
- */
+* filechooser_get_index
+* filechooser_get_count
+*/
 int
 filechooser_get_index (FileChooser *self, const gchar *name)
 {
@@ -552,9 +552,9 @@ filechooser_get_count (FileChooser *self)
 }
 
 /*
- * filechooser_get_cursor
- * filechooser_set_cursor
- */
+* filechooser_get_cursor
+* filechooser_set_cursor
+*/
 int
 filechooser_get_cursor (FileChooser *self)
 {
@@ -578,8 +578,8 @@ filechooser_set_cursor (FileChooser *self, int index)
 } /* </filechooser_set_cursor> */
 
 /*
- * filechooser_set_name
- */
+* filechooser_set_name
+*/
 void
 filechooser_set_name (FileChooser *self, const gchar *name)
 {
@@ -589,8 +589,8 @@ filechooser_set_name (FileChooser *self, const gchar *name)
 } /* </filechooser_set_name> */
 
 /*
- * filechooser_layout
- */
+* filechooser_layout
+*/
 GtkWidget *
 filechooser_layout (FileChooser *self)
 {
@@ -623,8 +623,8 @@ filechooser_layout (FileChooser *self)
 } /* </filechooser_layout> */
 
 /*
- * filechoser_set_callback
- */
+* filechoser_set_callback
+*/
 void
 filechooser_set_callback (FileChooser *self, GtkFunction agent, gpointer data)
 {

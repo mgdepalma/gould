@@ -31,8 +31,8 @@ extern unsigned short debug;	/* must be declared in main program */
 
 
 /*
- * apply_gould_theme
- */
+* apply_gould_theme
+*/
 bool
 apply_gtk_theme (const char *confile)
 {
@@ -55,8 +55,8 @@ apply_gtk_theme (const char *confile)
 } /* apply_gould_theme */
 
 /*
- * colormap_from_pixmap
- */
+* colormap_from_pixmap
+*/
 GdkColormap *
 colormap_from_pixmap (GdkPixmap *pixmap)
 {
@@ -85,8 +85,8 @@ colormap_from_pixmap (GdkPixmap *pixmap)
 } /* </colormap_from_pixmap */
 
 /*
- * create_mask_from_pixmap - create the bitmap mask for a pixmap.
- */
+* create_mask_from_pixmap - create the bitmap mask for a pixmap.
+*/
 GdkBitmap *
 create_mask_from_pixmap (GdkPixmap *pixmap, gint width, gint height)
 {
@@ -118,8 +118,8 @@ create_mask_from_pixmap (GdkPixmap *pixmap, gint width, gint height)
 } /* </create_mask_from_pixmap> */
 
 /*
- * get_label_size
- */
+* get_label_size
+*/
 GtkAllocation *
 get_label_size (GtkWidget *label)
 {
@@ -135,8 +135,8 @@ get_label_size (GtkWidget *label)
 } /* </get_label_size> */
 
 /*
- * image_new_from_file_scaled - returns a scaled image given a file name
- */
+* image_new_from_file_scaled - returns a scaled image given a file name
+*/
 GtkWidget *
 image_new_from_file_scaled (const gchar *file, gint width, gint height)
 {
@@ -164,8 +164,8 @@ image_new_from_path_scaled (GList *paths, const gchar *icon,
 } /* </image_new_from_path_scaled> */
 
 /*
- * pixbuf_new_from_file_scaled - return scaled GdkPixbuf from a file
- */
+* pixbuf_new_from_file_scaled - return scaled GdkPixbuf from a file
+*/
 GdkPixbuf *
 pixbuf_new_from_file_scaled (const gchar *file, gint width, gint height)
 {
@@ -192,8 +192,8 @@ pixbuf_new_from_file_scaled (const gchar *file, gint width, gint height)
 } /* </pixbuf_new_from_file_scaled> */
 
 /*
- * pixbuf_new_from_path_scaled
- */
+* pixbuf_new_from_path_scaled
+*/
 GdkPixbuf *
 pixbuf_new_from_path_scaled (GList *paths, const gchar *icon,
                              guint width, guint height)
@@ -203,8 +203,8 @@ pixbuf_new_from_path_scaled (GList *paths, const gchar *icon,
 } /* </pixbuf_new_from_path_scaled> */
 
 /*
- * pixbuf_scale - scale a GdkPixbuf to given width and height
- */
+* pixbuf_scale - scale a GdkPixbuf to given width and height
+*/
 GdkPixbuf *
 pixbuf_scale (GdkPixbuf *pixbuf, gint width, gint height)
 {
@@ -212,8 +212,8 @@ pixbuf_scale (GdkPixbuf *pixbuf, gint width, gint height)
 } /* </pixbuf_scale> */
 
 /*
- * redraw_pixbuf - redraw GdkPixbuf of a canvas drawing area
- */
+* redraw_pixbuf - redraw GdkPixbuf of a canvas drawing area
+*/
 bool
 redraw_pixbuf (GtkWidget *canvas, GdkPixbuf *image)
 {
@@ -268,8 +268,8 @@ redraw_pixbuf (GtkWidget *canvas, GdkPixbuf *image)
 } /* </redraw_pixbuf> */
 
 /*
- * set_background_pixbuf - set background pixmap of window using pixbuf
- */
+* set_background_pixbuf - set background pixmap of window using pixbuf
+*/
 GError *
 set_background_pixbuf (GdkWindow *window, GdkPixbuf *pixbuf)
 {
@@ -308,8 +308,8 @@ set_background_pixbuf (GdkWindow *window, GdkPixbuf *pixbuf)
 } /* </set_background_pixbuf> */
 
 /*
- * set_background - set background of a window
- */
+* set_background - set background of a window
+*/
 GError *
 set_background (GdkWindow *window, const gchar *pathname)
 {
@@ -328,12 +328,14 @@ set_background (GdkWindow *window, const gchar *pathname)
     gchar *command = g_strdup_printf (
     "gconftool -t string -s /desktop/gnome/background/picture_filename \"%s\"",
                                                                pathname);
-    g_spawn_command_line_async(command, &error);
+    //DEBUG g_spawn_command_line_async(command, &error);
+    system_command (command);
     g_free (command);
 
     /* unique to Generations Linux xorg-x11-core >= 3.0 */
     command = g_strdup_printf ("xsetbg %s", pathname);
-    g_spawn_command_line_async(command, &error);
+    //DEBUG g_spawn_command_line_async(command, &error);
+    system_command (command);
     g_free (command);
   }
 
@@ -341,8 +343,8 @@ set_background (GdkWindow *window, const gchar *pathname)
 } /* </set_background> */
 
 /*
- * draw_pixbuf
- */
+* draw_pixbuf
+*/
 void
 draw_pixbuf (GdkDrawable *target,
              GdkPixbuf *pixbuf, GdkGC *gc,
@@ -359,10 +361,10 @@ draw_pixbuf (GdkDrawable *target,
 } /* </draw_pixbuf> */
 
 /*
- * draw_pixmap - set/unset bits
- *
- * sample usage:
- *
+* draw_pixmap - set/unset bits
+*
+* sample usage:
+*
   gdk_pixbuf_render_pixmap_and_mask (pixbuf, &pixmap, &mask, 255);
   GdkBitmap *inverse = bitmap_new_with_pixel (window, width, height, 1);
   GdkGC *gc = gdk_gc_new (inverse);
@@ -378,7 +380,7 @@ draw_pixbuf (GdkDrawable *target,
 
   // Make the call.
   draw_pixmap (inverse, mask, gc, 0, 0);
- */
+*/
 void
 draw_pixmap (GdkDrawable *target,
              GdkPixmap *pixmap, GdkGC *gc,
@@ -395,8 +397,8 @@ draw_pixmap (GdkDrawable *target,
 } /* </draw_pixmap> */
 
 /*
- * sticky_window_new - create a sticky GTK_WINDOW_TOPLEVEL window
- */
+* sticky_window_new - create a sticky GTK_WINDOW_TOPLEVEL window
+*/
 GtkWidget *
 sticky_window_new (GdkWindowTypeHint hint,
                    gint width, gint height,
@@ -455,8 +457,8 @@ sticky_window_new (GdkWindowTypeHint hint,
 } /* </sticky_window_new> */
 
 /*
- * backdrop_window_new
- */
+* backdrop_window_new
+*/
 GtkWidget *
 backdrop_window_new (GdkWindowTypeHint hint,
                      gint width, gint height,
@@ -496,9 +498,9 @@ backdrop_window_new (GdkWindowTypeHint hint,
 } /* </backdrop_window_new> */
 
 /*
- * inset_new
- * inset_frame_new
- */
+* inset_new
+* inset_frame_new
+*/
 GtkWidget *
 inset_new (GtkWidget *box, guint spacing)
 {
@@ -545,8 +547,8 @@ inset_frame_new (GtkWidget *box, guint spacing, const gchar *tag)
 } /* </inset_frame_new> */
 
 /*
- * stock_button_new
- */
+* stock_button_new
+*/
 GtkWidget *
 stock_button_new (const char *name, const char *stockid, int padding)
 {

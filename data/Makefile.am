@@ -11,6 +11,7 @@ CLEANFILES = gould.conf panel
 # Directories where the DATA goes.
 goulddir = $(datadir)/gould
 gould_icondir = $(goulddir)/pixmaps
+gould_screensaverdir = $(goulddir)
 gould_themedir = $(goulddir)/themes/default
 gould_pamdir = /etc/pam.d
 
@@ -24,6 +25,8 @@ gould_DATA = \
 gould_icon_DATA = pixmaps/*.png
 
 gould_pam_DATA = gould.pam
+
+gould_screensaver_DATA = xscreensaver
 
 gould_theme_DATA= \
         themes/default/admin.png \
@@ -46,6 +49,7 @@ gould_theme_DATA= \
 EXTRA_DIST= \
         $(gould_DATA) \
         $(gould_icon_DATA) \
+        $(gould_screensaver_DATA) \
         $(gould_theme_DATA) \
         $(NULL)
 

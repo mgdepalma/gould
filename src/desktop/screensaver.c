@@ -879,6 +879,58 @@ screensaver_populate_modes(const char *dirname, const int maxcount)
 } /* </screensaver_populate_modes> */
 
 /*
+* Blank After, Cycle After, and Lock Screen After
+*/
+GtkWidget *
+screensaver_settings_grid()
+{
+  gchar *icons[2] = { "+", "-" };
+  GtkWidget *button, *combo, *label, *layout = gtk_table_new(3, 3, TRUE);
+
+  /* Blank After */
+  label = gtk_label_new (_("              Blank After:"));
+  gtk_table_attach_defaults (GTK_TABLE(layout), label, 0, 1, 0, 1);
+  gtk_widget_show (label);
+
+  combo = gtk_hbox_new (FALSE, 1);
+  gtk_table_attach_defaults (GTK_TABLE(layout), combo, 1, 2, 0, 1);
+  gtk_widget_show (combo);
+
+  label = gtk_label_new (_("minutes"));
+  gtk_table_attach_defaults (GTK_TABLE(layout), label, 2, 3, 0, 1);
+  gtk_widget_show (label);
+
+  /* Cycle After */
+  label = gtk_label_new (_("              Cycle After:"));
+  gtk_table_attach_defaults (GTK_TABLE(layout), label, 0, 1, 1, 2);
+  gtk_widget_show (label);
+
+  combo = gtk_hbox_new (FALSE, 1);
+  //combo = gtk_scale_button_new (GTK_ICON_SIZE_BUTTON, 0, 50, 1, icons);
+  gtk_table_attach_defaults (GTK_TABLE(layout), combo, 1, 2, 1, 2);
+  gtk_widget_show (combo);
+
+  label = gtk_label_new (_("minutes"));
+  gtk_table_attach_defaults (GTK_TABLE(layout), label, 2, 3, 1, 2);
+  gtk_widget_show (label);
+
+  /* Lock Screen After */
+  button = gtk_check_button_new_with_label (_("Lock Screen After:"));
+  gtk_table_attach_defaults (GTK_TABLE(layout), button, 0, 1, 2, 3);
+  gtk_widget_show (button);
+
+  combo = gtk_hbox_new (FALSE, 1);
+  gtk_table_attach_defaults (GTK_TABLE(layout), combo, 1, 2, 2, 3);
+  gtk_widget_show (combo);
+
+  label = gtk_label_new (_("minutes"));
+  gtk_table_attach_defaults (GTK_TABLE(layout), label, 2, 3, 2, 3);
+  gtk_widget_show (label);
+
+  return layout;
+} /* </screensaver_settings_grid> */
+
+/*
 * screensaver_settings provides configuration pages
 */
 GtkWidget *
@@ -906,16 +958,26 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   /* Initialize private data structure singleton. */
   memcpy(_cache, _config, sizeof(ScreensaverConfig));
 
+  /* spacer on the top */
+  glue = gtk_label_new (" ");
+  gtk_box_pack_start (GTK_BOX(layout), glue, FALSE, FALSE, 2);
+  gtk_widget_show (glue);
+
   /* Split view: chooser on the left, preview on the right. */
   split = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX(layout), split, FALSE, FALSE, 4);
+  gtk_box_pack_start (GTK_BOX(layout), split, TRUE, TRUE, 2);
   gtk_widget_show (split);
 
   /* Assemble scrollable screensaver chooser. */
-  area = gtk_vbox_new(FALSE, 1);
-  //area = desktop->browser = gtk_vbox_new(FALSE, 1);
-  gtk_box_pack_start (GTK_BOX (split), area, FALSE, TRUE, 5);
+  area = gtk_vbox_new(FALSE, 0); // DEBUG
+  gtk_box_pack_start (GTK_BOX (split), area, FALSE, FALSE, 0);
   gtk_widget_show (area);
+
+  /* spacer on left side
+  glue = gtk_label_new (" ");
+  gtk_box_pack_start (GTK_BOX(area), glue, FALSE, FALSE, 2);
+  gtk_widget_show (glue);
+  */
 
   /* screensaver modes: label + combo_box */
   pane = gtk_hbox_new (FALSE, 1);
@@ -923,7 +985,7 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (pane);
 
   widget = gtk_label_new (_("Mode:"));
-  gtk_box_pack_start (GTK_BOX(pane), widget, FALSE, TRUE, 2);
+  gtk_box_pack_start (GTK_BOX(pane), widget, FALSE, FALSE, 2);
   gtk_widget_show (widget);
 
   widget = local_.mode_selection = gtk_combo_box_new_text ();
@@ -939,13 +1001,14 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
                     G_CALLBACK (screensaver_mode), panel);
 
   /* Assemble pane containing navigation. */
-  layer = gtk_vbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 2);
+  layer = gtk_vbox_new (FALSE, 2);
+  gtk_box_pack_start (GTK_BOX(area), layer, TRUE, TRUE, 2);
   gtk_widget_show (layer);
 
-  pane = chooser->dirbox;
-  gtk_box_pack_start (GTK_BOX(layer), pane, FALSE, FALSE, 2);
-  gtk_widget_show (pane);
+  /* spacer on right side */
+  glue = gtk_label_new (" ");
+  gtk_box_pack_start (GTK_BOX(layer), glue, FALSE, FALSE, 2);
+  gtk_widget_show (glue);
 
   /* Assemble file selector. */
   scroll = gtk_scrolled_window_new (NULL, NULL);
@@ -959,40 +1022,12 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (widget);
 
   /* Blank After, Cycle After, and Lock Screen After */
-  pane = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX(layer), pane, FALSE, FALSE, 2);
-  gtk_widget_show (pane);
-
-  widget = gtk_label_new (_("Blank After:"));
-  gtk_box_pack_start (GTK_BOX(pane), widget, TRUE, TRUE, 2);
-  gtk_widget_show (widget);
-
-  pane = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX(layer), pane, FALSE, FALSE, 2);
-  gtk_widget_show (pane);
-
-  widget = gtk_label_new (_("Cycle After:"));
-  gtk_box_pack_start (GTK_BOX(pane), widget, TRUE, TRUE, 2);
-  gtk_widget_show (widget);
-
-  pane = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX(layer), pane, FALSE, FALSE, 2);
-  gtk_widget_show (pane);
-
-  glue = gtk_hbox_new (FALSE, 1);
-  gtk_box_pack_start (GTK_BOX(pane), glue, TRUE, TRUE, 2);
-  gtk_widget_show (glue);
-
-  widget = gtk_check_button_new ();
-  gtk_box_pack_start (GTK_BOX(glue), widget, FALSE, FALSE, 2);
-  gtk_widget_show (widget);
-
-  widget = gtk_label_new (_("Lock Screen After:"));
-  gtk_box_pack_start (GTK_BOX(glue), widget, FALSE, FALSE, 2);
+  widget = screensaver_settings_grid();
+  gtk_box_pack_start (GTK_BOX(area), widget, FALSE, FALSE, 4);
   gtk_widget_show (widget);
 
   /* Assemble canvas display area. */
-  area = gtk_vbox_new(FALSE, 4);
+  area = gtk_vbox_new(FALSE, 10);
   //area = desktop->viewer = gtk_vbox_new(FALSE, 1);
   gtk_box_pack_start (GTK_BOX(split), area, TRUE, TRUE, 8);
   gtk_widget_show (area);
@@ -1000,10 +1035,6 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   pane = gtk_hbox_new(FALSE, 4);
   gtk_box_pack_start (GTK_BOX(area), pane, FALSE, FALSE, 0);
   gtk_widget_show (pane);
-
-  widget = gtk_label_new(_("Ants walk around a simple maze."));
-  gtk_box_pack_start (GTK_BOX(pane), widget, FALSE, FALSE, 0);
-  gtk_widget_show (widget);
 
   /* Draw frame around display area. */
   frame = gtk_frame_new (NULL);
@@ -1028,7 +1059,7 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (widget);
 
   widget = gtk_button_new_with_label(_("Preview"));
-  gtk_box_pack_start (GTK_BOX(pane), widget, FALSE, FALSE, 0);
+  gtk_box_pack_start (GTK_BOX(pane), widget, FALSE, FALSE, 5);
   gtk_widget_show (widget);
 
 //il SEGNO per oggi
