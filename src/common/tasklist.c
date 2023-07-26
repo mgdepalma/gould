@@ -176,8 +176,11 @@ tasklist_cleanup(Tasklist *tasklist)
       * item before we unparent the button, which breaks stuff.
       */
       tasklist_item_stop_glow (item);
+#ifdef NEVER
+      // see, tasklist_item_free()
       gtk_widget_destroy (item->button);
       g_free (item);
+#endif
     }
 
     g_list_free (context->ungrouped);
@@ -1108,7 +1111,7 @@ tasklist_item_free(TasklistItem *item, Tasklist *tasklist)
       break;
     }
 
-  gtk_widget_hide (item->button);
+  //DEBUG gtk_widget_hide (item->button);
   gtk_widget_destroy (item->button);
   //SIGSEGV g_free (item);
 } /* </tasklist_item_free> */
@@ -1214,6 +1217,7 @@ static void
 tasklist_widget_realize(GtkWidget *widget)
 {
   (* GTK_WIDGET_CLASS (parent_class_)->realize) (widget);
+  vdebug(2, "%s %s: widget => 0x%lx\n", timestamp(), __func__, widget);
   tasklist_queue_update_lists (GREEN_TASKLIST(widget), TASKLIST_REALIZE);
 } /* </tasklist_widget_realize> */
 
@@ -1221,6 +1225,7 @@ static void
 tasklist_widget_unrealize (GtkWidget *widget)
 {
   (* GTK_WIDGET_CLASS (parent_class_)->unrealize) (widget);
+  vdebug(2, "%s %s: instance => 0x%lx\n", timestamp(), __func__, widget);
   tasklist_queue_update_lists (GREEN_TASKLIST(widget), TASKLIST_UNREALIZE);
 } /* </tasklist_widget_unrealize> */
 
@@ -1393,6 +1398,7 @@ static bool
 tasklist_idle_act(Tasklist *tasklist)
 {
   tasklist->priv->agent = 0;      /* reentrancy guard */
+  vdebug (2, "%s: tasklist => 0x%lx\n", __func__, tasklist);
   tasklist_update_lists (tasklist);
   return false;
 } /* </tasklist_idle_act> */
@@ -1403,8 +1409,15 @@ tasklist_idle_agent(Tasklist *tasklist, TasklistEventType event)
   TasklistPrivate *context = tasklist->priv;
 
   if (context->agent == 0) {
-    vdebug (2, "%s: event => %s\n", __func__, tasklist_event_string (event));
-    context->agent = g_idle_add ((GSourceFunc)tasklist_idle_act, tasklist);
+    vdebug (2, "%s: tasklist => 0x%lx, event => %s\n",
+		__func__, tasklist, tasklist_event_string (event));
+
+    if (event == TASKLIST_UNREALIZE)
+      // GLib-CRITICAL Source ID %d was not found when attempting to remove it
+      // GLib-GObject-WARNING gsignal.c:2732 instance '0x%lx' has no handler..
+      vdebug(1, "%s: tasklist => 0x%lx\n", __func__, tasklist);
+    else
+      context->agent = g_idle_add ((GSourceFunc)tasklist_idle_act, tasklist);
   }
 } /* </tasklist_idle_agent> */
 
@@ -1414,6 +1427,7 @@ tasklist_idle_cancel(Tasklist *tasklist)
   TasklistPrivate *context = tasklist->priv;
 
   if (context->agent != 0) {
+    vdebug (2, "%s: tasklist => 0x%lx\n", __func__, tasklist);
     g_source_remove (context->agent);
     context->agent = 0;
   }
@@ -1607,7 +1621,6 @@ tasklist_window_opened(Green *green, GreenWindow* window, Tasklist *tasklist)
 {
   Window xwindow = green_window_get_xid (window);
   vdebug(2, "%s: WINDOW_OPENED, xid => 0x%lx\n", __func__, xwindow);
-
   tasklist_queue_update_lists (tasklist, TASKLIST_WINDOW_ADDED);
   gtk_widget_queue_resize (GTK_WIDGET (tasklist));
 } /* </tasklist_window_opened> */
@@ -1621,19 +1634,20 @@ tasklist_window_closed(Green *green, GreenWindow *window, Tasklist *tasklist)
 
   if (xwindow == 0)  { // DEBUG why are we being called
     gould_diagnostics ("%s %s: %s\n", timestamp(), Program, __func__);
+    vdebug(1, "%s %s::%s: tasklist => 0x%lx, item => 0x%lx, xid => 0x0\n",
+		timestamp(), Program, __func__, tasklist, item);
     return;
   }
   // Handle both "delete-event" and "destroy" together.
   vdebug(2, "%s: WINDOW_CLOSED, xid => 0x%lx\n", __func__, xwindow);
 
   tasklist_disconnect_window (window);
+  green_remove_window (green, xwindow);
   if(item) tasklist_item_free (item, tasklist); // not being tracked ex. gpanel
 
   tasklist_construct_visible_list (tasklist, workspace);
   tasklist_queue_update_lists (tasklist, TASKLIST_WINDOW_REMOVED);
   gtk_widget_queue_resize (GTK_WIDGET (tasklist));
-
-  green_remove_window (green, xwindow);
 } /* </tasklist_window_closed> */
 
 /*
@@ -1707,6 +1721,7 @@ tasklist_viewports_changed(Green *green, Tasklist *tasklist)
 static void
 tasklist_connect_screen(Tasklist *tasklist, Green *green)
 {
+  vdebug(2, "%s %s: tasklist => 0x%lx\n", timestamp(), __func__, tasklist);
   guint *conn = tasklist->priv->connection;
   unsigned short idx = 0;
 
@@ -1741,6 +1756,7 @@ tasklist_connect_screen(Tasklist *tasklist, Green *green)
 static void
 tasklist_disconnect_screen(Tasklist *tasklist)
 {
+  vdebug(2, "%s %s: tasklist => 0x%lx\n", timestamp(), __func__, tasklist);
   TasklistPrivate *context = tasklist->priv;
   guint *conn = context->connection;
 
@@ -1759,6 +1775,7 @@ static void
 tasklist_connect_window(GreenWindow *window, Tasklist *tasklist)
 {
   guint *conn = window->connection;
+  vdebug(2, "%s: xid => 0x%lx\n", __func__, green_window_get_xid (window));
   unsigned short idx = 0;
 
   conn[idx++] = g_signal_connect_object (G_OBJECT (window), "icon_changed",
@@ -1784,6 +1801,7 @@ static void
 tasklist_disconnect_window(GreenWindow *window)
 {
   guint *conn = window->connection;
+  vdebug(2, "%s: xid => 0x%lx\n", __func__, green_window_get_xid (window));
 
   for (int idx = 0; idx < N_WINDOW_CONNECTIONS; idx++)
     if (conn[idx] > 0) {
@@ -1810,6 +1828,7 @@ tasklist_init(Tasklist *tasklist)
   GtkWidget *widget = GTK_WIDGET (tasklist);
   TasklistPrivate *context = g_new0 (TasklistPrivate, 1);
 
+  vdebug(2, "%s %s: tasklist => 0x%lx\n", timestamp(), __func__, tasklist);
   GTK_WIDGET_SET_FLAGS (widget, GTK_NO_WINDOW);
   
   context->grouping = TASKLIST_NEVER_GROUP;
@@ -1839,7 +1858,6 @@ tasklist_finalize(GObject *object)
   TasklistPrivate *context = tasklist->priv;
 
   tasklist_idle_cancel (tasklist);	  /* inert g_idle_add() */
-  tasklist_disconnect_screen (tasklist);  /* disconnect from GREEN instance */
   tasklist_cleanup (tasklist);
 
   if (context->visible) {
@@ -2000,6 +2018,7 @@ tasklist_new(Green *green)
   gtk_object_sink (GTK_OBJECT (context->tooltips));
 
   context->green = green;			// complete initialization
+  vdebug(2, "%s %s: tasklist => 0x%lx\n", timestamp(), __func__, tasklist);
   tasklist_connect_screen (tasklist, green);	// connect to GREEN instance
 
 #ifdef CONSIDER

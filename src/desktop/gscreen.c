@@ -77,7 +77,7 @@ agent (GtkIconView *iconview, GlobalControl *control)
       command = "gdisplay";
 
     printf("%s::agent: %s\n", Program, name);
-    if (command) system(command);
+    if(command) system_command(command);
   }
 } /* </agent> */
 

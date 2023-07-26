@@ -202,7 +202,7 @@ end_session (GtkWidget *button, GlobalPanel *panel)
 {
   gtk_widget_hide (panel->backdrop);
   gtk_widget_hide (panel->logout->window);
-  gdk_display_sync (gtk_widget_get_display (panel->window));
+  gdk_display_sync(gtk_widget_get_display (panel->gwindow));
 
   finis (panel, TRUE, TRUE);
 } /* </end_session> */
@@ -214,10 +214,8 @@ static void
 end_session_halt (GtkWidget *button, GlobalPanel *panel)
 {
   finis (panel, FALSE, FALSE);
-
   vdebug (1, "sudo /sbin/shutdown -h now\n");
-  system("sudo /sbin/shutdown -h now >/dev/null 2>&1");
-
+  system_command ("sudo /sbin/shutdown -h now >/dev/null 2>&1");
   gtk_main_quit ();	/* all done */
 } /* </end_session_halt> */
 
@@ -230,7 +228,7 @@ end_session_reboot (GtkWidget *button, GlobalPanel *panel)
   finis (panel, FALSE, FALSE);
 
   vdebug (1, "sudo /sbin/shutdown -r now\n");
-  system("sudo /sbin/shutdown -r now >/dev/null 2>&1");
+  system_command ("sudo /sbin/shutdown -r now >/dev/null 2>&1");
 
   gtk_main_quit ();	  /* all done */
 } /* </end_session_reboot> */
@@ -243,7 +241,7 @@ exit_cancel (GtkWidget *button, GlobalPanel *panel)
 {
   gtk_widget_hide (panel->backdrop);
   gtk_widget_hide (panel->logout->window);
-  if (panel->visible) gtk_widget_show (panel->window);
+  if(panel->visible) gtk_widget_show (panel->gwindow);
 } /* </exit_cancel> */
 
 /*
@@ -254,7 +252,7 @@ exit_suspend (GtkWidget *button, GlobalPanel *panel)
 {
   exit_cancel(button, panel);
   vdebug (1, "sudo /sbin/suspend\n");
-  system("sudo /sbin/suspend >/dev/null 2>&1");
+  system_command ("sudo /sbin/suspend >/dev/null 2>&1");
 } /* </exit_suspend> */
 
 /*
@@ -418,7 +416,7 @@ executer (GtkWidget *widget, ConfigurationNode *node)
     else if (strcmp(item, "quit") == 0)
       finis (panel, FALSE, TRUE);
     else if (strcmp(item, "restart") == 0)
-      restart (panel);
+      panel_restart (panel);
     else if (strcmp(item, "settings") == 0)
       settings_activate (panel);
     else if (strcmp(item, "shortcut:create") == 0)
@@ -453,68 +451,15 @@ shutdown_panel (GlobalPanel *panel, int sig)
   if (sig == SIGCONT) {
     gtk_widget_hide (panel->backdrop);
     gtk_widget_hide (logout->window);
-    if (panel->visible) gtk_widget_show (panel->window);
+    if(panel->visible) gtk_widget_show (panel->gwindow);
   }
   else {
     gtk_widget_show (panel->backdrop);
     if(sig == SIGTERM) gtk_widget_show (logout->window);
     gtk_widget_hide (panel->settings->window);
-    gtk_widget_hide (panel->window);
+    gtk_widget_hide (panel->gwindow);
   }
 } /* </shutdown_panel> */
-
-/*
-* (protected) reconstruct
-* (protected) restart
-*/
-void
-reconstruct (GlobalPanel *panel)
-{
-  GList    *iter;             /* plugin modules iterator */
-  Modulus  *applet;           /* plugin module instance */
-  Modulus  *splash = NULL;    /* splash plugin module */
-  bool	   enable;            /* splash plugin enable */
-
-  /* See if the splash screen plugin is available. */
-  for (iter = panel->moduli; iter != NULL; iter = iter->next) {
-    applet = (Modulus *)iter->data;
-
-    if (strcmp(applet->name, "splash") == 0) {
-      splash = applet;
-      enable = splash->enable;	/* save splash plugin enable */
-      splash->enable = false;
-      break;
-    }
-  }
-  restart (panel);		/* reconstruct panel interface */
-
-  if (splash != NULL)		/* restore splash plugin enable */
-    splash->enable = enable;
-} /* </reconstruct> */
-
-void
-restart (GlobalPanel *panel)
-{
-  GList   *iter;		/* modules list iterator */
-  Modulus *applet;		/* module instance */
-
-  /* Invoke module_close() on every plugin module. */
-  for (iter = panel->moduli; iter != NULL; iter = iter->next) {
-    applet = (Modulus *)iter->data;
-
-    if (applet->module && applet->module_close)
-      applet->module_close (applet);
-  }
-
-  panel->taskbar->button = NULL;	/* must invalidate main menu */
-  systray_disconnect (panel->systray);	/* disconnect from system tray */
-
-  green_remove_window (panel->green, GDK_WINDOW_XID (panel->window->window));
-  gtk_widget_destroy (panel->window);	/* destroy panel main window */
-
-  panel_config_orientation (panel);	/* orientation may have changed */
-  panel_loader (panel);
-} /* </restart> */
 
 /*
 * shutdown_dialog_new - create shutdown dialog window

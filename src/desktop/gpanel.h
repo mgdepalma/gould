@@ -60,8 +60,8 @@ typedef struct _PanelTaskbar PanelTaskbar;
 
 struct _GlobalShare
 {
-  Display *display;
-  Window  window;
+  Display *display;		/* Xlib Display object */
+  Window  xwindow;		/* Xlib Window object  */
   Atom    saver;		/* IPC with PanelSaver */
 };
 
@@ -94,7 +94,7 @@ struct _GlobalPanel
   Systray   *systray;		/* system tray manager */
   GtkWidget *backdrop;		/* ghost backdrop window */
   GtkWidget *quicklaunch;	/* quick launch icons box */
-  GtkWidget *window;		/* main window widget */
+  GtkWidget *gwindow;		/* main window widget */
 
   GtkOrientation orientation;	/* GTK_ORIENTATION_{HORIZONTAL, VERTICAL} */
   GtkPositionType place;	/* GTK_POS_{TOP, BOTTOM, LEFT, RIGHT} */
@@ -125,7 +125,7 @@ struct _PanelDesktop
   GtkFunction chooser_apply;	/* optional additional apply callback */
 
   GtkWidget *menu;		/* builtin actions menu */
-  GtkWidget *window;		/* popup widget window */
+  GtkWidget *gwindow;		/* popup widget window */
   GtkWidget *iconview;		/* icon display widget */
   GtkWidget *filer;		/* file chooser layout */
 
@@ -260,14 +260,15 @@ pid_t dispatch (int stream, const char *command);
 
 void executer (GtkWidget *widget, ConfigurationNode *node);
 
-void shutdown_panel (GlobalPanel *panel, int sig);
-void restart (GlobalPanel *panel);
+void panel_restart (GlobalPanel *panel);
+void panel_reconstruct (GlobalPanel *panel);
 
-void reconstruct (GlobalPanel *panel);
-int saveconfig (GlobalPanel *panel);
+void shutdown_panel (GlobalPanel *panel, int sig);
 
 void gpanel_dialog(gint xpos, gint ypos, IconIndex icon, const gchar* fmt, ...);
 gint spawn_dialog(gint xpos, gint ypos, IconIndex icon, const gchar* fmt, ...);
+
+int saveconfig (GlobalPanel *panel);
 G_END_DECLS
 
 #endif /* </GPANEL_H */

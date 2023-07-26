@@ -43,17 +43,17 @@ settings_menu_select_iter (ConfigurationNode *node, GtkTreeIter *iter,
 /*
 * Data structures used in implementation.
 */
-typedef struct _GeneralSettings GeneralSettings;
+typedef struct _PanelSettings PanelSettings;
 
 typedef struct _MenuEditor      MenuEditor;
 typedef struct _MenuEntry       MenuEntry;
 
-struct _GeneralSettings
+struct _PanelSettings
 {
   GlobalPanel *panel;		/* reference to global data */
 
   GtkPositionType place;	/* user selected panel place */
-  GSList *stead;		/* panel place radio buttons group */
+  GSList *radionics;		/* panel place radio buttons group */
 
   GtkWidget *thickness_scale;
   GtkWidget *margin_scale;
@@ -135,9 +135,9 @@ enum {
   MENU_HEADER
 };
 
-static GeneralSettings general_;	/* singleton for general settings */
 static GtkWidget *menuicondialog_;	/* panel->desktop->filer safe access */
 static MenuEditor menueditor_;		/* singleton for menu editor data */
+static PanelSettings general_;		/* singleton for panel settings */
 
 
 /*
@@ -148,7 +148,7 @@ settings_activate (GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
   gtk_widget_show (panel->settings->window);
-  gtk_widget_hide (desktop->window);	 /* hide desktop panel */
+  gtk_widget_hide (desktop->gwindow);	 /* hide desktop panel */
   desktop->active = FALSE;
 } /* </settings_activate> */
 
@@ -310,7 +310,7 @@ static void
 panel_place_config (GtkPositionType place)
 {
   GtkWidget *button;
-  GSList *iter = general_.stead;
+  GSList *iter = general_.radionics;
 
   switch (place) {
      case GTK_POS_TOP:
@@ -329,6 +329,60 @@ panel_place_config (GtkPositionType place)
   button = (GtkWidget *)iter->data;
   gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(button), TRUE);
 } /* </panel_place_config> */
+
+/*
+* (protected) panel_reconstruct
+* (protected) panel_restart
+*/
+void
+panel_reconstruct (GlobalPanel *panel)
+{
+  GList    *iter;             /* plugin modules iterator */
+  Modulus  *applet;           /* plugin module instance */
+  Modulus  *splash = NULL;    /* splash plugin module */
+  bool	   enable;            /* splash plugin enable */
+
+  /* See if the splash screen plugin is available. */
+  for (iter = panel->moduli; iter != NULL; iter = iter->next) {
+    applet = (Modulus *)iter->data;
+
+    if (strcmp(applet->name, "splash") == 0) {
+      splash = applet;
+      enable = splash->enable;	/* save splash plugin enable */
+      splash->enable = false;
+      break;
+    }
+  }
+  panel_restart (panel);	/* reconstruct panel interface */
+
+  if (splash != NULL)		/* restore splash plugin enable */
+    splash->enable = enable;
+} /* </panel_reconstruct> */
+
+void
+panel_restart (GlobalPanel *panel)
+{
+  Modulus *applet;			 /* module instance */
+
+  /* Invoke module_close() on every plugin module. */
+  for (GList *iter = panel->moduli; iter != NULL; iter = iter->next) {
+    applet = (Modulus *)iter->data;
+
+    if (applet->module && applet->module_close)
+      applet->module_close (applet);
+  }
+
+  panel->taskbar->button = NULL;	 /* must invalidate main menu */
+  systray_disconnect (panel->systray);	 /* disconnect from system tray */
+
+  if (panel->gwindow) {			 /* sanity check (paranoid) */
+    green_remove_window (panel->green, GDK_WINDOW_XID (panel->gwindow->window));
+    gtk_widget_destroy (panel->gwindow); /* close panel main window */
+  }
+
+  panel_config_orientation (panel);	 /* orientation may have changed */
+  panel_loader (panel);
+} /* </panel_restart> */
 
 /*
 * panel_settings_apply
@@ -400,9 +454,7 @@ panel_settings_apply (Modulus *applet)
   panel->margin    = general_.margin;
   panel->indent    = general_.indent;
 
-  if (changes > 0) {
-    reconstruct (panel);	/* reconstruct panel interface */
-  }
+  if(changes > 0) panel_reconstruct (panel); /* reconstruct panel interface */
 } /* </panel_settings_apply> */
 
 static void
@@ -500,7 +552,7 @@ panel_indent (GtkRange *range, GlobalPanel *panel)
 Modulus *
 settings_general_new (GlobalPanel *panel)
 {
-  GSList *radio = NULL;
+  GSList *radionics = NULL;
   GtkWidget *box, *button, *frame, *layer, *view, *widget;
   GtkWidget *layout = gtk_hbox_new (FALSE, 4);
 
@@ -537,33 +589,33 @@ settings_general_new (GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, FALSE, 5);
   gtk_widget_show (widget);
 
-  button = gtk_radio_button_new_with_label (radio, _("Top"));
+  button = gtk_radio_button_new_with_label (radionics, _("Top"));
   gtk_box_pack_start (GTK_BOX(layer), button, FALSE, FALSE, 0);
-  radio = g_slist_append (radio, button);
+  radionics = g_slist_append (radionics, button);
   gtk_widget_show (button);
 
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(panel_place), GINT_TO_POINTER (GTK_POS_TOP));
 
-  button = gtk_radio_button_new_with_label (radio, _("Bottom"));
+  button = gtk_radio_button_new_with_label (radionics, _("Bottom"));
   gtk_box_pack_start (GTK_BOX(layer), button, FALSE, FALSE, 0);
-  radio = g_slist_append (radio, button);
+  radionics = g_slist_append (radionics, button);
   gtk_widget_show (button);
 
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(panel_place), GINT_TO_POINTER (GTK_POS_BOTTOM));
 
-  button = gtk_radio_button_new_with_label (radio, _("Left"));
+  button = gtk_radio_button_new_with_label (radionics, _("Left"));
   gtk_box_pack_start (GTK_BOX(layer), button, FALSE, FALSE, 0);
-  radio = g_slist_append (radio, button);
+  radionics = g_slist_append (radionics, button);
   gtk_widget_show (button);
 
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(panel_place), GINT_TO_POINTER (GTK_POS_LEFT));
 
-  button = gtk_radio_button_new_with_label (radio, _("Right"));
+  button = gtk_radio_button_new_with_label (radionics, _("Right"));
   gtk_box_pack_start (GTK_BOX(layer), button, FALSE, FALSE, 0);
-  radio = g_slist_append (radio, button);
+  radionics = g_slist_append (radionics, button);
   gtk_widget_show (button);
 
   g_signal_connect (G_OBJECT(button), "clicked",
@@ -571,7 +623,7 @@ settings_general_new (GlobalPanel *panel)
 
   /* Set the active radio button according to panel->place */
   general_.panel = panel;
-  general_.stead = radio;
+  general_.radionics = radionics;
 
   panel_place_config (panel->place);
 

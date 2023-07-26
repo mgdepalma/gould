@@ -165,8 +165,8 @@ desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
   DesktopAction action = desktop->action;
   Docklet *docklet = desktop->shortcut;
 
-  /* Dismiss the desktop->window interface. */
-  gtk_widget_hide (desktop->window);
+  /* Dismiss the desktop->gwindow interface. */
+  gtk_widget_hide (desktop->gwindow);
   desktop->active = false;
 
   /* Handle the user specified action. */
@@ -266,7 +266,7 @@ desktop_setting_cancel (GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
 
-  gtk_widget_hide (desktop->window);
+  gtk_widget_hide (desktop->gwindow);
   desktop->active = false;
 
   return true;
@@ -311,7 +311,7 @@ desktop_new (GlobalPanel *panel, gint iconsize)
   desktop->menu = menu_options_config (menu, panel, menuiconsize);
 
   /* Create a sticky window with a frame. */
-  window = desktop->window = sticky_window_new (GDK_WINDOW_TYPE_HINT_NORMAL,
+  window = desktop->gwindow = sticky_window_new (GDK_WINDOW_TYPE_HINT_NORMAL,
                                                         280, 180, 100, 100);
   gtk_window_set_keep_above (GTK_WINDOW(window), TRUE);
 
@@ -625,7 +625,7 @@ desktop_settings (GlobalPanel *panel, DesktopAction act)
   }
   else {
     gtk_widget_hide (panel->settings->window);  /* hide settings window */
-    gtk_widget_show (desktop->window); 		/* show manager window */
+    gtk_widget_show (desktop->gwindow);		/* show manager window */
     desktop->active = TRUE;
   }
 

@@ -294,11 +294,11 @@ panel_config_settings(GlobalPanel *panel)
 
   /* initialize panel->shared for interprocess communication */
   shared->display = display;
-  shared->window  = DefaultRootWindow (display);
+  shared->xwindow = DefaultRootWindow (display);
   shared->saver   = XInternAtom (display, attrib, False);
   panel->shared   = shared;
 
-  XSetSelectionOwner(display, shared->saver, shared->window, CurrentTime);
+  XSetSelectionOwner(display, shared->saver, shared->xwindow, CurrentTime);
   g_free (attrib);
 
   /* configuration for general settings  */
@@ -804,9 +804,9 @@ panel_constructor(GlobalPanel *panel)
   GList     *iter;
 
   /* Create a new top level window and set attributes. */
-  widget = panel->window = sticky_window_new (GDK_WINDOW_TYPE_HINT_DOCK,
-                                              panel->width, panel->height,
-                                              panel->xpos, panel->ypos);
+  widget = panel->gwindow = sticky_window_new (GDK_WINDOW_TYPE_HINT_DOCK,
+                                               panel->width, panel->height,
+                                               panel->xpos, panel->ypos);
 
   g_signal_connect(G_OBJECT(widget), "destroy",
 			G_CALLBACK(gtk_main_quit), NULL);
@@ -931,7 +931,7 @@ signal_responder(int signum)
       break;
 
     case SIGCHLD:		/* reap children */
-      gould_error ("%s %s: caught SIGCHLD, pid => %d\n",
+      vdebug (2, "%s %s: caught SIGCHLD, pid => %d\n",
 			timestamp(), Program, getpid());
       while (waitpid(-1, NULL, WNOHANG) > 0) ;
       break;
@@ -987,7 +987,7 @@ session_signal_responder(int signum, siginfo_t *siginfo, void *context)
   switch (signum) {
     case SIGUSR3:
       alarm (_SIGALRM_GRACETIME);	// acknowledgement timeout
-      gtk_widget_show (_desktop->window);
+      if(_desktop->gwindow) gtk_widget_show (_desktop->gwindow);
       kill (sender, SIGUSR3);		// acknowledge `sender'
       alarm (0);			// disarm alarm()
       break;

@@ -412,7 +412,7 @@ screensaver_control (Display *display, GlobalShare *shared, ScreensaverConfig *s
   int format, status;
   unsigned long count, bytes;
   unsigned char *value = NULL;
-  Window window = shared->window;
+  Window xwindow = shared->xwindow;
 
   if (once) {
     screensaver_commands (&commands, saver);
@@ -422,7 +422,7 @@ screensaver_control (Display *display, GlobalShare *shared, ScreensaverConfig *s
   /* See how much data is associated with Atom shared->saver */
   _X_ERROR_TRAP_PUSH ();
 
-  status = XGetWindowProperty (display, window, shared->saver,
+  status = XGetWindowProperty (display, xwindow, shared->saver,
                                0L, 0L, False, AnyPropertyType,
                                &type, &format, &count, &bytes,
                                (unsigned char **)&value);
@@ -431,7 +431,7 @@ screensaver_control (Display *display, GlobalShare *shared, ScreensaverConfig *s
 			_SCREENSAVER_COMMAND, status);
 
   if (bytes > 0) {
-    status = XGetWindowProperty (display, window, shared->saver,
+    status = XGetWindowProperty (display, xwindow, shared->saver,
                                  0L, bytes, False, AnyPropertyType,
                                  &type, &format, &count, &bytes,
                                  (unsigned char **)&value);
@@ -466,7 +466,7 @@ screensaver_control (Display *display, GlobalShare *shared, ScreensaverConfig *s
       else {
         screensaver_debug ("debug", saver, False);
       }
-      XDeleteProperty (display, window, shared->saver);
+      XDeleteProperty (display, xwindow, shared->saver);
     }
   }
   _X_ERROR_TRAP_POP ("xlock::screensaver_control");
@@ -484,7 +484,7 @@ screensaver_fullscreen (GtkWidget *button, ScreensaverConfig *saver)
 
   gtk_widget_set_sensitive (GTK_WIDGET(button), FALSE);
   sprintf(command, "%s/%s", _xscreensaver_modes_directory, saver->mode);
-  system(command);
+  system_command (command);
 
   gtk_widget_set_sensitive (GTK_WIDGET(button), TRUE);
 } /* </screensaver_fullscreen> */
@@ -553,13 +553,13 @@ screensaver (Display *display, GlobalShare *shared, ScreensaverConfig *saver)
         if (saver->lock > 0 && queue->sleep >= saver->lock) {
           printf("%s: activating screenlock after %d minutes\n",
                                      Program, queue->sleep / 60);
-          system (command->screenlock);
+          system_command (command->screenlock);
           queue->sleep = 0;
         }
         else if (saver->time > 0 && queue->sleep >= saver->time) {
           printf("%s: activating screensaver after %d minutes\n",
                                       Program, queue->sleep / 60);
-          system (command->screensave);
+          system_command (command->screensave);
           queue->sleep = 0;
         }
       }
@@ -630,7 +630,7 @@ screensaver_settings_apply (Modulus *applet)
        ? g_strdup_printf ("%s:%d:%d", config->mode, config->time, config->lock)
        : g_strdup ("suspend");
 
-  XChangeProperty (shared->display, shared->window, shared->saver, XA_STRING,
+  XChangeProperty (shared->display, shared->xwindow, shared->saver, XA_STRING,
                    8, PropModeReplace, (unsigned char*)data, strlen(data));
   g_free (data);
 
@@ -693,7 +693,7 @@ screensaver_settings_cancel (Modulus *applet)
   /* Communicate with child process via GlobalShare. */
   value = (config->active) ? "resume" : "suspend";
 
-  XChangeProperty (shared->display, shared->window, shared->saver, XA_STRING,
+  XChangeProperty (shared->display, shared->xwindow, shared->saver, XA_STRING,
                    8, PropModeReplace, (unsigned char*)value, strlen(value));
 
   /* Cache configuration settings in singleton. */
@@ -969,7 +969,7 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (split);
 
   /* Assemble scrollable screensaver chooser. */
-  area = gtk_vbox_new(FALSE, 0); // DEBUG
+  area = gtk_vbox_new(FALSE, 0);
   gtk_box_pack_start (GTK_BOX (split), area, FALSE, FALSE, 0);
   gtk_widget_show (area);
 

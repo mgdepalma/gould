@@ -323,7 +323,7 @@ session_monitor_request(char *request)
     switch (idx) {
       case _SCREENSAVER:
         sessionlog_stamp(1, "[%s] exit\n", session_monitor_tag(idx));
-        system (_SCREENSAVER_GRACEFUL);  // system(3) not recommended
+        system_command (_SCREENSAVER_GRACEFUL);  // system(3) not recommended
         monitor_[idx].process = 0;
         strcpy(request, "0\n");
         break;

@@ -309,7 +309,7 @@ pager_settings_apply (Modulus *applet)
   if (moved) {				/* position changed */
     applet->place = config->order;
   }
-  reconstruct (panel);			/* reconstruct taskbar */
+  panel_reconstruct (panel);		/* reconstruct taskbar */
 
   /* Show or hide pager widget according to user selection. */
   if (config->enable)
