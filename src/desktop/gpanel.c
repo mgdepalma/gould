@@ -807,9 +807,10 @@ panel_constructor(GlobalPanel *panel)
   widget = panel->gwindow = sticky_window_new (GDK_WINDOW_TYPE_HINT_DOCK,
                                                panel->width, panel->height,
                                                panel->xpos, panel->ypos);
-
+#ifdef NEVER
   g_signal_connect(G_OBJECT(widget), "destroy",
 			G_CALLBACK(gtk_main_quit), NULL);
+#endif
 
   gtk_window_set_keep_below (GTK_WINDOW(widget), true);
   if(panel->visible) gtk_widget_show (widget);

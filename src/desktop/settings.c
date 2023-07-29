@@ -377,7 +377,9 @@ panel_restart (GlobalPanel *panel)
 
   if (panel->gwindow) {			 /* sanity check (paranoid) */
     green_remove_window (panel->green, GDK_WINDOW_XID (panel->gwindow->window));
+    // DEBUG GLib-CRITICAL Source ID 160 was not found when attempting ....
     gtk_widget_destroy (panel->gwindow); /* close panel main window */
+    panel->gwindow = NULL;		 /* force panel reconstruct */
   }
 
   panel_config_orientation (panel);	 /* orientation may have changed */

@@ -1721,9 +1721,11 @@ tasklist_viewports_changed(Green *green, Tasklist *tasklist)
 static void
 tasklist_connect_screen(Tasklist *tasklist, Green *green)
 {
-  vdebug(2, "%s %s: tasklist => 0x%lx\n", timestamp(), __func__, tasklist);
   guint *conn = tasklist->priv->connection;
   unsigned short idx = 0;
+
+  vdebug(2, "%s %s: tasklist => 0x%lx, green => 0x%lx\n",
+		timestamp(), __func__, tasklist, green);
 
   conn[idx++] = g_signal_connect_object (
                  G_OBJECT (green), "active-window-changed",
@@ -1756,9 +1758,11 @@ tasklist_connect_screen(Tasklist *tasklist, Green *green)
 static void
 tasklist_disconnect_screen(Tasklist *tasklist)
 {
-  vdebug(2, "%s %s: tasklist => 0x%lx\n", timestamp(), __func__, tasklist);
   TasklistPrivate *context = tasklist->priv;
   guint *conn = context->connection;
+
+  vdebug(2, "%s %s: tasklist => 0x%lx, green => 0x%lx\n",
+		timestamp(), __func__, tasklist, context->green);
 
   for (int idx = 0; idx < N_SCREEN_CONNECTIONS; idx++)
     if (conn[idx] > 0) {
@@ -1775,8 +1779,9 @@ static void
 tasklist_connect_window(GreenWindow *window, Tasklist *tasklist)
 {
   guint *conn = window->connection;
-  vdebug(2, "%s: xid => 0x%lx\n", __func__, green_window_get_xid (window));
   unsigned short idx = 0;
+
+  vdebug(2, "%s: xid => 0x%lx\n", __func__, green_window_get_xid (window));
 
   conn[idx++] = g_signal_connect_object (G_OBJECT (window), "icon_changed",
                            G_CALLBACK (tasklist_window_icon_changed),
@@ -2019,9 +2024,9 @@ tasklist_new(Green *green)
 
   context->green = green;			// complete initialization
   vdebug(2, "%s %s: tasklist => 0x%lx\n", timestamp(), __func__, tasklist);
+#ifdef CONSIDER
   tasklist_connect_screen (tasklist, green);	// connect to GREEN instance
 
-#ifdef CONSIDER
   /* callback when there is a scroll-event for switching to the next window  */
   g_signal_connect_object (G_OBJECT (tasklist),
                            "scroll-event",
