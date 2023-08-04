@@ -832,14 +832,26 @@ menu_config (Modulus *applet, GlobalPanel *panel)
   GtkWidget *button, *image, *layout;
   ConfigurationNode *node = configuration_find (panel->config, "menu");
 
-  PanelIcons   *icons = panel->icons;
-  PanelTaskbar *menu  = panel->taskbar;
+  PanelIcons *icons;
+  PanelTaskbar *taskbar;
 
-  guint iconsize = menu->iconsize;
   const gchar *name;
+  guint iconsize;
 
-  if (node == NULL)	/* <menu ..> not in the configuration */
+  if (node == NULL) {	/* <menu ../> not in the configuration */
+    vdebug (1, "%s::%s: no menu in the configuration.\n", Program, __func__);
+    gould_error ("%s::%s: no menu in the configuration.\n", Program, __func__);
     return NULL;
+  }
+
+  if (panel->taskbar == NULL) {
+    vdebug (1, "%s::%s: panel->taskbar => NULL\n", Program, __func__);
+    return NULL;
+  }
+
+  taskbar  = panel->taskbar;
+  iconsize = taskbar->iconsize;
+  icons = panel->icons;
 
   /* Create the main widget visible on the panel bar. */
   if (panel->orientation == GTK_ORIENTATION_HORIZONTAL)
@@ -874,21 +886,21 @@ menu_config (Modulus *applet, GlobalPanel *panel)
   }
 
   /* See if icon and/or name was changed. */
-  if (menu->button && menu->start) {
-    gtk_container_remove (GTK_CONTAINER(menu->button), menu->start);
-    button = menu->button;
+  if (taskbar->button && taskbar->start) {
+    gtk_container_remove (GTK_CONTAINER(taskbar->button), taskbar->start);
+    button = taskbar->button;
   }
   else {
-    button = menu->button = gtk_toggle_button_new ();
+    button = taskbar->button = gtk_toggle_button_new ();
 
     g_signal_connect (G_OBJECT (button), "button-press-event",
                       G_CALLBACK (activate), panel); 
   }
 
-  /* Main widget for the top level menu. */
+  /* Main widget for the top level taskbar. */
   gtk_container_add (GTK_CONTAINER(button), layout);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NORMAL);
-  menu->start = layout;
+  taskbar->start = layout;
 
   return button;
 } /* </menu_config> */

@@ -2024,9 +2024,9 @@ tasklist_new(Green *green)
 
   context->green = green;			// complete initialization
   vdebug(2, "%s %s: tasklist => 0x%lx\n", timestamp(), __func__, tasklist);
-#ifdef CONSIDER
   tasklist_connect_screen (tasklist, green);	// connect to GREEN instance
 
+#ifdef CONSIDER
   /* callback when there is a scroll-event for switching to the next window  */
   g_signal_connect_object (G_OBJECT (tasklist),
                            "scroll-event",

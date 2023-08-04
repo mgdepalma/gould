@@ -375,15 +375,14 @@ panel_restart (GlobalPanel *panel)
   panel->taskbar->button = NULL;	 /* must invalidate main menu */
   systray_disconnect (panel->systray);	 /* disconnect from system tray */
 
+  panel_config_orientation (panel);	 /* orientation may have changed */
+
   if (panel->gwindow) {			 /* sanity check (paranoid) */
     green_remove_window (panel->green, GDK_WINDOW_XID (panel->gwindow->window));
     // DEBUG GLib-CRITICAL Source ID 160 was not found when attempting ....
     gtk_widget_destroy (panel->gwindow); /* close panel main window */
     panel->gwindow = NULL;		 /* force panel reconstruct */
   }
-
-  panel_config_orientation (panel);	 /* orientation may have changed */
-  panel_loader (panel);
 } /* </panel_restart> */
 
 /*
@@ -456,7 +455,18 @@ panel_settings_apply (Modulus *applet)
   panel->margin    = general_.margin;
   panel->indent    = general_.indent;
 
-  if(changes > 0) panel_reconstruct (panel); /* reconstruct panel interface */
+  if (changes > 0) {
+    panel_config_orientation (panel);	/* orientation may have changed */
+    saveconfig (panel);
+
+    gtk_widget_show (panel->backdrop);
+    gtk_widget_hide (panel->settings->window);
+    notice_at (green_screen_width() - 300, 200, ICON_REBOOT,
+		"%s: will need to restart..", Program);
+
+    // DEBUG GLib-CRITICAL Source ID 160 was not found when attempting ....
+    gtk_widget_destroy (panel->gwindow); /* close panel main window */
+  }
 } /* </panel_settings_apply> */
 
 static void

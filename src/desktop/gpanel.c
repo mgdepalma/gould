@@ -629,10 +629,14 @@ gpanel_respawn(int stream, int seconds)
 static void
 settings_initialize(GlobalPanel *panel)
 {
-  PanelIcons   *icons   = panel->icons;
-  PanelLogout  *logout  = panel->logout  = g_new0 (PanelLogout, 1);
-  PanelTaskbar *taskbar = panel->taskbar = g_new0 (PanelTaskbar, 1);
+  static PanelLogout _logout;
+  static PanelTaskbar _taskbar;
 
+  PanelIcons   *icons   = panel->icons;
+  PanelLogout  *logout  = panel->logout  = &_logout;
+  PanelTaskbar *taskbar = panel->taskbar = &_taskbar;
+  //PanelLogout  *logout  = panel->logout  = g_new0 (PanelLogout, 1);
+  //PanelTaskbar *taskbar = panel->taskbar = g_new0 (PanelTaskbar, 1);
 
   ConfigurationNode *node = configuration_find (panel->config, "menu");
   const gchar *value = configuration_attrib (node, "iconsize");
@@ -807,10 +811,9 @@ panel_constructor(GlobalPanel *panel)
   widget = panel->gwindow = sticky_window_new (GDK_WINDOW_TYPE_HINT_DOCK,
                                                panel->width, panel->height,
                                                panel->xpos, panel->ypos);
-#ifdef NEVER
+
   g_signal_connect(G_OBJECT(widget), "destroy",
 			G_CALLBACK(gtk_main_quit), NULL);
-#endif
 
   gtk_window_set_keep_below (GTK_WINDOW(widget), true);
   if(panel->visible) gtk_widget_show (widget);
