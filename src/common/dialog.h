@@ -124,8 +124,11 @@ GtkWidget *make_menu_item(gchar *name,GCallback callback,gpointer data);
 PrintDialog *printdialog_new (GtkWidget *parent, GtkFunction callback);
 SaveDialog  *savedialog_new  (GtkWidget *parent, GtkFunction callback);
 
-gint notice(GtkWidget *parent, IconIndex icon, const gchar* fmt, ...);
-gint notice_at(gint xpos, gint ypos, IconIndex icon, const gchar* fmt, ...);
+gint notice(GtkWidget *parent, IconIndex icon,
+	const char *fontname, const int fontsize, const gchar* fmt, ...);
+
+gint notice_at(gint xpos, gint ypos, IconIndex icon,
+	const char *fontname, const int fontsize, const gchar* fmt, ...);
 
 gint overwrite(GtkWidget *parent, const gchar* filename);
 void unimplemented(GtkWidget *parent, const gchar* feature);

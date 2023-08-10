@@ -37,8 +37,8 @@ static FileBinding binding[] = {
 };
 
 /*
- * return the file extension based of the given FileType index
- */
+* Return the file extension based of the given FileType index.
+*/
 const gchar *
 get_file_extension(FileType index)
 {
@@ -46,8 +46,8 @@ get_file_extension(FileType index)
 } /* </get_file_extension> */
 
 /*
- * Add button to GtkDialog widget and optionally set image from an XPM file.
- */
+* Add button to GtkDialog widget and optionally set image from an XPM file.
+*/
 GtkWidget *
 add_button(GtkWidget *dialog, IconIndex index,
 	      gchar *label, GtkResponseType handle)
@@ -62,8 +62,8 @@ add_button(GtkWidget *dialog, IconIndex index,
 } /* </add_button> */
 
 /*
- * remove button on a GtkDialog widget
- */
+* Remove button on a GtkDialog widget.
+*/
 void
 remove_button(GtkWidget *dialog, GtkWidget* button)
 {
@@ -72,8 +72,8 @@ remove_button(GtkWidget *dialog, GtkWidget* button)
 } /* </remove_button> */
 
 /*
- * Assemble options menu for file types
- */
+* Assemble options menu for file types
+*/
 GtkWidget *
 add_filetypes(GtkWidget **list)
 {
@@ -83,7 +83,7 @@ add_filetypes(GtkWidget **list)
   gtk_container_set_border_width (GTK_CONTAINER (selections), 10);
   gtk_widget_show (selections);
 
-  label = xpm_label(ICON_PAINT, _("File Type"));
+  label = xpm_label(ICON_PAINT, NULL, 0, _("File Type"));
   gtk_box_pack_start (GTK_BOX (selections), label, FALSE, FALSE, 0);
   gtk_widget_show (label);
 
@@ -110,8 +110,8 @@ add_filetypes(GtkWidget **list)
 } /* </add_filetypes> */
 
 /*
- * callback to set file type
- */
+* callback to set file type
+*/
 void
 set_file_type(GtkWidget *dialog, gpointer value)
 {
@@ -144,8 +144,8 @@ set_file_type(GtkWidget *dialog, gpointer value)
 } /* </set_file_type> */
 
 /*
- * Assemble options menu for paper size
- */
+* Assemble options menu for paper size
+*/
 GtkWidget *
 add_papersize(PaperSize *list)
 {
@@ -176,8 +176,8 @@ add_papersize(PaperSize *list)
 } /* </add_papersize> */
 
 /*
- * callback to set paper size
- */
+* callback to set paper size
+*/
 void
 set_papersize(GtkWidget *widget, gpointer value)
 {
@@ -187,8 +187,8 @@ set_papersize(GtkWidget *widget, gpointer value)
 } /* </set_papersize> */
 
 /*
- * Assemble options menu for available printers
- */
+* Assemble options menu for available printers
+*/
 GtkWidget *
 add_printers(GList *list)
 {
@@ -220,8 +220,8 @@ add_printers(GList *list)
 } /* </add_printers> */
 
 /*
- * callback to set the printer
- */
+* callback to set the printer
+*/
 void
 set_printer(GtkWidget *widget, gpointer value)
 {
@@ -237,8 +237,8 @@ set_printer(GtkWidget *widget, gpointer value)
 } /* </set_printer> */
 
 /*
- * add_horizontal_separator convenience function
- */
+* add_horizontal_separator convenience function
+*/
 void
 add_horizontal_separator(GtkWidget* layout)
 {
@@ -248,8 +248,8 @@ add_horizontal_separator(GtkWidget* layout)
 }
 
 /*
- * add_horizontal_space convenience function
- */
+* add_horizontal_space convenience function
+*/
 void
 add_horizontal_space(GtkWidget* layout, gint space)
 {
@@ -264,8 +264,8 @@ add_horizontal_space(GtkWidget* layout, gint space)
 } /* </add_horizontal_space> */
 
 /*
- * add_vertical_space convenience function
- */
+* add_vertical_space convenience function
+*/
 void
 add_vertical_space(GtkWidget* layout, gint space)
 {
@@ -280,8 +280,8 @@ add_vertical_space(GtkWidget* layout, gint space)
 } /* </add_vertical_space> */
 
 /*
- * make_menu_item convenience function
- */
+* make_menu_item convenience function
+*/
 GtkWidget *
 make_menu_item (gchar *name, GCallback callback, gpointer data)
 {
@@ -295,8 +295,8 @@ make_menu_item (gchar *name, GCallback callback, gpointer data)
 } /* </make_menu_item> */
 
 /*
- * handler for selecting print mode in {PRINT_DEVICE, PRINT_FILE}
- */
+* handler for selecting print mode in {PRINT_DEVICE, PRINT_FILE}
+*/
 static void
 print_device(GtkWidget *button, PrintDialog *print)
 {
@@ -331,8 +331,8 @@ print_device(GtkWidget *button, PrintDialog *print)
 } /* </print_device> */
 
 /*
- * (private) select print orientation in {PRINT_LANDSCAPE, PRINT_PORTRAIT}
- */
+* (private) select print orientation in {PRINT_LANDSCAPE, PRINT_PORTRAIT}
+*/
 static void
 print_orientation(GtkWidget *button, gpointer value)
 {
@@ -349,8 +349,8 @@ print_orientation(GtkWidget *button, gpointer value)
 } /* </print_orientation> */
 
 /*
- * (private) create file chooser callback method
- */
+* (private) create file chooser callback method
+*/
 static bool
 printdialog_callback(GtkWidget *button, PrintDialog *print)
 {
@@ -368,8 +368,8 @@ printdialog_callback(GtkWidget *button, PrintDialog *print)
 } /* </printdialog_callback> */
 
 /*
- * (private) create print dialog
- */
+* (private) create print dialog
+*/
 static PrintDialog *
 printdialog_create(GtkWidget *parent, GtkFunction callback)
 {
@@ -485,8 +485,8 @@ printdialog_create(GtkWidget *parent, GtkFunction callback)
 } /* </printdialog_create> */
 
 /*
- * print image dialog wrapper
- */
+* print image dialog wrapper
+*/
 PrintDialog *
 printdialog_new (GtkWidget *parent, GtkFunction agent)
 {
@@ -495,8 +495,8 @@ printdialog_new (GtkWidget *parent, GtkFunction agent)
 } /* </printdialog> */
 
 /*
- * (private) create file chooser callback method
- */
+* (private) create file chooser callback method
+*/
 static bool
 savedialog_callback(GtkWidget *button, SaveDialog *save)
 {
@@ -514,8 +514,8 @@ savedialog_callback(GtkWidget *button, SaveDialog *save)
 } /* </savedialog_callback> */
 
 /*
- * (private) create file chooser dialog
- */
+* (private) create file chooser dialog
+*/
 static SaveDialog *
 savedialog_create(GtkWidget *parent, GtkFunction callback)
 {
@@ -602,8 +602,8 @@ savedialog_create(GtkWidget *parent, GtkFunction callback)
 } /* </savedialog_create> */
 
 /*
- * save file chooser dialog wrapper
- */
+* save file chooser dialog wrapper
+*/
 SaveDialog *
 savedialog_new (GtkWidget *parent, GtkFunction callback)
 {
@@ -612,15 +612,16 @@ savedialog_new (GtkWidget *parent, GtkFunction callback)
 } /* </savedialog> */
 
 /*
- * alert dialog with CANCEL and OK buttons
- */
+* alert dialog
+*/
 static GtkWidget *
-alert(GtkWidget *parent, IconIndex icon, const gchar *message)
+alert(GtkWidget *parent, IconIndex icon,
+	const char *fontname, const int fontsize, const gchar *message)
 {
   GtkWidget *button;
   GtkWidget *dialog = gtk_dialog_new ();
   GtkWidget *layout = gtk_hbox_new (FALSE, 8);
-  GtkWidget *inside = xpm_label (icon, message);
+  GtkWidget *inside = xpm_label (icon, fontname, fontsize, message);
   GtkWindow *window = GTK_WINDOW(dialog);
 
   /* Customize behavior and look */
@@ -653,24 +654,24 @@ alert(GtkWidget *parent, IconIndex icon, const gchar *message)
   dialogue.window = dialog;
   dialogue.layout = layout;
   dialogue.cancel = button;
-  dialogue.apply  =
-     add_button(dialog, ICON_DONE, _("OK"), GTK_RESPONSE_OK);
+  dialogue.apply  = add_button(dialog, ICON_DONE, _("OK"), GTK_RESPONSE_OK);
 
   return dialog;
 } /* </alert> */
 
 /*
- * alert wrapper method
- */
+* alert wrapper method
+*/
 static GtkWidget *
-message(GtkWidget *parent, IconIndex icon, const gchar *text)
+message(GtkWidget *parent, IconIndex icon,
+	const char *fontname, const int fontsize, const gchar *text)
 {
   if (MessageDialog == NULL)    /* singleton message dialog */
-    MessageDialog = alert(parent, icon, text);
+    MessageDialog = alert(parent, icon, fontname, fontsize, text);
   else {
     GtkWidget *container = GTK_DIALOG(MessageDialog)->vbox;
+    GtkWidget *inside    = xpm_label(icon, fontname, fontsize, text);
     GtkWidget *layout    = gtk_hbox_new (FALSE, 8);
-    GtkWidget *inside    = xpm_label(icon, text);
 
     gtk_container_remove(GTK_CONTAINER (container), dialogue.layout);
     gtk_box_pack_start(GTK_BOX (layout), inside , FALSE, FALSE, 2);
@@ -683,10 +684,11 @@ message(GtkWidget *parent, IconIndex icon, const gchar *text)
 } /* </message> */
 
 /*
- * fire up an alert with a given icon and message
- */
+* fire up an alert with a given icon and message
+*/
 gint
-notice(GtkWidget *parent, IconIndex icon, const gchar *format, ...)
+notice(GtkWidget *parent, IconIndex icon,
+	const char *fontname, const int fontsize, const gchar *format, ...)
 {
   GtkWidget *dialog;
   gchar *text;
@@ -697,7 +699,7 @@ notice(GtkWidget *parent, IconIndex icon, const gchar *format, ...)
   text = g_strdup_vprintf (format, args);
   va_end (args);
 
-  dialog = message(parent, icon, text);
+  dialog = message(parent, icon, fontname, fontsize, text);
   g_free (text);
 
   gtk_widget_show (dialog);
@@ -708,7 +710,8 @@ notice(GtkWidget *parent, IconIndex icon, const gchar *format, ...)
 } /* </notice> */
 
 gint
-notice_at (gint xpos, gint ypos, IconIndex icon, const gchar *format, ...)
+notice_at (gint xpos, gint ypos, IconIndex icon,
+	const char *fontname, const int fontsize, const gchar *format, ...)
 {
   GtkWidget *dialog;
   gchar *text;
@@ -719,7 +722,7 @@ notice_at (gint xpos, gint ypos, IconIndex icon, const gchar *format, ...)
   text = g_strdup_vprintf (format, args);
   va_end (args);
 
-  dialog = message(NULL, icon, text);
+  dialog = message(NULL, icon, fontname, fontsize, text);
   gtk_window_move (GTK_WINDOW(dialog), xpos, ypos);
   g_free (text);
 
@@ -731,8 +734,8 @@ notice_at (gint xpos, gint ypos, IconIndex icon, const gchar *format, ...)
 } /* </notice_at> */
 
 /*
- * notify dialog for file write over
- */
+* notify dialog for file write over
+*/
 gint
 overwrite(GtkWidget *parent, const gchar* filename)
 {
@@ -740,7 +743,7 @@ overwrite(GtkWidget *parent, const gchar* filename)
   gchar *text = g_strdup_printf("%s: %s", filename, _("Already exists"));
   gint status;
 
-  dialog = message(parent, ICON_QUESTION, text);
+  dialog = message(parent, ICON_QUESTION, NULL, 0, text);
   apply  = dialogue.apply;
 
   gtk_widget_show (dialogue.cancel);
@@ -760,15 +763,15 @@ overwrite(GtkWidget *parent, const gchar* filename)
 } /* </overwrite> */
 
 /*
- * fire up an alert saying feature is not implemented
- */
+* fire up an alert saying feature is not implemented
+*/
 void
 unimplemented(GtkWidget *parent, const gchar* feature)
 {
   static IconIndex icon = ICON_WARNING;
 
   if (feature != NULL)
-    notice(parent, icon, "[%s] %s", feature, _("Sorry, not implemented"));
+    notice(parent, icon, NULL, 0, "[%s] %s", feature, _("Sorry, not implemented"));
   else
-    notice(parent, icon, _("Sorry, not implemented"));
+    notice(parent, icon, NULL, 0, _("Sorry, not implemented"));
 } /* </unimplemented> */

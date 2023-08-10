@@ -30,8 +30,8 @@ alert(GtkWidget *parent, IconIndex icon, const gchar *message)
 {
   GtkWidget *button;
   GtkWidget *dialog = gtk_dialog_new ();
+  GtkWidget *inside = xpm_label (icon, NULL, 0, message);
   GtkWidget *layout = gtk_hbox_new (FALSE, 8);
-  GtkWidget *inside = xpm_label (icon, message);
   GtkWindow *window = GTK_WINDOW(dialog);
 
   /* Customize behavior and look */
@@ -82,8 +82,8 @@ message(GtkWidget *parent, IconIndex icon, const gchar *text)
     MessageDialog = alert(parent, icon, text);
   else {
     GtkWidget *container = GTK_DIALOG(MessageDialog)->vbox;
+    GtkWidget *inside    = xpm_label (icon, NULL, 0, text);
     GtkWidget *layout    = gtk_hbox_new (FALSE, 8);
-    GtkWidget *inside    = xpm_label(icon, text);
 
     gtk_container_remove(GTK_CONTAINER (container), dialogue.layout);
     gtk_box_pack_start(GTK_BOX (layout), inside , FALSE, FALSE, 2);

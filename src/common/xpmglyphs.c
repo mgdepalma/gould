@@ -176,8 +176,8 @@ static IconCatalog xpmglyph[] = {
 };
 
 /*
- * Create a GdkPixmap given IconIndex index
- */
+* Create a GdkPixmap given IconIndex index
+*/
 GdkPixmap *
 xpm_icon(IconIndex index, GdkBitmap **mask, GdkColor *backdrop)
 {
@@ -196,8 +196,8 @@ xpm_icon(IconIndex index, GdkBitmap **mask, GdkColor *backdrop)
 } /* </xpm_icon> */
 
 /*
- * xpm_pixbuf produce a GdkPixbuf using given IconIndex
- */
+* xpm_pixbuf produce a GdkPixbuf using given IconIndex
+*/
 GdkPixbuf *
 xpm_pixbuf(IconIndex index, GdkColor *backdrop)
 {
@@ -229,8 +229,8 @@ xpm_pixbuf_scale(IconIndex index, gint width, gint height, GdkColor *backdrop)
 } /* </xpm_pixbuf_scale> */
 
 /*
- * Create a GtkImage given IconIndex index
- */
+* Create a GtkImage given IconIndex index
+*/
 GtkWidget *
 xpm_image (IconIndex index)
 {
@@ -254,8 +254,8 @@ xpm_image_scaled (IconIndex index, gint width, gint height)
 } /* </xpm_image_scaled> */
 
 /*
- * Create a button only with an image
- */
+* Create a button only with an image
+*/
 GtkWidget *
 xpm_image_button (IconIndex index)
 {
@@ -283,11 +283,12 @@ xpm_image_button_scaled (IconIndex index, gint width, gint height)
 } /* </xpm_image_button_scaled> */
 
 /*
- * Create a new hbox with an image and a label packed into it
- * and return the layout.
- */
+* Create a new hbox with an image and a label packed into it
+* and return the layout.
+*/
 GtkWidget *
-xpm_label(IconIndex index, const gchar *text)
+xpm_label (IconIndex index, const char *fontname,
+		const int fontsize, const gchar *text)
 {
   GtkWidget *image;
   GtkWidget *label;
@@ -305,18 +306,25 @@ xpm_label(IconIndex index, const gchar *text)
 
   /* Create a label for the button */
   label = gtk_label_new (text);
-  gtk_box_pack_start (GTK_BOX (layout), label, FALSE, TRUE, 3);
+
+  if (fontname) {
+    PangoFontDescription *df = pango_font_description_from_string(fontname);
+    if(fontsize > 0) pango_font_description_set_size(df, fontsize*PANGO_SCALE);
+    gtk_widget_modify_font(label, df);
+  }
   gtk_label_set_use_markup (GTK_LABEL (label), TRUE);
+  gtk_box_pack_start (GTK_BOX (layout), label, FALSE, TRUE, 3);
   gtk_widget_show (label);
 
   return layout;
 } /* </xpm_label> */
 
 /*
- * Create a new button with an image and a label packed into it.
- */
+* Create a new button with an image and a label packed into it.
+*/
 GtkWidget *
-xpm_button(IconIndex index, const gchar *text)
+xpm_button (IconIndex index, const char *fontname,
+		const int fontsize, const gchar *text)
 {
   GtkWidget *button;
   GtkWidget *layout;
@@ -324,7 +332,7 @@ xpm_button(IconIndex index, const gchar *text)
   if (text != NULL) {     /* Create a new xpmlabel() with image and label */
     gchar padding[MAX_LABEL_LENGTH];
     sprintf(padding, "%6s", text);
-    layout = xpm_label(index, padding);
+    layout = xpm_label (index, fontname, fontsize, padding);
   }
   else {
     layout = xpm_image(index);

@@ -132,9 +132,11 @@ GtkWidget *xpm_image_scaled (IconIndex index, gint width, gint height);
 GtkWidget *xpm_image_button (IconIndex index);
 GtkWidget *xpm_image_button_scaled (IconIndex index, gint width, gint height);
 
-GtkWidget *xpm_button (IconIndex index, const gchar *text);
-GtkWidget *xpm_label (IconIndex index, const gchar *text);
+GtkWidget *xpm_button (IconIndex index, const char *fontname,
+			const int fontsize, const gchar *text);
 
+GtkWidget *xpm_label (IconIndex index, const char *fontname,
+			const int fontsize, const gchar *text);
 G_END_DECLS
 
 #endif /* </XPMGLYPHS_H> */

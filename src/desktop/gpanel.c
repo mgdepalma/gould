@@ -991,7 +991,10 @@ session_signal_responder(int signum, siginfo_t *siginfo, void *context)
   switch (signum) {
     case SIGUSR3:
       alarm (_SIGALRM_GRACETIME);	// acknowledgement timeout
-      if(_desktop->gwindow) gtk_widget_show (_desktop->gwindow);
+      if (_desktop->gwindow) {
+        gtk_window_stick (_desktop->gwindow);
+        gtk_widget_show (_desktop->gwindow);
+      }
       kill (sender, SIGUSR3);		// acknowledge `sender'
       alarm (0);			// disarm alarm()
       break;

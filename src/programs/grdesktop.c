@@ -40,7 +40,7 @@ debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 static gboolean
 about (GtkWidget *widget, GtkWidget *parent)
 {
-  notice(parent, ICON_SNAPSHOT, "\n%s %s %s", Program, Release, Information);
+  notice(parent, ICON_SNAPSHOT, NULL, 0, "\n%s %s %s", Program, Release, Information);
   return FALSE;
 } /* </about> */
 
@@ -68,7 +68,7 @@ rdesktop (GtkWidget *widget, gpointer data)
   gchar command[FILENAME_MAX];
 
   if (strlen(server) == 0) {
-    notice (global->window, ICON_BULB, _("Please specify where to Log on to."));
+    notice (global->window, ICON_BULB, NULL, 0, _("Please specify where to Log on to."));
     return FALSE;
   }
 
@@ -231,19 +231,19 @@ interface(GtkWidget *window)
   gtk_widget_show (area);
 
   /* Add the about program icon button. */
-  info = xpm_button(ICON_HELP, _("Information"));
+  info = xpm_button(ICON_HELP, NULL, 0, _("Information"));
   gtk_box_pack_start (GTK_BOX (area), info, FALSE, FALSE, 2);
   gtk_button_set_relief (GTK_BUTTON (info), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(info), "clicked", G_CALLBACK(about), window);
   gtk_widget_show (info);
 
   /* Assemble the quit button.. we are done! */
-  quit = xpm_button(ICON_CLOSE, _("Close"));
+  quit = xpm_button(ICON_CLOSE, NULL, 0, _("Close"));
   gtk_box_pack_end (GTK_BOX (area), quit, FALSE, TRUE, 2);
   g_signal_connect (G_OBJECT(quit), "clicked", G_CALLBACK(finis), NULL);
   gtk_widget_show (quit);
 
-  item = xpm_button(ICON_REMOTE, _("Connect"));
+  item = xpm_button(ICON_REMOTE, NULL, 0, _("Connect"));
   gtk_box_pack_end (GTK_BOX (area), item, FALSE, TRUE, 2);
   g_signal_connect (G_OBJECT(item), "clicked", G_CALLBACK(rdesktop), NULL);
   gtk_widget_show (item);

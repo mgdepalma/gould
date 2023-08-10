@@ -19,6 +19,7 @@
 
 #include "gould.h"      /* common package declarations */
 #include "gpanel.h"
+#include "gsession.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -137,8 +138,17 @@ enum {
 
 static GtkWidget *menuicondialog_;	/* panel->desktop->filer safe access */
 static MenuEditor menueditor_;		/* singleton for menu editor data */
-static PanelSettings general_;		/* singleton for panel settings */
+static PanelSettings current_;		/* singleton for panel settings */
 
+
+/*
+* intervene gtk_widget_show() unresponsive
+*/
+void
+stubborn (int signum)
+{
+  killall (_GSESSION_DESKTOP, SIGKILL);
+}
 
 /*
 * activate popup window for editing configuration settings
@@ -147,9 +157,13 @@ void
 settings_activate (GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
+
+  signal (SIGALRM, stubborn);
+  alarm (_SIGALRM_GRACETIME);
   gtk_widget_show (panel->settings->window);
-  gtk_widget_hide (desktop->gwindow);	 /* hide desktop panel */
+  gtk_widget_hide (desktop->gwindow);	/* hide desktop panel */
   desktop->active = FALSE;
+  alarm (0);				/* disarm alarm() */
 } /* </settings_activate> */
 
 /*
@@ -310,7 +324,7 @@ static void
 panel_place_config (GtkPositionType place)
 {
   GtkWidget *button;
-  GSList *iter = general_.radionics;
+  GSList *iter = current_.radionics;
 
   switch (place) {
      case GTK_POS_TOP:
@@ -376,6 +390,7 @@ panel_restart (GlobalPanel *panel)
   systray_disconnect (panel->systray);	 /* disconnect from system tray */
 
   panel_config_orientation (panel);	 /* orientation may have changed */
+  saveconfig (panel);
 
   if (panel->gwindow) {			 /* sanity check (paranoid) */
     green_remove_window (panel->green, GDK_WINDOW_XID (panel->gwindow->window));
@@ -393,7 +408,7 @@ static void
 panel_settings_apply (Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
-  GtkPositionType place = general_.place; 
+  GtkPositionType place = current_.place; 
 
   ConfigurationNode *config = panel->config;
   ConfigurationNode *item;
@@ -424,36 +439,36 @@ panel_settings_apply (Modulus *applet)
 
     ++changes;
   }
-  if (panel->thickness != general_.thickness) {
+  if (panel->thickness != current_.thickness) {
     item = configuration_find (config, "thickness");
 
     g_free (item->element);
-    item->element = g_strdup_printf ("%d", general_.thickness);
+    item->element = g_strdup_printf ("%d", current_.thickness);
 
     ++changes;
   }
-  if (panel->margin != general_.margin) {
+  if (panel->margin != current_.margin) {
     item = configuration_find (config, "margin");
 
     g_free (item->element);
-    item->element = g_strdup_printf ("%d", general_.margin);
+    item->element = g_strdup_printf ("%d", current_.margin);
 
     ++changes;
   }
-  if (panel->indent != general_.indent) {
+  if (panel->indent != current_.indent) {
     item = configuration_find (config, "indent");
 
     g_free (item->element);
-    item->element = g_strdup_printf ("%d", general_.indent);
+    item->element = g_strdup_printf ("%d", current_.indent);
 
     ++changes;
   }
 
   /* Save user selected configuration settings. */
-  panel->place     = general_.place;
-  panel->thickness = general_.thickness;
-  panel->margin    = general_.margin;
-  panel->indent    = general_.indent;
+  panel->place     = current_.place;
+  panel->thickness = current_.thickness;
+  panel->margin    = current_.margin;
+  panel->indent    = current_.indent;
 
   if (changes > 0) {
     panel_config_orientation (panel);	/* orientation may have changed */
@@ -461,8 +476,8 @@ panel_settings_apply (Modulus *applet)
 
     gtk_widget_show (panel->backdrop);
     gtk_widget_hide (panel->settings->window);
-    notice_at (green_screen_width() - 300, 200, ICON_REBOOT,
-		"%s: will need to restart..", Program);
+    notice_at (3 * green_screen_width() / 5, 200, ICON_REBOOT,
+		"Monospace", 20, "\n%s: will need to restart..", Program);
 
     // DEBUG GLib-CRITICAL Source ID 160 was not found when attempting ....
     gtk_widget_destroy (panel->gwindow); /* close panel main window */
@@ -475,15 +490,15 @@ panel_settings_cancel (Modulus *applet)
   GlobalPanel *panel = applet->data;
 
   panel_place_config (panel->place);
-  gtk_range_set_value (GTK_RANGE(general_.thickness_scale), panel->thickness);
-  gtk_range_set_value (GTK_RANGE(general_.margin_scale), panel->margin);
-  gtk_range_set_value (GTK_RANGE(general_.indent_scale), panel->indent);
+  gtk_range_set_value (GTK_RANGE(current_.thickness_scale), panel->thickness);
+  gtk_range_set_value (GTK_RANGE(current_.margin_scale), panel->margin);
+  gtk_range_set_value (GTK_RANGE(current_.indent_scale), panel->indent);
 
   /* Revert to previous settings. */
-  general_.place     = panel->place;
-  general_.thickness = panel->thickness;
-  general_.margin    = panel->margin;
-  general_.indent    = panel->indent;
+  current_.place     = panel->place;
+  current_.thickness = panel->thickness;
+  current_.margin    = panel->margin;
+  current_.indent    = panel->indent;
 } /* </panel_settings_cancel> */
 
 /*
@@ -492,21 +507,21 @@ panel_settings_cancel (Modulus *applet)
 static void
 panel_place (GtkWidget *button, gpointer value)
 {
-  GlobalPanel *panel = general_.panel;
+  GlobalPanel *panel = current_.panel;
   PanelSetting *settings = panel->settings;
 
   if (settings->apply && settings->cancel && settings->close) {
     GtkPositionType place = GPOINTER_TO_INT(value); 
 
     /* Register callbacks for apply and cancel. */
-    if (general_.place != place) {
+    if (current_.place != place) {
       settings_save_enable (settings, TRUE);
       settings_set_agents (settings,
                            (gpointer)panel_settings_apply,
                            (gpointer)panel_settings_cancel,
                          NULL);
 
-      general_.place = place;
+      current_.place = place;
     }
   }
 } /* </panel_place> */
@@ -527,7 +542,7 @@ panel_thickness (GtkRange *range, GlobalPanel *panel)
                        (gpointer)panel_settings_cancel,
                        NULL);
 
-  general_.thickness = (int)gtk_range_get_value (range);
+  current_.thickness = (int)gtk_range_get_value (range);
 } /* </panel_thickness> */
 
 static void
@@ -541,7 +556,7 @@ panel_margin (GtkRange *range, GlobalPanel *panel)
                        (gpointer)panel_settings_cancel,
                        NULL);
 
-  general_.margin = (int)gtk_range_get_value (range);
+  current_.margin = (int)gtk_range_get_value (range);
 } /* </panel_margin> */
 
 static void
@@ -555,7 +570,7 @@ panel_indent (GtkRange *range, GlobalPanel *panel)
                        (gpointer)panel_settings_cancel,
                        NULL);
 
-  general_.indent = (int)gtk_range_get_value (range);
+  current_.indent = (int)gtk_range_get_value (range);
 } /* </panel_indent> */
 
 /*
@@ -634,16 +649,16 @@ settings_general_new (GlobalPanel *panel)
                     G_CALLBACK(panel_place), GINT_TO_POINTER (GTK_POS_RIGHT));
 
   /* Set the active radio button according to panel->place */
-  general_.panel = panel;
-  general_.radionics = radionics;
+  current_.panel = panel;
+  current_.radionics = radionics;
 
   panel_place_config (panel->place);
 
   /* Initialize remaining saved settings. */
-  general_.place     = panel->place;
-  general_.thickness = panel->thickness;
-  general_.margin    = panel->margin;
-  general_.indent    = panel->indent;
+  current_.place     = panel->place;
+  current_.thickness = panel->thickness;
+  current_.margin    = panel->margin;
+  current_.indent    = panel->indent;
 
   /* Add box for thickness, margin and indentation. */
   box = gtk_vbox_new (FALSE, 1);
@@ -674,7 +689,7 @@ settings_general_new (GlobalPanel *panel)
   gtk_widget_show (widget);
   g_free (value);
 
-  widget = general_.thickness_scale = gtk_hscale_new_with_range (30, 100, 1);
+  widget = current_.thickness_scale = gtk_hscale_new_with_range (30, 100, 1);
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 0);
   gtk_range_set_value (GTK_RANGE(widget), panel->thickness);
   gtk_widget_set_size_request (GTK_WIDGET(widget), 100, 40);
@@ -702,7 +717,7 @@ settings_general_new (GlobalPanel *panel)
   gtk_widget_show (widget);
   g_free (value);
 
-  widget = general_.margin_scale = gtk_hscale_new_with_range (0, 200, 1);
+  widget = current_.margin_scale = gtk_hscale_new_with_range (0, 200, 1);
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 0);
   gtk_range_set_value (GTK_RANGE(widget), panel->margin);
   gtk_widget_set_size_request (GTK_WIDGET(widget), 100, 40);
@@ -730,7 +745,7 @@ settings_general_new (GlobalPanel *panel)
   gtk_widget_show (widget);
   g_free (value);
 
-  widget = general_.indent_scale = gtk_hscale_new_with_range (0, 30, 1);
+  widget = current_.indent_scale = gtk_hscale_new_with_range (0, 30, 1);
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 0);
   gtk_range_set_value (GTK_RANGE(widget), panel->indent);
   gtk_widget_set_size_request (GTK_WIDGET(widget), 100, 40);
@@ -1131,7 +1146,7 @@ settings_new (GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(layout), layer, FALSE, FALSE, 2);
   gtk_widget_show (layer);
 
-  button = settings->close = xpm_button(ICON_CLOSE, _("Close"));
+  button = settings->close = xpm_button (ICON_CLOSE, NULL, 0, _("Close"));
   gtk_box_pack_end (GTK_BOX(layer), button, FALSE, FALSE, 0);
   GTK_WIDGET_SET_FLAGS (button, GTK_CAN_DEFAULT);
   gtk_widget_grab_default (button);
@@ -1140,7 +1155,7 @@ settings_new (GlobalPanel *panel)
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(settings_close), panel);
 
-  button = settings->apply = xpm_button(ICON_APPLY, _("Apply"));
+  button = settings->apply = xpm_button (ICON_APPLY, NULL, 0, _("Apply"));
   gtk_box_pack_end (GTK_BOX(layer), button, FALSE, FALSE, 0);
   gtk_widget_set_sensitive (button, FALSE);
   gtk_widget_show (button);
@@ -1148,7 +1163,7 @@ settings_new (GlobalPanel *panel)
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(settings_apply), panel);
 
-  button = settings->cancel = xpm_button(ICON_CANCEL, _("Cancel"));
+  button = settings->cancel = xpm_button (ICON_CANCEL, NULL, 0, _("Cancel"));
   gtk_box_pack_end (GTK_BOX(layer), button, FALSE, FALSE, 0);
   gtk_widget_set_sensitive (button, FALSE);
   gtk_widget_show (button);

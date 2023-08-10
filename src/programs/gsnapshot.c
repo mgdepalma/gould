@@ -43,7 +43,7 @@ debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 static gboolean
 about(GtkWidget *widget, GtkWidget *parent)
 {
-  notice(parent, ICON_SNAPSHOT, "\n%s %s %s", Program, Release, Information);
+  notice(parent, ICON_SNAPSHOT, NULL, 0, "\n%s %s %s", Program, Release, Information);
   return FALSE;
 } /* </about> */
 
@@ -95,14 +95,14 @@ printimage (gpointer data)
       fclose(out);
 
       sprintf(message, "%s: PostScript", outfile);
-      notice(print->dialog, ICON_SNAPSHOT, message);
+      notice(print->dialog, ICON_SNAPSHOT, NULL, 0, message);
     }
   }
   else {
     const gchar *command = gtk_entry_get_text (GTK_ENTRY(print->command));
 
     if (strlen(command) < 2 || strncmp(command, "lp", 2) != 0) {
-      notice(print->dialog, ICON_ERROR, _("Invalid print command"));
+      notice(print->dialog, ICON_ERROR, NULL, 0, _("Invalid print command"));
     }
     else {
       out = popen(command, "w");
@@ -110,7 +110,7 @@ printimage (gpointer data)
       pclose(out);
 
       sprintf(message, "%s: %s", _("Job sent to the printer"), command);
-      notice(print->dialog, ICON_INFO, message);
+      notice(print->dialog, ICON_INFO, NULL, 0, message);
     }
   }
   return status;
@@ -241,7 +241,7 @@ construct_viewer(GtkWidget *layout, GtkWidget *window)
   gtk_box_pack_start (GTK_BOX (hbox), vbox, FALSE, TRUE, BOX_SPACING);
   gtk_widget_show (vbox);
 
-  button = xpm_button(ICON_CAMERA, _("New Snapshot"));
+  button = xpm_button(ICON_CAMERA, NULL, 0, _("New Snapshot"));
   gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, TRUE, 0);
   g_signal_connect_swapped (G_OBJECT (button), "clicked",
                             G_CALLBACK (screenshot),
@@ -253,7 +253,7 @@ construct_viewer(GtkWidget *layout, GtkWidget *window)
   gtk_widget_show (box);
 
   label = g_strdup_printf("%s...", _("Save As"));
-  button = xpm_button(ICON_SAVE_AS, label);
+  button = xpm_button(ICON_SAVE_AS, NULL, 0, label);
   gtk_box_pack_start (GTK_BOX (box), button, FALSE, TRUE, 0);
   g_signal_connect_swapped (G_OBJECT (button), "clicked",
                             G_CALLBACK (save_as),
@@ -262,7 +262,7 @@ construct_viewer(GtkWidget *layout, GtkWidget *window)
   g_free(label);
 
   label = g_strdup_printf("%s...", _("Print"));
-  button = xpm_button(ICON_PRINT, label);
+  button = xpm_button(ICON_PRINT, NULL, 0, label);
   gtk_box_pack_start (GTK_BOX (box), button, TRUE, TRUE, 0);
   g_signal_connect_swapped (G_OBJECT (button), "clicked",
                             G_CALLBACK (printofile),
@@ -372,14 +372,14 @@ construct_trail(GtkWidget *layout, GtkWidget *window)
   gtk_widget_show (trail);
 
   /* Add the about program icon button. */
-  info = xpm_button(ICON_HELP, _("Information"));
+  info = xpm_button(ICON_HELP, NULL, 0, _("Information"));
   gtk_box_pack_start (GTK_BOX (trail), info, FALSE, FALSE, 5);
   gtk_button_set_relief (GTK_BUTTON (info), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(info), "clicked", G_CALLBACK(about), window);
   gtk_widget_show (info);
 
   /* Assemble the quit button.. we are done! */
-  quit = xpm_button(ICON_CLOSE, _("Close"));
+  quit = xpm_button(ICON_CLOSE, NULL, 0, _("Close"));
   gtk_box_pack_end (GTK_BOX (trail), quit, FALSE, TRUE, 9);
   /* gtk_button_set_relief (GTK_BUTTON (quit), GTK_RELIEF_NONE); */
   g_signal_connect (G_OBJECT(quit), "clicked", G_CALLBACK(finis), NULL);

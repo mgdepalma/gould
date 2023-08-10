@@ -332,6 +332,7 @@ filechooser_new (const gchar *dirname)
   GtkWidget *box, *button, *entry, *label;
   FileChooser *self = gtk_type_new (FILECHOOSER_TYPE);
   IconBox *iconbox;
+  IconIndex nindex;
   gchar *path;
 
   if (dirname == FILECHOOSER_CWD)
@@ -352,7 +353,7 @@ filechooser_new (const gchar *dirname)
   /* Construct the hbox to display the current file name. */
   box = self->namebox = gtk_hbox_new (FALSE, 2);
 
-  button = self->actuator = xpm_button (ICON_OPEN, NULL);
+  button = self->actuator = xpm_button (ICON_OPEN, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX(box), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
   gtk_widget_show (button);
@@ -365,14 +366,14 @@ filechooser_new (const gchar *dirname)
   /* Construct the hbox for directory navigation. */
   box = self->dirbox = gtk_hbox_new (FALSE, 0);
 
-  button = self->dirup = xpm_button (ICON_UP, NULL);
+  button = self->dirup = xpm_button (ICON_UP, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX(box), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked",
                           G_CALLBACK (dirup), self);
   gtk_widget_show (button);
 
-  button = self->home = xpm_button (ICON_HOME, NULL);
+  button = self->home = xpm_button (ICON_HOME, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX(box), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT (button), "clicked",
@@ -384,14 +385,16 @@ filechooser_new (const gchar *dirname)
   gtk_box_pack_start (GTK_BOX (box), label, FALSE, FALSE, 0);
   gtk_widget_show (label);
 
-  button = xpm_button (ICON_HIDDEN, NULL);
+  button = xpm_button (ICON_HIDDEN, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX (box), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT (button), "clicked",
                           G_CALLBACK (showhidden), self);
   gtk_widget_show (button);
 
-  button = xpm_button (self->showthumbs ? ICON_THUMBNAIL : ICON_ICONS, NULL);
+  nindex = self->showthumbs ? ICON_THUMBNAIL : ICON_ICONS;
+  button = xpm_button (nindex, NULL, 0, NULL);
+
   gtk_box_pack_start (GTK_BOX (box), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT (button), "clicked",

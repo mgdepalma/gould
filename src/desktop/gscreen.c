@@ -45,7 +45,7 @@ about (GtkWidget *instance, GtkWidget *parent)
   if (message == NULL)
     message = g_strdup_printf("\n%s %s %s", Program, Release, Description);
 
-  notice(parent, ICON_SNAPSHOT, message);
+  notice(parent, ICON_SNAPSHOT, NULL, 0, message);
 
   return FALSE;
 } /* </about> */
@@ -99,7 +99,7 @@ interface (GlobalControl *control)
   gtk_widget_show(box);
 
   /* Program information (about) button. */
-  button = xpm_button(ICON_HELP, _("Information"));
+  button = xpm_button (ICON_HELP, NULL, 0, _("Information"));
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(about), window);
   gtk_box_pack_end (GTK_BOX(box), button, FALSE, TRUE, 2);
@@ -125,7 +125,7 @@ interface (GlobalControl *control)
   gtk_box_pack_start(GTK_BOX (layout), box, FALSE, FALSE, 0);
   gtk_widget_show(box);
 
-  button = xpm_button(ICON_CLOSE, _("Close"));
+  button = xpm_button (ICON_CLOSE, NULL, 0, _("Close"));
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(finis), NULL);
   /* gtk_box_pack_start(GTK_BOX (box), button, FALSE, FALSE, 0); */

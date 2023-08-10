@@ -19,6 +19,7 @@
 
 #include "green.h"
 #include "gould.h"		/* common package declarations */
+#include "dialog.h"
 #include "gwindow.h"
 #include "systray.h"
 #include "tasklist.h"
@@ -46,12 +47,65 @@ const char *Usage =
 
 debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 
+static struct _dialogue dialogue;	/* store message dialog parts */
+
+/*
+* alert dialog
+*/
+GtkWidget *
+Alert(GtkWidget *parent, IconIndex icon,
+	const char *fontname, const int fontsize, const gchar *message)
+{
+  GtkWidget *button;
+  GtkWidget *dialog = gtk_dialog_new ();
+  GtkWidget *layout = gtk_hbox_new (FALSE, 8);
+  GtkWidget *inside = xpm_label (icon, fontname, fontsize, message);
+  GtkWindow *window = GTK_WINDOW(dialog);
+
+  /* Customize behavior and look */
+  gtk_dialog_set_has_separator (GTK_DIALOG (dialog), FALSE);
+
+  gtk_window_set_modal (window, TRUE);
+  gtk_window_set_resizable(window, FALSE);
+  gtk_window_set_decorated (window, FALSE);
+  gtk_window_set_position (window, GTK_WIN_POS_MOUSE);
+  gtk_window_set_transient_for (window, GTK_WINDOW (parent));
+  gtk_window_set_skip_taskbar_hint (window, TRUE);
+  gtk_window_set_skip_pager_hint (window, TRUE);
+  gtk_window_set_keep_above (window, TRUE);
+
+  /* Assemble contents of dialog window with icon and message */
+  gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), layout);
+  gtk_box_pack_start(GTK_BOX(layout), inside, FALSE, TRUE, 5);
+  gtk_widget_show (layout);
+
+  /* Add dismiss (acknowledge) button */
+  button = add_button(dialog, ICON_CANCEL, _("Cancel"), GTK_RESPONSE_CANCEL);
+  gtk_widget_hide (button);  /* must be enabled elsewhere */
+
+  /* Store major components in class dialogue */
+  dialogue.window = dialog;
+  dialogue.layout = layout;
+  dialogue.cancel = button;
+  dialogue.apply  = add_button(dialog, ICON_DONE, _("OK"), GTK_RESPONSE_OK);
+
+  return dialog;
+} /* </alert> */
+
 /*
 * clean application exit
 */
 static void
 finis(GtkWidget *instance, gpointer data)
 {
+  GtkWidget *dialog = Alert(NULL, ICON_REBOOT,
+				"Monospace", 20, "program will exit now");
+
+  gtk_window_move (GTK_WINDOW(dialog), green_screen_width() - 300, 200);
+  gtk_widget_show (dialog);
+
+  int status = gtk_dialog_run (GTK_DIALOG (dialog));
+
   gtk_main_quit ();
 } /* </finis> */
 
@@ -296,8 +350,8 @@ main(int argc, char *argv[])
   gtk_widget_show (frame);
 
   /* Set event handlers for window close/destroy. */
-  g_signal_connect (G_OBJECT(window), "destroy", G_CALLBACK(finis), NULL);
-  g_signal_connect (G_OBJECT(window), "delete_event", G_CALLBACK(finis), NULL);
+  g_signal_connect (G_OBJECT(window), "destroy", G_CALLBACK(finis), window);
+  g_signal_connect (G_OBJECT(window), "delete_event", G_CALLBACK(finis), window);
 
   gtk_main ();		/* main event loop */
 

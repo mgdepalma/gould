@@ -409,7 +409,7 @@ desktop_new (GlobalPanel *panel, gint iconsize)
   gtk_container_add (GTK_CONTAINER(layout), layer);
   gtk_widget_show (layer);
 
-  button = xpm_button(ICON_APPLY, _("Apply"));
+  button = xpm_button (ICON_APPLY, NULL, 0, _("Apply"));
   gtk_box_pack_end (GTK_BOX(layer), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
 
@@ -417,7 +417,7 @@ desktop_new (GlobalPanel *panel, gint iconsize)
                      G_CALLBACK(desktop_setting_apply), panel);
   gtk_widget_show (button);
 
-  button = xpm_button(ICON_CANCEL, _("Cancel"));
+  button = xpm_button (ICON_CANCEL, NULL, 0, _("Cancel"));
   gtk_box_pack_end (GTK_BOX(layer), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
 
@@ -484,7 +484,7 @@ desktop_new (GlobalPanel *panel, gint iconsize)
   gtk_box_pack_start (GTK_BOX(split), layout, FALSE, FALSE, 0);
   gtk_widget_show (layout);
 
-  button = xpm_button(ICON_APPLY, _("Apply"));
+  button = xpm_button (ICON_APPLY, NULL, 0, _("Apply"));
   gtk_box_pack_end (GTK_BOX(layout), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
 
@@ -492,7 +492,7 @@ desktop_new (GlobalPanel *panel, gint iconsize)
                      G_CALLBACK(desktop_filer_apply), panel);
   gtk_widget_show (button);
 
-  button = xpm_button(ICON_CANCEL, _("Cancel"));
+  button = xpm_button (ICON_CANCEL, NULL, 0, _("Cancel"));
   gtk_box_pack_end (GTK_BOX(layout), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
   gtk_widget_show (button);

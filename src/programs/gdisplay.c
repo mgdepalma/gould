@@ -52,7 +52,7 @@ gboolean debug = FALSE;		  /* (protected) must be present */
 static gboolean
 about (GtkWidget *instance, GtkWidget *parent)
 {
-  notice(parent, ICON_SNAPSHOT, "\n%s %s %s", Program, Release, Description);
+  notice(parent, ICON_SNAPSHOT, NULL, 0, "\n%s %s %s", Program, Release, Description);
   return FALSE;
 } /* </about> */
 
@@ -315,20 +315,20 @@ interface (GtkWidget *window)
   gtk_box_pack_start(GTK_BOX (area), box, FALSE, TRUE, 0);
   gtk_widget_show(box);
 
-  button = global->backward = xpm_button(ICON_BACK, NULL);
+  button = global->backward = xpm_button(ICON_BACK, NULL, 0, NULL);
   gtk_box_pack_start(GTK_BOX (box), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(prevfile), chooser);
   gtk_widget_show(button);
 
-  button = global->forward = xpm_button(ICON_FORWARD, NULL);
+  button = global->forward = xpm_button(ICON_FORWARD, NULL, 0, NULL);
   gtk_box_pack_start(GTK_BOX (box), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(nextfile), chooser);
   gtk_widget_show(button);
 
   /* Program information (about) button. */
-  button = xpm_button(ICON_HELP, _("Information"));
+  button = xpm_button(ICON_HELP, NULL, 0, _("Information"));
   gtk_box_pack_end (GTK_BOX(box), button, FALSE, TRUE, 2);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(about), window);
@@ -373,14 +373,14 @@ interface (GtkWidget *window)
   gtk_widget_show(box);
 
   /* Set as background button. */
-  button = xpm_button(ICON_WALLPAPER, _("Set as background"));
+  button = xpm_button(ICON_WALLPAPER, NULL, 0, _("Set as background"));
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(setbg), NULL);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   gtk_box_pack_start (GTK_BOX(box), button, FALSE, TRUE, 20);
   gtk_widget_show(button);
 
   /* CLOSE button */
-  button = xpm_button(ICON_CLOSE, _("Close"));
+  button = xpm_button(ICON_CLOSE, NULL, 0, _("Close"));
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(finis), NULL);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   gtk_box_pack_start(GTK_BOX (box), button, FALSE, FALSE, 0);

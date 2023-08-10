@@ -411,13 +411,13 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX (area), pane, FALSE, TRUE, 0);
   gtk_widget_show (pane);
 
-  button = desktop->backward = xpm_button(ICON_BACK, NULL);
+  button = desktop->backward = xpm_button (ICON_BACK, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX (pane), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(prevfile), chooser);
   gtk_widget_show (button);
 
-  button = desktop->forward = xpm_button(ICON_FORWARD, NULL);
+  button = desktop->forward = xpm_button (ICON_FORWARD, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX (pane), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(nextfile), chooser);
@@ -446,7 +446,7 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(inset), button, FALSE, TRUE, 4);
   gtk_widget_show (button);
 
-  button = xpm_button(ICON_FILE, NULL);
+  button = xpm_button (ICON_FILE, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX(inset), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(origfile), applet);

@@ -555,7 +555,7 @@ shutdown_dialog_new (GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(layer), label, FALSE, FALSE, 2);
   gtk_widget_show (label);
 
-  button = xpm_button(ICON_LOGOUT, _("Logout"));
+  button = xpm_button (ICON_LOGOUT, NULL, 0, _("Logout"));
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(end_session), panel);
 
@@ -564,7 +564,7 @@ shutdown_dialog_new (GlobalPanel *panel)
   gtk_widget_show (button);
 
   /* Suspend */
-  button = logout->suspend = xpm_button(ICON_SUSPEND, _("Suspend"));
+  button = logout->suspend = xpm_button(ICON_SUSPEND, NULL, 0, _("Suspend"));
 
   gtk_box_pack_start (GTK_BOX(layer), button, FALSE, FALSE, 2);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
@@ -585,7 +585,7 @@ shutdown_dialog_new (GlobalPanel *panel)
     gtk_widget_set_sensitive(button, FALSE);
 
   /* Shutdown */
-  button = logout->shutdown = xpm_button(ICON_HALT, _("Shutdown"));
+  button = logout->shutdown = xpm_button (ICON_HALT, NULL, 0, _("Shutdown"));
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(end_session_halt), panel);
 
@@ -593,7 +593,7 @@ shutdown_dialog_new (GlobalPanel *panel)
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
   gtk_widget_show (button);
 
-  button = logout->reboot = xpm_button(ICON_REBOOT, _("Restart"));
+  button = logout->reboot = xpm_button (ICON_REBOOT, NULL, 0, _("Restart"));
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(end_session_reboot), panel);
 
@@ -606,7 +606,7 @@ shutdown_dialog_new (GlobalPanel *panel)
   gtk_widget_show (label);
 
   /* Lock Screen */
-  button = logout->shutdown = xpm_button(ICON_LOCK, _("Lock Screen"));
+  button = logout->shutdown = xpm_button (ICON_LOCK, NULL, 0, _("Lock Screen"));
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(screenlock), panel);
 
@@ -624,7 +624,7 @@ shutdown_dialog_new (GlobalPanel *panel)
   gtk_box_pack_end (GTK_BOX(layer), label, FALSE, FALSE, 2);
   gtk_widget_show (label);
 
-  button = xpm_button(ICON_CANCEL, _("Cancel"));
+  button = xpm_button (ICON_CANCEL, NULL, 0, _("Cancel"));
   gtk_box_pack_end (GTK_BOX(layer), button, FALSE, FALSE, 2);
   gtk_widget_show (button);
 
