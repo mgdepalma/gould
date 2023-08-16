@@ -667,8 +667,8 @@ get_process_id(const char *program)
 {
   pid_t instance = -1;
 
+  char answer[MAX_COMMAND];
   char command[MAX_COMMAND];
-  static char answer[MAX_COMMAND];
   FILE *stream;
 
   sprintf(command, "pidof %s", program);
@@ -676,16 +676,30 @@ get_process_id(const char *program)
 
   if (stream) {
     const char delim[2] = " ";
+
     char *master, *token;
+    char self[MAX_STAMP];		  /* exclude self */
+    int mark;
 
-    fgets(answer, MAX_COMMAND, stream);	/* answer maybe a list */
-    master = strtok(answer, delim);
+    fgets(answer, MAX_COMMAND, stream);	  /* answer maybe a list */
+    answer[strlen(answer) - 1] = (char)0; /* chomp newline */
 
-    for (token = master; token != NULL; ) {
-      token = strtok(NULL, delim);
-      if(token != NULL) master = token;	/* pid is last on the list */
+    sprintf(self, "%d", getpid());
+    mark = strlen(self);
+
+    if (strncmp(answer, self, mark) == 0)
+      master = strtok(&answer[mark+1], delim);
+    else
+      master = strtok(answer, delim);
+
+    if (master != NULL) {
+      for (token = master; token != NULL; ) {
+        if ((token = strtok(NULL, delim)) != NULL) {
+          if(strcmp(token, self) != 0) master = token;
+        }
+      }
+      instance = strtoul(master, NULL, 10);
     }
-    instance = strtoul(master, NULL, 10);
     fclose (stream);
   }
   return instance;

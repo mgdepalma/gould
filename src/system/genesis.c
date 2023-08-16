@@ -27,14 +27,14 @@
 #include <unistd.h>
 
 /*
- * Protected data structures.
+* Protected data structures.
 */
 gboolean logout_ = FALSE;	 /* applies only to interactive mode */
 gboolean development_ = FALSE;	 /* TRUE => development, FALSE => production */
-unsigned short debug = 0;	 /* must be declared in main program */
+debug_t debug = 0;	 	 /* must be declared in main program */
 
 const char *Program = "genesis"; /* published program name */
-const char *Release = "0.4.9";	 /* program release version */
+const char *Release = "0.5.0";	 /* program release version */
 
 const char *Schema = "depot";	 /* XML configuration schema */
 const char *ConfigurationHeader =
@@ -74,8 +74,8 @@ const char *Usage =
 "\n";
 
 /*
- * dump_catalogs - print the list of available catalogs.
- */
+* dump_catalogs - print the list of available catalogs.
+*/
 static void
 dump_catalogs (FILE *stream, Depot *depot)
 {
@@ -101,8 +101,8 @@ dump_catalogs (FILE *stream, Depot *depot)
 } /* </dump_catalogs> */
 
 /*
- * get_catalog_node - return the node from a list of a given catalog name.
- */
+* get_catalog_node - return the node from a list of a given catalog name.
+*/
 ConfigurationNode *
 get_catalog_node (GList *list, const char *name)
 {
@@ -117,8 +117,8 @@ get_catalog_node (GList *list, const char *name)
 } /* </get_catalog_node> */
 
 /*
- * get_catalog_list - available catalogs list from configuration cache
- */
+* get_catalog_list - available catalogs list from configuration cache
+*/
 GList *
 get_catalog_list (ConfigurationNode *config)
 {
@@ -135,8 +135,8 @@ get_catalog_list (ConfigurationNode *config)
 } /* </get_catalog_list> */
 
 /*
- * get_signature_list - available signatures list from configuration cache
- */
+* get_signature_list - available signatures list from configuration cache
+*/
 GList *
 get_signature_list (ConfigurationNode *config)
 {
@@ -153,8 +153,8 @@ get_signature_list (ConfigurationNode *config)
 } /* </get_signature_list> */
 
 /*
- * get_source_list - list of package source pathnames
- */
+* get_source_list - list of package source pathnames
+*/
 GList *
 get_source_list (ConfigurationNode *config)
 {
@@ -191,8 +191,8 @@ get_source_list (ConfigurationNode *config)
 } /* </get_source_list> */
 
 /*
- * get_dirent_list - gives the list of files for a given path
- */
+* get_dirent_list - gives the list of files for a given path
+*/
 static GList *
 get_dirent_list (GList *start, const char *path)
 {
@@ -215,8 +215,8 @@ get_dirent_list (GList *start, const char *path)
 } /* </get_dirent_list> */
 
 /*
- * get_package_list - return link list of packages for a given catalog.
- */
+* get_package_list - return link list of packages for a given catalog.
+*/
 GList *
 get_package_list (GList *catalog, GList *list, const char *name)
 {
@@ -238,8 +238,8 @@ get_package_list (GList *catalog, GList *list, const char *name)
 } /* </get_package_list */
 
 /*
- * print_package_list - emit list of packages for a given catalog.
- */
+* print_package_list - emit list of packages for a given catalog.
+*/
 static int
 print_package_list (Depot *global, const char* catalog)
 {
@@ -277,8 +277,8 @@ print_package_list (Depot *global, const char* catalog)
 } /* </print_package_list */
 
 /*
- * read_depot_configuration - read <xmlfile> and initialize cache.
- */
+* read_depot_configuration - read <xmlfile> and initialize cache.
+*/
 Depot *
 read_depot_configuration (const char *path, const char *catalog)
 {
@@ -315,11 +315,11 @@ read_depot_configuration (const char *path, const char *catalog)
 } /* </read_depot_configuration> */
 
 /*
- * write_installation_script - generate installation script.
- *
- * Note: Only a single ..options="<value>" is handled, it is used
- *       to construct the command: 'rpm --<value> ..' when present.
- */
+* write_installation_script - generate installation script.
+*
+* Note: Only a single ..options="<value>" is handled, it is used
+*       to construct the command: 'rpm --<value> ..' when present.
+*/
 void
 write_installation_script (Depot *global, const char *catalog, FILE *stream)
 {
@@ -406,8 +406,8 @@ write_installation_script (Depot *global, const char *catalog, FILE *stream)
 } /* </write_installation_script> */
 
 /*
- * genesis - main program method.
- */
+* genesis - main program method.
+*/
 int
 main(int argc, char* argv[])
 {

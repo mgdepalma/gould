@@ -1074,7 +1074,7 @@ main(int argc, char *argv[])
   if(gmonitor && strcasecmp(gmonitor, "yes") == 0) _monitor = true;
      
   while ((opt = getopt (argc, argv, "d:hvacnp:so")) != -1) {
-  /* while ((opt = getopt_long (argc, argv, opts, longopts, NULL)) != -1) */
+/* while ((opt = getopt_long (argc, argv, opts, longopts, NULL)) != -1) */
     switch (opt) {
       case 'd':
         signal = SIGUNUSED;
@@ -1118,9 +1118,8 @@ main(int argc, char *argv[])
         _exit (EX_USAGE);
     }
   }
-  instance = get_process_id (Program);
 
-  if (instance > 0 && instance != getpid()) {  /* already running */
+  if ((instance = get_process_id (Program)) > 0) { /* already running */
     if (signal == SIGUNUSED)
       printf("%s: %s (pid => %d)\n", Program, _(Singleton), instance);
     else

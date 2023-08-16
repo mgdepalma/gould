@@ -70,7 +70,7 @@ debug_t debug = 1;	/* debug verbosity (0 => none) {must be declared} */
 FILE *_logstream = 0;	/* depends on getenv(LOGLEVEL) > 0 */
 int _stream = -1;	/* stream socket descriptor */
 
-pid_t _instance = 0;	/* singleton process ID */
+pid_t _master  = 0;	/* singleton process ID */
 pid_t _backend = 0;	/* backend process ID */
 pid_t _monitor = 0;	/* monitor process ID */
 
@@ -400,7 +400,7 @@ acknowledge(int connection)
     request[nbytes] = 0;	// chomp request to nbytes read
 
     if (strcmp(request, _GET_SESSION_PID) == 0) {
-      if (pid == _instance)	// _GSESSION_MANAGER main process
+      if (pid == _master)	// _GSESSION_MANAGER main process
         sessionlog_stamp(1, "pidof %s => %d\n", Program, pid);
       else {
         if (pid == _monitor)	// _GSESSION_MONITOR process thread
@@ -474,7 +474,7 @@ signal_responder(int signum)
 
     case SIGTERM:
       sessionlog_stamp(1, "%s: received SIGTERM, pid => %d\n", Program, pid);
-      (pid == _instance) ? session_graceful (SIGUNUSED) : _exit (EX_OK);
+      (pid == _master) ? session_graceful (SIGUNUSED) : _exit (EX_OK);
       break;
 
     case SIGTTIN:
@@ -490,7 +490,7 @@ signal_responder(int signum)
     default:
       sessionlog_stamp(3,"%s: signal => %d, pid => %d\n",Program, signum, pid);
 
-      if (pid == _instance) {
+      if (pid == _master) {
         if (signum == SIGINT || signum == SIGTERM)
           printf("%s, exiting on signal: %d\n", Program, signum);
         else
@@ -614,13 +614,12 @@ main(int argc, char *argv[])
     }
   }
 
-  _instance = getpid();		 /* singleton process ID */
-  pid = get_process_id (Program);
-
-  if (pid > 0 && pid != _instance) {
+  if ((pid = get_process_id (Program)) > 0) {
     printf("%s: %s (pid => %d)\n", Program, _(Singleton), pid);
     _exit (_RUNNING);
   }
+  _master = getpid();		 /* singleton process ID */
+
   session_graceful (SIGTERM, _SIGTERM_GRACETIME);
   session_graceful (SIGKILL);	/* draconian approach */
 

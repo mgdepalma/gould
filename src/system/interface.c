@@ -24,8 +24,10 @@
 #include <sys/types.h>
 #include <signal.h>
 
+extern debug_t debug;	/* see, genesis.c */
+
 /*
- * Protected data structures.
+* Protected data structures.
 */
 enum
 {
@@ -57,8 +59,8 @@ extern gboolean development_;	/* declared in the main program */
 GlobalData *global_;		/* global program data singleton */
 
 /*
- * finis clean program exit
- */
+* finis clean program exit
+*/
 void
 finis (GtkWidget *widget, gpointer data)
 {
@@ -83,8 +85,8 @@ finis (GtkWidget *widget, gpointer data)
 } /* </finis> */
 
 /*
- * [ABOUT_PAGE] about page
- */
+* [ABOUT_PAGE] about page
+*/
 static void
 about (GtkNotebook *book)
 {
@@ -132,8 +134,8 @@ about (GtkNotebook *book)
 } /* </about> */
 
 /*
- * [START_PAGE] select_media
- */
+* [START_PAGE] select_media
+*/
 void
 select_media (GtkNotebook *book)
 {
@@ -251,8 +253,8 @@ select_media (GtkNotebook *book)
 } /* </select_media> */
 
 /*
- * [SETUP_PAGE] select_partitions
- */
+* [SETUP_PAGE] select_partitions
+*/
 void
 select_partitions (GtkNotebook *book)
 {
@@ -296,8 +298,8 @@ select_partitions (GtkNotebook *book)
 } /* </select_partions> */
 
 /*
- * [DEPOT_PAGE] select_packages
- */
+* [DEPOT_PAGE] select_packages
+*/
 void
 select_packages (GtkNotebook *book)
 {
@@ -316,8 +318,8 @@ select_packages (GtkNotebook *book)
 } /* </select_packages> */
 
 /*
- * select_usb_drive
- */
+* select_usb_drive
+*/
 void
 select_usb_drive (GtkNotebook *book)
 {
@@ -338,8 +340,8 @@ select_usb_drive (GtkNotebook *book)
 } /* </select_usb_drive> */
 
 /*
- * interface_visible
- */
+* interface_visible
+*/
 static gboolean
 interface_visible (GtkWidget *widget, GdkEvent *event, gpointer data)
 {
@@ -368,8 +370,8 @@ interface_visible (GtkWidget *widget, GdkEvent *event, gpointer data)
 } /* </interface_visible> */
 
 /*
- * constructor main notebook pages
- */
+* constructor main notebook pages
+*/
 GtkWidget *
 constructor (GtkWidget *widget, const char *root)
 {
@@ -393,17 +395,15 @@ constructor (GtkWidget *widget, const char *root)
 } /* </constructor> */
 
 /*
- * interactive graphical user interface
- */
+* interactive graphical user interface
+*/
 void
 interactive (int argc, char *argv[])
 {
   GtkWindow *window;
   GtkWidget *interface;
   GtkWidget *layout;
-
-  gint width, height;
-  gint xres;
+  gint xres, yres;
 
   const char *distro = lsb_release (DISTRIB_DESCRIPTION);
   const char *root = (argc > 1 && argv[argc-1]) ? argv[argc-1] : "/";
@@ -421,21 +421,27 @@ interactive (int argc, char *argv[])
   gtk_init (&argc, &argv);      /* initialization of the GTK */
   gtk_set_locale ();
 
-  /* Adjust width and height according to screen resolution. */
-  xres = gdk_screen_width ();
-
-  width  = 75 * xres / 100;
-  height = 50 * width / 100;
-
   /* Allocate memory for the global_ singleton. */
   global_ = g_new0 (GlobalData, 1);
 
   global_->cursor[BUSY_CURSOR]   = gdk_cursor_new (GDK_WATCH);
   global_->cursor[NORMAL_CURSOR] = gdk_cursor_new (GDK_TOP_LEFT_ARROW);
 
+  /* Adjust width and height according to screen resolution. */
+  xres = gdk_screen_width ();
+  yres = gdk_screen_height ();
+
   /* Construct the user interface. */
-  interface = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-  gtk_widget_set_size_request (interface, width, height);
+  if (debug > 0) {
+    gint width  = 75 * xres / 100;
+    gint height = 50 * width / 100;
+
+    interface = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+    gtk_widget_set_size_request (interface, width, height);
+  }
+  else
+    interface = sticky_window_new (GDK_WINDOW_TYPE_HINT_DOCK,
+					xres, yres, 20, 20);
   window = GTK_WINDOW (interface);
   gtk_widget_show (interface);
 
