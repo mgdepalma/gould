@@ -29,15 +29,15 @@
 /* special request - get gsession main process ID */
 #define _GET_SESSION_PID "=:_gsession_:="
 
-#define _GSESSION_MANAGER  "gsession"	/* gsession main process    */
+#define _GSESSION_MANAGER  "gsession"	/* gsession master process */
 #define _GSESSION_MONITOR  "monitor"	/* gsession monitor process */
 #define _GSESSION_BACKEND  "backend"	/* gsession backend process */
-#define _GSESSION_DESKTOP  "gpanel"	/* gpanel main process */
+#define _GSESSION_TASKBAR  "gpanel"	/* gsession taskbar process */
 
 #define _WINDOWMANAGER	    0		/* SessionMonitor monitor_[0] */
 #define _SCREENSAVER	    1		/* SessionMonitor monitor_[1] */
 #define _LAUNCHER	    2		/* SessionMonitor monitor_[2] */
-#define _DESKTOP	    3		/* SessionMonitor monitor_[3] */
+#define _TASKBAR	    3		/* SessionMonitor monitor_[3] */
 #define SessionMonitorCount 4
 
 #define _SIGALRM_GRACETIME  2		/* SIGALRM gracetime in seconds */

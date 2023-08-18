@@ -134,14 +134,14 @@ static char *
 session_monitor_tag(const int tag)
 {
   switch (tag) {
-    case _DESKTOP:
-      return "DESKTOP";
     case _WINDOWMANAGER:
       return "WINDOWMANAGER";
     case _SCREENSAVER:
       return "SCREENSAVER";
     case _LAUNCHER:
       return "LAUNCHER";
+    case _TASKBAR:
+      return "TASKBAR";
   }
   return "<undefined>";
 } /* </session_monitor_tag> */
@@ -237,7 +237,7 @@ session_monitor(const char *name)
   }
 
   if (monitor && strcasecmp(monitor, "yes") == 0) {
-    sessionlog_stamp(1, "[%s] ping every %d seconds {DESKTOP}\n",
+    sessionlog_stamp(1, "[%s] ping every %d seconds {TASKBAR}\n",
 			name, _monitor_seconds_interval);
     gmonitor = true;
   }
@@ -254,7 +254,7 @@ session_monitor(const char *name)
   }
   prctl(PR_SET_NAME, (unsigned long)name, 0, 0);
 
-  /* {WINDOWMANAGER}, {SCREENSAVER}, {LAUNCHER}, {DESKTOP} */
+  /* {WINDOWMANAGER}, {SCREENSAVER}, {LAUNCHER}, {TASKBAR} */
   for (idx = 0; idx < SessionMonitorCount; idx++) {
     monitor_[idx].enabled = (monitor_[idx].program) ? true : false;
 
@@ -264,9 +264,9 @@ session_monitor(const char *name)
     }
   }
 
-  /* if needed: session_spawn(_DESKTOP, async => true) */
-  sprintf(procfile, "/proc/%d", monitor_[_DESKTOP].process);
-  if(access(procfile, R_OK) != 0) session_spawn(_DESKTOP, true);
+  /* if needed: session_spawn(_TASKBAR, async => true) */
+  sprintf(procfile, "/proc/%d", monitor_[_TASKBAR].process);
+  if(access(procfile, R_OK) != 0) session_spawn(_TASKBAR, true);
 
   close(STDIN_FILENO);	/* close stdin. stdout and stderr */
   close(STDOUT_FILENO);
@@ -280,6 +280,19 @@ session_monitor(const char *name)
       if (monitor_[idx].enabled) {
         sprintf(procfile, "/proc/%d", monitor_[idx].process);
 
+        if (idx == _TASKBAR) {	/* {TASKBAR} special case */
+          pid_t tid = get_process_id (_GSESSION_TASKBAR);
+
+          if (tid > 0 && tid != monitor_[idx].process) {
+             /* process was not started by SessionMonitor */
+             sessionlog_stamp(1, "change [%s] pid => %d\n",
+					session_monitor_tag(idx), tid);
+            monitor_[idx].process = tid;
+            sleep (_monitor_seconds_interval);
+	    continue;
+          }
+        }
+
         if (access(procfile, R_OK) != 0) {
           sessionlog_stamp(1, "[%s] pid => missing\n",
 				session_monitor_tag (idx));
@@ -288,9 +301,9 @@ session_monitor(const char *name)
       }
     }
     if (gmonitor)	/* acknowledgement expected */
-      kill(monitor_[_DESKTOP].process, SIGUSR3);
+      kill(monitor_[_TASKBAR].process, SIGUSR3);
     else {
-      killall (_GSESSION_DESKTOP, SIGUSR3); // gpanel may need refresh
+      killall (_GSESSION_TASKBAR, SIGUSR3); // gpanel may need refresh
       sleep (_monitor_seconds_interval);
     }
   }
@@ -302,7 +315,7 @@ session_monitor(const char *name)
 *
 * {_GSESSION_SERVICE} # b{_GSESSION_SERVICE_CALL} style request
 *                     ^ ^  0 => disable, 1 => enable
-*                     ` {_WINDOWMANAGER,_SCREENSAVER,_LAUNCHER,_DESKTOP}
+*                     ` {_WINDOWMANAGER,_SCREENSAVER,_LAUNCHER,_TASKBAR}
 */
 void
 session_monitor_request(char *request)
@@ -482,8 +495,8 @@ signal_responder(int signum)
       sessionlog_stamp(1,"%s: caught signal %d, ignoring.\n", Program, signum);
       break;
 
-    case SIGUSR3:		/* acknowledgement from {DESKTOP} process */
-      sessionlog_stamp(3, "%s gdesktop acknowledges\n", timestamp());
+    case SIGUSR3:		/* acknowledgement from {TASKBAR} process */
+      sessionlog_stamp(3, "%s %s acknowledges\n", timestamp(), _GSESSION_TASKBAR);
       sleep (_monitor_seconds_interval);
       break;
 
@@ -541,7 +554,7 @@ interface(const char *program)
   const char *windowmanager = getenv("WINDOWMANAGER");
   const char *screensaver  = getenv("SCREENSAVER");
 
-  const char *desktop  = getenv("DESKTOP");
+  const char *taskbar  = getenv("TASKBAR");
   const char *launcher = getenv("LAUNCHER");
 
   if ((debug = (loglevel) ? atoi(loglevel) : 0) > 0) {
@@ -559,19 +572,11 @@ interface(const char *program)
   if (open_stream_socket(_GSESSION) != 0)
     _exit (EX_PROTOCOL);
 
-  /* {DESKTOP}, {WINDOWMANAGER}, {SCREENSAVER}, and {LAUNCHER} */
-  monitor_[_DESKTOP].program = (desktop) ? desktop : "gdesktop";
+  /* {WINDOWMANAGER}, {SCREENSAVER}, {TASKBAR}, and {LAUNCHER} */
   monitor_[_WINDOWMANAGER].program = (windowmanager) ? windowmanager : "twm";
   monitor_[_SCREENSAVER].program = screensaver;
+  monitor_[_TASKBAR].program = (taskbar) ? taskbar : _GSESSION_TASKBAR;
   monitor_[_LAUNCHER].program = launcher;
-
-  /* 20230620 session_spawn{..} done by _GSESSION_MONITOR
-  for (int idx = 0; idx < SessionMonitorCount; idx++)
-    if (monitor_[idx].program) {
-      pid = session_spawn (monitor_[idx].program);
-      monitor_[idx].process = pid;
-    }
-  */
 
   /* monitor SessionMonitor monitor_[].process */
   session_monitor( _GSESSION_MONITOR );

@@ -147,7 +147,7 @@ static PanelSettings current_;		/* singleton for panel settings */
 void
 stubborn (int signum)
 {
-  killall (_GSESSION_DESKTOP, SIGKILL);
+  killall (_GSESSION_TASKBAR, SIGKILL);
 }
 
 /*
