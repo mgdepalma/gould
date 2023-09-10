@@ -755,8 +755,8 @@ startx(void)
   cmd = g_key_file_get_string(config, "core", "server", 0);
 
   if (!cmd) {
-    log_print("server[core] not found, using: /usr/X11/bin/X\n");
-    cmd = g_strdup("/usr/X11/bin/X");
+    log_print("server[core] not found, using: /usr/bin/X\n");
+    cmd = g_strdup("/usr/bin/X");
   }
   argv = g_strsplit(cmd, " ", -1);
   g_free(cmd);

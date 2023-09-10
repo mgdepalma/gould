@@ -1,20 +1,21 @@
 ##
 # gould (gtk ultra light desktop) display manager configuration
 #
-# 2010-04-30 Generations Linux <bugs@softcraft.org>
+# 2023-09-08 Generations Linux <bugs@softcraft.org>
 #
 [core]
 #autologin=guest
-server=/usr/X11/bin/X
-greeter=@LIBEXECDIR@/greeter
+server=/usr/bin/X
+greeter=/usr/bin/greeter
 #numlock=0
 
 [display]
 theme=default
+#gtk_theme=Adwaita
 gtk_theme=Clearlooks
-#bg=/usr/share/wallpaper/default.jpg
-#users="root,guest/welcome"
-scale=95
+bg=/usr/share/backgrounds/default.jpg
+users="avatar/pandora,root
+scale=90
 quit=0
 
 [input]

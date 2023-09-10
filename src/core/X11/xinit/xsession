@@ -2,13 +2,12 @@
 ##
 # X Window System session initialization file.
 #
-# 2014-04-04 Generations Linux <bugs@softcraft.org>
+# 2023-09-09 Generations Linux <bugs@softcraft.org>
 #
 GNOME=/opt/gnome
 KDE=/opt/kde
-X11=/usr/X11
 
-PATH=/bin:/usr/bin:$X11/bin:/usr/local/bin
+PATH=/bin:/usr/bin:/usr/bin/X11:/usr/local/bin
 [ $(id -u) -eq 0 ] && PATH="/sbin:/usr/sbin:$PATH"
 
 if [ -d $GNOME/bin ]; then
@@ -17,6 +16,21 @@ if [ -d $GNOME/bin ]; then
   export LD_LIBRARY_PATH
 fi
 [ -d $KDE/bin ] && PATH="$PATH:$KDE/bin"
+
+# set DISPLAY and/or HOME, as needed 
+if [ -z "$DISPLAY" ]; then
+  DISPLAY=":0"
+  export DISPLAY
+fi
+
+if [ -z "$HOME" ]; then
+  if [ -z "$USER" ]; then
+    USER=$(whoami)
+    export USER
+  fi
+  HOME=$(grep $USER /etc/passwd | cut -d: -f6)
+  export HOME
+fi
 
 ##
 # initialize resource database with system-wide resources file
