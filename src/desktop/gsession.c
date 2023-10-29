@@ -300,11 +300,8 @@ session_monitor(const char *name)
         }
       }
     }
-    if (gmonitor)	/* acknowledgement expected */
+    if (gmonitor) {	/* acknowledgement expected */
       kill(monitor_[_TASKBAR].process, SIGUSR3);
-    else {
-      killall (_GSESSION_TASKBAR, SIGUSR3); // gpanel may need refresh
-      sleep (_monitor_seconds_interval);
     }
   }
   return 0;
