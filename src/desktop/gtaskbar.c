@@ -335,7 +335,7 @@ main(int argc, char *argv[])
   }
 
   /* Create the graphical user interface. */
-  window = sticky_window_new (GDK_WINDOW_TYPE_HINT_DOCK, width, 32, 20, 50);
+  window = sticky_window_new (GDK_WINDOW_TYPE_HINT_DOCK, width, 32, 5, 5);
   /* gtk_container_add (GTK_CONTAINER(window), interface ()); */
   gtk_widget_show (window);
 

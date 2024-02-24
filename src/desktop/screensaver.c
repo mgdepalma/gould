@@ -484,6 +484,7 @@ screensaver_fullscreen (GtkWidget *button, ScreensaverConfig *saver)
 
   gtk_widget_set_sensitive (GTK_WIDGET(button), FALSE);
   sprintf(command, "%s/%s", _xscreensaver_modes_directory, saver->mode);
+  vdebug (3, "[%s]%s\n", __func__, command);
   system_command (command);
 
   gtk_widget_set_sensitive (GTK_WIDGET(button), TRUE);

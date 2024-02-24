@@ -2,20 +2,10 @@
 ##
 # X Window System session initialization file.
 #
-# 2023-09-09 Generations Linux <bugs@softcraft.org>
+# 2023-12-24 Generations Linux <bugs@softcraft.org>
 #
-GNOME=/opt/gnome
-KDE=/opt/kde
-
-PATH=/bin:/usr/bin:/usr/bin/X11:/usr/local/bin
-[ $(id -u) -eq 0 ] && PATH="/sbin:/usr/sbin:$PATH"
-
-if [ -d $GNOME/bin ]; then
-  PATH="$PATH:$GNOME/bin"
-  LD_LIBRARY_PATH=$GNOME/lib
-  export LD_LIBRARY_PATH
-fi
-[ -d $KDE/bin ] && PATH="$PATH:$KDE/bin"
+PATH=/usr/bin:/usr/local/bin
+[ $(id -u) -eq 0 ] && PATH="/usr/sbin:$PATH"
 
 # set DISPLAY and/or HOME, as needed 
 if [ -z "$DISPLAY" ]; then
@@ -72,17 +62,12 @@ fi
 [ -n "$1" ] && DESKTOP=$1
 
 case $DESKTOP in
-  GNOME*|Gnome*|gnome*)
-    if [ -x $GNOME/bin/gnome-session ]; then
-      SESSION=gnome-session
-    fi
+  GNOME*|gnome*)
+    SESSION=gnome-session
     ;;
 
   KDE*|kde*|startkde)
-    if [ -x $KDE/bin/startkde ]; then
-      export LD_LIBRARY_PATH;LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$KDE/lib
-      SESSION=startkde
-    fi
+    SESSION=startkde
     ;;
 
   *xsession|gould)
@@ -100,3 +85,4 @@ case $DESKTOP in
 # if nothing else start X session manager
 exec ${SESSION:-xsession} > $HOME/.xsession-errors 2>&1
 
+#/
