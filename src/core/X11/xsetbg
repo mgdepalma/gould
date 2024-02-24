@@ -1,0 +1,51 @@
+#!/bin/sh
+##
+# Set X background using supplied image
+#
+# 2023-06-18 Generations Linux <bugs@softcraft.org>
+#
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/bin/X11
+export PATH
+
+PROGRAM=${0##*/}
+VERSION="1.0.1"
+
+##
+# print message and exit
+abend()
+{
+  echo "$*"
+  exit 1
+}
+
+##
+# show program usage
+usage()
+{
+  cat << EOF
+usage: $PROGRAM [image file]
+   Set the X background using the specified image. By default,
+   the picture will be scaled to the full screen size.
+EOF
+  exit 3
+}
+
+##
+# main program
+[ -n "$1" ] || usage
+
+for arg in "$@"; do
+  case "$arg" in
+    -*) ;;
+     *) [ -r "$arg" ] || abend "$PROGRAM: Unable to open image file '$arg'."
+        ;;
+  esac
+done
+
+#xv -max -quit -root -wait 0 $@
+feh --no-xinerama --bg-scale $@
+
+# signal session manager to refresh application launch bar
+[ -n "$(pidof gsession)" ] && killall -TERM ${LAUNCHER:-wbar} >& /dev/null
+
+#/

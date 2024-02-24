@@ -1,0 +1,12 @@
+#!/bin/sh
+##
+# xname - change/set the title of an xterm class application.
+#
+# 2002-02-02 Generations Linux <bugs@softcraft.org>
+#
+if [ $# -ne 1 ]
+then
+  echo "usage: xname <title>"
+else
+  echo -n "]0;$1"
+fi
