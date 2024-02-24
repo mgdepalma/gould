@@ -1,81 +1,128 @@
-!!!
-!!
-! This is the global resources file that is loaded when
-! all users log in, as well as for the login screen
-!!
-!!!
-Scrollbar.JumpCursor:	    True
 !
-! Good Xaw3d Defaults - Bruce Cheng <chengb@craft.camp.clarkson.edu>
+! Default mapping for Delete
 !
-!*Command.background:               #c0c0c0
-!*TransientShell*Dialog.background: #c0c0c0
-!*Form.background:                  #c0c0c0
-!*Menubutton.background:            #c0c0c0
-!*ScrollbarBackground:              #c0c0c0
-!*Scrollbar*background:             #c0c0c0
-!*Scrollbar*width:                  15
-!*Scrollbar*height:                 15
-!*Scrollbar*shadowWidth:            2
-!*Scrollbar*pushThumb:              false
-*Scrollbar*cursorName:             top_left_arrow
-!*beNiceToColormap:                 false
-!*bottomShadowContrast:             55
-!*topShadowContrast:                20
-!*SmeBSB*shadowWidth:               2
-!*shadowWidth:                      2
-!*shapeStyle:                       Rectangle
-!*highlightThickness:               0
+*Text.Translations:	   #override \n ~Shift ~Meta ~Alt <Key>Delete: delete-next-character() \n
+*AxeText.Translations:	   #override \n ~Shift ~Meta ~Alt <Key>Delete: delete-next-character() \n
+*XmText.Translations:	   #override \n ~Shift ~Meta ~Alt <Key>Delete: delete-next-character() \n ~Shift ~Meta ~Alt <Key>osfDelete: delete-next-character() \n ~Shift ~Meta ~Alt <Key>osfBackSpace: delete-previous-character() \n
+*XmTextField.Translations: #augment \n ~Shift ~Meta ~Alt <Key>osfDelete: delete-next-character() \n ~Shift ~Meta ~Alt <Key>osfBackSpace: delete-previous-character() \n
+
 !
-! Motif Window Manager resources
+! Defaults for 3D Athena Widgets library
 !
-Mwm*xterm*iconImage:	    /usr/include/X11/bitmaps/terminal
-Mwm*xterm*useClientIcon:    True
-Mwm*buttonBindings:	    DefaultButtonBindings
-Mwm*fontList:	            variable
-Mwm*keyboardFocusPolicy:    pointer
-Mwm*windowMenu:             DefaultWindowMenu
+*Form.background:			grey67
+*Form.foreground:			black
+*TransientShell*Dialog.background:	grey67
+*TransientShell*Dialog.foreground:	black
+*Command.background:			grey77
+*Command.foreground:			black
+*MenuButton.background:			grey77
+*MenuButton.foreground:			black
+*SimpleMenu*background:			grey77
+*SimpleMenu*foreground:			black
+*ScrollbarBackground:			grey67
+*ScrollbarForeground:			grey37
+*Scrollbar*background:			grey77
+*Scrollbar*foreground:			grey37
+*Scrollbar*pointerColor:		black
+*Scrollbar*pointerColorBackground:	white
+*beNiceToColormap:			False
+*Scrollbar*width:			15
+*Scrollbar*height:			15
+*Scrollbar*shadowWidth:			2
+*Scrollbar*borderWidth:			2
+*Scrollbar*cursorName:			top_left_arrow
+*Scrollbar*pushThumb:			false
+*Label*shadowWidth:			2
+*Label*borderWidth:			2
+*shapeStyle:				Rectangle
+*shadowWidth:				2
+*SmeBSB*shadowWidth:			2
+*Toggle*highlightThickness:		2
+*MenuButton*highlightThickness:		2
+*Command*highlightThickness:		2
+*Panner*shadowThickness:		2
+*SimpleMenu*shadowThickness:		2
+*topShadowContrast:			20
+*bottomShadowContrast:			45
+*PushThumb:				False
+
+*printCommand: lpr
+
+Mwm.interactivePlacement:	false
+
+Scrollbar.JumpCursor:	True
+
+
+Ghostview.pageMedia:  A4
+
+*XConsole*text.scrollHorizontal:         False
+*XConsole*text.wrap: line
+
 !
-! Kanji XTerm resources
+! XSysinfo 
 !
-kterm*Cursors:	            on
-kterm*CursorShape:	    arrow
-kterm*ScrollBar:	    on
+XSysinfo*.font:                 fixed
+XSysinfo*.title.label:          Linx System Info
+XSysinfo*.title.width:          200
+XSysinfo*.load.name.label:      CPU Load:
+XSysinfo*.idle.name.label:      CPU Idle:
+XSysinfo*.mem.name.label:       Memory:
+XSysinfo*.swap.name.label:      Swap:
+! set foreground colors for load
+XSysinfo*load*bar.foreground:   RosyBrown1
+XSysinfo*load*bar.foreground1:  IndianRed1
+XSysinfo*load*bar.foreground2:  OrangeRed1
+XSysinfo*load*bar.foreground3:  firebrick1
+XSysinfo*load*bar.foreground4:  pink1
+XSysinfo*load*bar.foreground5:  HotPink1
+XSysinfo*load*bar.foreground6:  DeepPink2
+XSysinfo*load*bar.foreground7:  maroon1
+XSysinfo*load*bar.segmentGap:   1
+
+! set idle gauge color
+XSysinfo*idle*bar.foreground:   green
+XSysinfo*idle*bar.backgroud:   red
+
+! set mem info gauge colors
+XSysinfo*mem*bar.foreground:    tomato
+XSysinfo*mem*bar.foreground1:   green3
+XSysinfo*mem*bar.foreground2:   orchid
+
+! set swap gauge color
+XSysinfo*swap*bar.foreground:   hotpink1
+
+! set background
+XSysinfo*.background:           gray50
+XSysinfo*.BarGauge.background:  white
+
+
+*basicLocale:	C
+*timeFormat:	C
+*numeric:	C
+*displayLang:	C
+*inputLang:	C
+
+*customization:	-color
+
+! ===========================================================================
+!                               Motif
+! ===========================================================================
+
+!*XmText.translations: #override\n\
+!       <Key>osfDelete: delete-previous-character()\n\
+!       <Key>osfBackSpace: delete-next-character()\n
 !
-! XTerm resources
-!
-XTerm*DeiconifyWarp:	    off
-XTerm*BitmapIcon:	    off
-XTerm*Font:		    8x13bold
-XTerm*SaveLines:	    512
-XTerm*MenuBorder:           1
-XTerm*TextUnderIcon:	    off
-XTerm*Cursors:	            on
-!XTerm*iconPixmap:	    /usr/include/X11/bitmaps/terminal
-XTerm*MenuFont:	            timrom10b
-XTerm*CursorShape:	    arrow
-XTerm*TitleFont:	    timrom10b
-XTerm*BorderWidth:	    2
-XTerm*ScrollBar:	    on
-XTerm*ActiveIcon:	    off
-XTerm*AllowIconInput:	    off
-XTerm*Logging:	            off
-*VT100.translations: #override \
-  <Key>Next: scroll-forw(1,page) \n\
-  <Key>Prior: scroll-back(1,page)
-!
-! Fix the Xft dpi to 96; this prevents tiny fonts
-! or HUGE fonts depending on the screen size.
-Xft.dpi: 96
-!
-! hintstyle: medium means that (for Postscript fonts) we
-! position the stems for maximum constrast and consistency
-! but do not force the stems to integral widths. hintnone,
-! hintslight, and hintfull are the other possibilities.
-Xft.hintstyle: hintmedium
-Xft.hinting: true
-!
-! Brute force includes..
-!
-#include "/usr/share/X11/app-defaults/XCalc-color"
-!</Xresources>
+!*XmTextField.translations: #override\n\
+!       <Key>osfDelete: delete-next-character()\n\
+!       <Key>osfBackSpace: delete-previous-character()\n
+
+
+! ===========================================================================
+!                               XTerm
+! ===========================================================================
+!*vt100.translations: #override \
+!        <Key>Home:      string("[1~") \n\
+!        <Key>Insert:    string("[2~") \n\
+!        <Key>BackSpace: string("[3~") \n\
+!        <Key>End:       string("[4~")
+
