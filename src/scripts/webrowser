@@ -2,7 +2,7 @@
 ##
 # webrowser - web browser convenience script
 #
-# 2020-08-28 Generations Linux <bugs@softcraft.org>
+# 2022-10-31 Generations Linux <bugs@softcraft.org>
 #
 OPTIONS="$*"
 
@@ -14,7 +14,7 @@ if [ -n "$WEBROWSER" ]; then
   BROWSER=$WEBROWSER
 elif [ -e /opt/mozilla/firefox -o -e /opt/firefox ]; then
   BROWSER=firefox
-elif [ -d /usr/lib/midori ]; then
+elif [ -e /usr/bin/midori ]; then
   BROWSER=midori
 elif [ -d /usr/lib/opera ]; then
   BROWSER=opera
@@ -42,5 +42,9 @@ if [ -z "$OPTIONS" ]; then
     fi
   fi
 fi
+
+# firefox depends on pulseaudio for sound, others may as well
+pidof pulseaudio &> /dev/null || pulseaudio --start --exit-idle-time=3600
+
 exec $BROWSER $OPTIONS
-##
+#/

@@ -138,6 +138,16 @@ get_file_magic (const char *pathname)
 } /* </get_file_magic> */
 
 /*
+* get_filename_ext
+*/
+const char *get_filename_ext(const char *filename)
+{
+  const char *dot = strrchr(filename, '.');
+  if(!dot || dot == filename) return NULL;
+  return dot + 1;
+} /* get_filename_ext */
+
+/*
 * glist_find
 */
 bool

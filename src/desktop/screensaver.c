@@ -853,12 +853,16 @@ screensaver_sendlock (GtkEntry *entry, GdkEventKey *event, GlobalPanel *panel)
 
 /*
 * screensaver_populate_modes - populate screensaver_modes_ from {dirname}
+*
+* NOTE: program logic tied to xscreensaver >= 6.06 with _SCREENSAVER_MODES
+*       and _SCREENSAVER_CONFIG separate directories.
 */
-static int
-screensaver_populate_modes(const char *dirname, const int maxcount)
+//static int
+int screensaver_populate_modes(const char *dirname, const int maxcount)
 {
-  /* populate screensaver_modes_ */
-  DIR *dir = opendir (dirname);
+  static size_t omitlen = strlen(_SCREENSAVER_RESERVED);
+
+  DIR *dir = opendir (dirname); /* populate screensaver_modes_ */
   int mark = 0;
 
   if (dir) {
@@ -868,7 +872,9 @@ screensaver_populate_modes(const char *dirname, const int maxcount)
 
     for (int idx = 0; idx < count; idx++) {
       name = list[idx]->d_name;
+
       if(name[0] == '.') continue;
+      if(strncmp(name, _SCREENSAVER_RESERVED, omitlen) == 0) continue;
 
       screensaver_modes_[mark++] = name;
       if(mark == maxcount - 1) break;
@@ -944,7 +950,8 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   ScreensaverConfig *_config = local_.config;
   ScreensaverConfig *_cache = &local_.cache;
 
-  FileChooser *chooser = filechooser_new (_SCREENSAVER_CONFIG);
+  //FileChooser *chooser = filechooser_new (_SCREENSAVER_CONFIG);
+  FileChooser *chooser = filechooser_new (_SCREENSAVER_MODES);
 
   int idx, mark = 0;
   int count = screensaver_populate_modes(_SCREENSAVER_MODES, MAX_SCREENSAVER);

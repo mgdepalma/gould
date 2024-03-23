@@ -1,0 +1,26 @@
+#!/bin/sh -f
+##
+# webcam - Linux webcam GUI wrapper.
+#
+# 2024-01-28 Generations Linux <bugs@softcraft.org>
+#
+OPTIONS="$*"
+
+# source desktop resource configurations (system and user)
+[ -r /etc/sysconfig/deskop ] && . /etc/sysconfig/deskop
+[ -r $HOME/.config/desktop ] && . $HOME/.config/desktop
+
+if [ -z "$WEBCAM" ]; then
+  WEBCAM=guvcview
+fi
+
+# make sure the ${WEBCAM} is installed..
+COMMAND=$(type -p $WEBCAM)
+
+[ -n "$COMMAND" ] || {\
+  zenity --warning --text="Sorry, no webcam progran installed, contact site administrator."
+  exit 1
+}
+
+exec $WEBCAM
+#/

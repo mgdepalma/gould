@@ -1,0 +1,13 @@
+#!/bin/sh
+##
+# showaudio - play audio file (wrapper)
+#
+# 2010-03-25 Generations Linux <info@softcraft.org>
+#
+PLAYER=deadbeef
+
+[ `type -p $PLAYER` ] || PLAYER=play
+[ `type -p $PLAYER` ] || PLAYER=vlc
+[ `type -p $PLAYER` ] || exit 6
+
+exec $PLAYER "$*"

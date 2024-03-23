@@ -69,7 +69,9 @@ enum _LinuxStandardBase
 GList *g_hash_table_get_keys (GHashTable *hash);
 GList *g_hash_table_get_values (GHashTable *hash);
 #endif
+
 FileMagic get_file_magic (const char *pathname);
+const char *get_filename_ext(const char *filename);
 
 bool glist_find (GList *list, const char *item);
 bool sudoallowed (const char *command);

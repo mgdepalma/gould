@@ -22,12 +22,12 @@
 
 #define MAX_SCREENSAVER 256
 
-#define _xscreensaver_config_directory "/usr/share/xscreensaver/config"
-#define _xscreensaver_modes_directory "/usr/libexec/xscreensaver"
-
 #define _xscreensaver_daemon	  "xscreensaver"
 #define _xscreensaver_command	  "xscreensaver-command"
 #define _xscreensaver_user_config ".xscreensaver"
+
+#define _xscreensaver_config_directory "/usr/share/xscreensaver/config"
+#define _xscreensaver_modes_directory "/usr/libexec/xscreensaver"
 
 #define _SCREENSAVER_MODES    _xscreensaver_modes_directory
 #define _SCREENSAVER_CONFIG   _xscreensaver_config_directory
@@ -38,4 +38,6 @@
 #define _SCREENSAVER_ACTIVATE _SCREENSAVER_COMMAND " --activate"
 #define _SCREENSAVER_GRACEFUL _SCREENSAVER_COMMAND " --exit"
 
-#endif /* </SCREENSAVER_H */
+#define _SCREENSAVER_RESERVED "xscreensaver"
+
+#endif /* </_SCREENSAVER_H */

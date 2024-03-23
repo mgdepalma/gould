@@ -1,0 +1,20 @@
+#!/bin/sh -f
+##
+# pdfview - wrapper for PDF documents viewer
+#
+# 2024-01-30 Generations Linux <bugs@softcraft.org>
+#
+[ "$#" -gt 0 ] || {
+  zenity --error --text="usage: pdfview {file}.."
+  exit 5
+}
+
+VIEWER=$(type -p qpdfview)
+[ -n "$VIEWER" ] || VIEWER=$(type -p evince)
+[ -n "$VIEWER" ] || VIEWER=$(type -p xpdf)
+[ -n "$VIEWER" ] || {
+  zenity --error --text="Sorry, no PDF document viewer available on this system."
+  exit 3
+}
+exec $VIEWER "$*"
+#/
