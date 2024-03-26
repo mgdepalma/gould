@@ -98,7 +98,7 @@ struct _FileChooserDatum
 
 /* Methods exported by implementation */
 GType        filechooser_get_type (void);
-FileChooser *filechooser_new (const gchar *dirname);
+FileChooser *filechooser_new (const gchar *dirname, ...);
 
 GtkWidget   *filechooser_layout (FileChooser *obj);
 

@@ -8,45 +8,24 @@ setspeed="/sys/devices/system/cpu/cpu0/cpufreq/scaling_setspeed"
 set $*
 
 case "$1" in
-    button/power)
-        case "$2" in
-            PWRF)    logger "PowerButton pressed: $2" ;;
-            *)    logger "ACPI action undefined: $2" ;;
-        esac
-        ;;
-    button/sleep)
-        case "$2" in
-            SLPB) echo -n mem >/sys/power/state ;;
-            *)    logger "ACPI action undefined: $2" ;;
-        esac
-        ;;
     ac_adapter)
         case "$2" in
             AC)
                 case "$4" in
-                    00000000)
-                        echo -n $minspeed >$setspeed
-                        /etc/laptop-mode/laptop-mode start
-                    ;;
-                    00000001)
-                        echo -n $maxspeed >$setspeed
-                        /etc/laptop-mode/laptop-mode stop
-                    ;;
+                    00000000) echo -n $minspeed >$setspeed ;;
+                    00000001) echo -n $maxspeed >$setspeed ;;
                 esac
                 ;;
-            *) logger "ACPI action undefined: $2" ;;
+            *)  logger "ACPI action undefined: $2" ;;
         esac
         ;;
+
     battery)
         case "$2" in
             BAT0)
                 case "$4" in
-                    00000000)
-                       logger "BAT0 offline"
-                       ;;
-                    00000001)
-                       logger "BAT0 online"
-                       ;;
+                    00000000) logger "BAT0 offline" ;;
+                    00000001) logger "BAT0 online" ;;
                 esac
                 ;;
 
@@ -59,7 +38,21 @@ case "$1" in
         ;;
 
     button/lid)
-        action=/etc/acpi/actions/sleep.sh
+        action=/etc/acpi/actions/sleep.sh "button/lid"
+        ;;
+
+    button/power)
+        case "$2" in
+            PWRF) logger "PowerButton pressed: $2" ;;
+            *)    logger "ACPI action undefined: $2" ;;
+        esac
+        ;;
+
+    button/sleep)
+        case "$2" in
+            SLPB) echo -n mem >/sys/power/state ;;
+            *)    logger "ACPI action undefined: $2" ;;
+        esac
         ;;
     *)
         logger "ACPI group/action undefined: $1 / $2"

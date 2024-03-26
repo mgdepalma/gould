@@ -950,8 +950,8 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   ScreensaverConfig *_config = local_.config;
   ScreensaverConfig *_cache = &local_.cache;
 
-  //FileChooser *chooser = filechooser_new (_SCREENSAVER_CONFIG);
-  FileChooser *chooser = filechooser_new (_SCREENSAVER_MODES);
+  //FileChooser *chooser = filechooser_new (_SCREENSAVER_CONFIG, FALSE);
+  FileChooser *chooser = filechooser_new (_SCREENSAVER_MODES, FALSE);
 
   int idx, mark = 0;
   int count = screensaver_populate_modes(_SCREENSAVER_MODES, MAX_SCREENSAVER);
@@ -1025,9 +1025,11 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(layer), scroll, TRUE, TRUE, 5);
   gtk_widget_show (scroll);
 
-  widget = chooser->viewer;
-  gtk_container_add (GTK_CONTAINER(scroll), widget);
-  gtk_widget_show (widget);
+  if (chooser->viewer) {  /* careful: may not have one, yet */
+    widget = chooser->viewer;
+    gtk_container_add (GTK_CONTAINER(scroll), widget);
+    gtk_widget_show (widget);
+  }
 
   /* Blank After, Cycle After, and Lock Screen After */
   widget = screensaver_settings_grid();

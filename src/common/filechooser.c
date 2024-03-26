@@ -19,6 +19,7 @@
 */
 
 #include "gould.h"
+#include "gwindow.h"
 #include "filechooser.h"
 
 #ifndef get_current_dir_name
@@ -77,7 +78,7 @@ static void
 dump_names_list(FileChooser *self)
 {
   for (GList *iter = self->_names; iter != NULL; iter = iter->next) {
-    printf("%s\n", iter->data);
+    printf("%s\n", (char *)iter->data);
   }
 } /* </dump_names_list> */
 
@@ -178,12 +179,14 @@ showthumbs(GtkWidget *button, FileChooser *self)
 
   if (self->showthumbs) {
     gtk_button_set_image (GTK_BUTTON (button), xpm_image(ICON_ICONS));
-    gtk_icon_view_set_orientation (view, GTK_ORIENTATION_HORIZONTAL);
+    gtk_icon_view_set_orientation ((GtkIconView *)view,
+					GTK_ORIENTATION_HORIZONTAL);
     self->showthumbs = FALSE;
   }
   else {
     gtk_button_set_image (GTK_BUTTON (button), xpm_image(ICON_THUMBNAIL));
-    gtk_icon_view_set_orientation (view, GTK_ORIENTATION_VERTICAL);
+    gtk_icon_view_set_orientation ((GtkIconView *)view,
+					GTK_ORIENTATION_VERTICAL);
     self->showthumbs = TRUE;
   }
 
@@ -226,8 +229,9 @@ get_icon_from_type(const gchar *pathname)
 
 /*
 * (private) icon_pixbuf
+static
 */
-static GdkPixbuf *
+GdkPixbuf *
 icon_pixbuf(FileChooser *self, IconIndex index, const char *pathname)
 {
   GdkPixbuf *pixbuf = NULL;
@@ -327,28 +331,39 @@ filechooser_get_type (void)
 * filechooser_new
 */
 FileChooser *
-filechooser_new (const gchar *dirname)
+filechooser_new (const gchar *dirname, ...)
 {
   GtkWidget *box, *button, *entry, *label;
   FileChooser *self = gtk_type_new (FILECHOOSER_TYPE);
-  IconBox *iconbox;
   IconIndex nindex;
+
+  char *string;
+  gboolean icons = TRUE;
   gchar *path;
 
-  if (dirname == FILECHOOSER_CWD)
+  va_list param;
+  va_start(param, string);
+  icons = va_arg(param, gboolean);
+  va_end(param);
+
+  if (strcmp(dirname, FILECHOOSER_CWD) == 0)
     path = (gchar *)get_current_dir_name ();
   else
     path = (gchar *)dirname;
 
-  /* Construct IconBox (builds from GtkIconView) */
-  if (self->showthumbs)
-    iconbox = self->iconbox = iconbox_new (GTK_ORIENTATION_VERTICAL);
-  else
-    iconbox = self->iconbox = iconbox_new (GTK_ORIENTATION_HORIZONTAL);
+  if (icons) { /* Construct IconBox (builds from GtkIconView) */
+    IconBox *iconbox;
 
-  g_signal_connect (G_OBJECT(iconbox->view), "selection_changed",
-					G_CALLBACK(agent), self);
-  self->viewer = iconbox->view;
+    if (self->showthumbs)
+      iconbox = iconbox_new (GTK_ORIENTATION_VERTICAL);
+    else
+      iconbox = iconbox_new (GTK_ORIENTATION_HORIZONTAL);
+
+    g_signal_connect (G_OBJECT(iconbox->view), "selection_changed",
+					  G_CALLBACK(agent), self);
+    self->iconbox = iconbox;
+    self->viewer = iconbox->view;
+  }
 
   /* Construct the hbox to display the current file name. */
   box = self->namebox = gtk_hbox_new (FALSE, 2);
@@ -402,7 +417,7 @@ filechooser_new (const gchar *dirname)
   gtk_widget_show(button);
 
   /* Populate self->iconbox with the directory contents. */
-  filechooser_update (self, path, FALSE);
+  if(icons) filechooser_update (self, path, FALSE);
 
   return self;
 } /* </filechooser_new> */
@@ -419,6 +434,7 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
   struct dirent **names;
   struct stat info;
 
+  GdkPixbuf *pixbuf;
   GdkWindow *window = (self->viewer)->window;
   IconIndex index;
   int idx;
@@ -482,7 +498,8 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
         /* g_warning("cannot stat: %s", pathname); */
         continue;
 
-      iconbox_append (self->iconbox, icon_pixbuf(self, index, pathname), name);
+      pixbuf = icon_pixbuf (self, index, pathname);
+      iconbox_append (self->iconbox, pixbuf, name);
       self->_names = g_list_append(self->_names, strdup(name));
     }
   }

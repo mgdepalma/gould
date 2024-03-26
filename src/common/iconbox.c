@@ -35,9 +35,9 @@ static GtkObjectClass *parent = NULL;
 
 #if 0 /* unused code used for reference */
 /*
- * (private) append_names_list
- * (private) get_names_list
- */
+* (private) append_names_list
+* (private) get_names_list
+*/
 static gboolean
 append_list_names (GtkTreeModel *model,
                    GtkTreePath  *path,
@@ -55,12 +55,14 @@ append_list_names (GtkTreeModel *model,
 } /* </append_list_names> */
 
 static GList *
-get_names_list (IconBox *self)
+get_names_list (IconBox *iconbox)
 {
   GList *iter;
   GList *names = NULL;   /* new doubly linked list */
 
-  gtk_tree_model_foreach(GTK_TREE_MODEL(self->store), append_list_names, names);
+  gtk_tree_model_foreach(GTK_TREE_MODEL(iconbox->store),
+                                append_list_names, names);
+
   /* Code to navigate the doubly linked list.
   for (iter = names; iter != NULL; iter = iter->next) {
     printf("%s\n", iter->data);
@@ -76,8 +78,8 @@ get_names_list (IconBox *self)
 #endif
 
 /*
- * (private) active
- */
+* (private) active
+*/
 static void
 active (GtkIconView *iconview, GtkTreePath *path, gpointer data)
 {
@@ -93,8 +95,8 @@ active (GtkIconView *iconview, GtkTreePath *path, gpointer data)
 } /* </active> */
 
 /*
- * (private) iconbox_class_init
- */
+* (private) iconbox_class_init
+*/
 static void
 iconbox_class_init (IconBoxClass *klass)
 {
@@ -102,10 +104,10 @@ iconbox_class_init (IconBoxClass *klass)
 } /* </iconbox_class_init> */
 
 /*
- * (private) iconbox_init
- */
+* (private) iconbox_init
+*/
 static void
-iconbox_init (IconBox *self)
+iconbox_init (IconBox *iconbox)
 {
   GtkWidget *view;
   GtkListStore *store;
@@ -114,52 +116,63 @@ iconbox_init (IconBox *self)
   view = gtk_icon_view_new ();
   gtk_icon_view_set_pixbuf_column (GTK_ICON_VIEW (view), COLUMN_IMAGE);
   gtk_icon_view_set_text_column (GTK_ICON_VIEW (view), COLUMN_LABEL);
-  self->view = view;
+  iconbox->view = view;
 
   store = gtk_list_store_new(3, GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_POINTER);
   gtk_icon_view_set_model (GTK_ICON_VIEW (view), GTK_TREE_MODEL (store));
-  self->store = store;
+  iconbox->store = store;
 
   /* Set cursor for the view window */
-  self->cursor = gdk_cursor_new (GDK_HAND2);
+  iconbox->cursor = gdk_cursor_new (GDK_HAND2);
 
   if (GDK_IS_WINDOW(view->window)) {
-    gdk_window_set_cursor (view->window, self->cursor);
+    gdk_window_set_cursor (view->window, iconbox->cursor);
     gdk_display_sync (gtk_widget_get_display (view));
   }
 } /* </iconbox_init> */
 
-
 /*
- * iconbox_append
- */
+* iconbox_append
+*/
 void
-iconbox_append (IconBox *self, GdkPixbuf *pixbuf, const gchar *label)
+iconbox_append (IconBox *iconbox, GdkPixbuf *pixbuf, const gchar *label)
 {
-  GtkTreeIter iterator;
-
-  gtk_list_store_append (self->store, &iterator);
-  gtk_list_store_set (self->store, &iterator,
-                      COLUMN_IMAGE, pixbuf, COLUMN_LABEL, label, -1);
+  if (iconbox != NULL) {
+    GtkTreeIter iterator;
+    gtk_list_store_append (iconbox->store, &iterator);
+    gtk_list_store_set (iconbox->store, &iterator,
+                          COLUMN_IMAGE, pixbuf, COLUMN_LABEL, label, -1);
+  }
+  else {
+    gould_error ("%s %s (iconbox => NULL)\n", timestamp(), __func__);
+    vdebug(3, "%s: iconbox => NULL, pixbuf => 0x%lx, label => %s\n",
+                __func__, pixbuf, label);
+  }
 } /* </iconbox_append> */
 
 /*
- * iconbox_clear
- */
+* iconbox_clear
+*/
 void
-iconbox_clear (IconBox *self)
+iconbox_clear (IconBox *iconbox)
 {
-  gtk_list_store_clear (self->store);
+  if (iconbox != NULL) {
+    gtk_list_store_clear (iconbox->store);
+  }
+  else {
+    gould_error ("%s %s (iconbox => NULL)\n", timestamp(), __func__);
+    vdebug(1, "%s: iconbox => NULL\n", __func__);
+  }
 } /* </iconbox_clear> */
 
 /*
- * iconbox_get_selected
- */
+* iconbox_get_selected
+*/
 gpointer
-iconbox_get_selected (IconBox *self, IconBoxColumn column)
+iconbox_get_selected (IconBox *iconbox, IconBoxColumn column)
 {
   IconBoxItem item = { column, NULL };
-  GtkIconView *iconview = GTK_ICON_VIEW(self->view);
+  GtkIconView *iconview = GTK_ICON_VIEW(iconbox->view);
   
   gtk_icon_view_selected_foreach (iconview, active, &item);
 
@@ -167,8 +180,8 @@ iconbox_get_selected (IconBox *self, IconBoxColumn column)
 } /* </iconbox_get_selected> */
 
 /*
- * iconbox_get_type
- */
+* iconbox_get_type
+*/
 GType
 iconbox_get_type (void)
 {
@@ -194,23 +207,23 @@ iconbox_get_type (void)
 } /* </iconbox_get_type> */
 
 /*
- * iconbox_new
- */
+* iconbox_new
+*/
 IconBox *
 iconbox_new (GtkOrientation place)
 {
-  IconBox *self = gtk_type_new (ICONBOX_TYPE);
+  IconBox *iconbox = gtk_type_new (ICONBOX_TYPE);
 
-  gtk_icon_view_set_orientation (GTK_ICON_VIEW (self->view), place);
+  gtk_icon_view_set_orientation (GTK_ICON_VIEW (iconbox->view), place);
 
-  return self;
+  return iconbox;
 } /* </iconbox_new> */
 
 /*
- * iconbox_unselect
- */
+* iconbox_unselect
+*/
 void
-iconbox_unselect (IconBox *self)
+iconbox_unselect (IconBox *iconbox)
 {
-  gtk_icon_view_unselect_all (GTK_ICON_VIEW (self->view));
+  gtk_icon_view_unselect_all (GTK_ICON_VIEW (iconbox->view));
 }
