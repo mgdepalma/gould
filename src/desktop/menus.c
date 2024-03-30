@@ -360,7 +360,8 @@ item_check_access (ConfigurationNode *node, GlobalPanel *panel, gchar *attr)
       const gchar *pathname = path_finder (panel->path, file);
 
       if (pathname != NULL) {
-        sprintf(file, "%s %s", pathname, args);
+        size_t bytes = strlen(pathname) + strlen(args);
+        snprintf(file, bytes+2, "%s %s", pathname, args);
         result = file;
       }
     }

@@ -938,7 +938,85 @@ screensaver_settings_grid()
 } /* </screensaver_settings_grid> */
 
 /*
-* screensaver_settings provides configuration pages
+* screensaver_xmlfile - IconboxFilter classification (xscreensaver-6.06)
+*/
+static char *
+screensaver_xmlfile_readline(char *buffer)
+{
+  static char separator = '\n';
+  static char line[MAX_PATHNAME];
+
+  char *scan = strchr(buffer, separator);
+  int pos = scan - buffer;
+
+  buffer[pos] = 0;
+  strcpy(line, buffer);
+  //printf("%s newline at %d: %s\n", __func__, pos+1, line);
+  buffer[pos] = separator;
+
+  return line;
+} /* screensaver_xmlfile_readline */
+
+static char *
+screensaver_xmlfile_label(char *buffer)
+{
+  static char quotechar = '"';
+  static char *labeltag = "_label=";
+  static char *pattern = "<screensaver name=";
+
+  const size_t labeltag_length = strlen(labeltag);
+  const size_t pattern_length = strlen(pattern);
+
+  char *scan = strstr(buffer, pattern) + pattern_length + 1;
+  char *line = screensaver_xmlfile_readline (scan);
+  char *label = strstr(line, labeltag) + labeltag_length + 1;
+
+  if (label != NULL) {
+    scan = strchr(label, quotechar);
+    *scan = 0;
+  }
+  return label;
+} /* screensaver_xmlfile_label */
+
+bool
+screensaver_xmlfile(IconboxDatum *ptr)
+{
+  bool active = true;
+  static char *buffer = NULL;
+
+  const char *xmlfile = ptr->name;
+  const char *ext = get_filename_ext (xmlfile);
+
+
+  if (ext == NULL || strcmp(ext, "xml") != 0)
+    active = false;
+  else {
+    struct stat info;
+
+    if (lstat(xmlfile, &info) != 0)		/* unhandled error condition */
+      ptr->name[strlen(ptr->name) - 4] = '\0';  /* filename without extension */
+    else {
+      FILE *stream = fopen(xmlfile, "r");
+      fseek(stream, 0, SEEK_END);
+      long filesize = ftell(stream);
+
+      if(buffer != NULL) free(buffer);
+      buffer = malloc(filesize + 1);
+
+      fseek(stream, 0, SEEK_SET);		/* same as rewind(); */
+      fread(buffer, filesize, 1, stream);	/* read xmlfile in memory */
+      buffer[filesize] = 0;
+      fclose(stream);
+
+      char *label = screensaver_xmlfile_label (buffer);
+      if(label != NULL) strcpy(ptr->label, label);
+    }
+  }
+  return active;
+} /* screensaver_xmlfile */
+
+/*
+* screensaver_settings - provides configuration pages
 */
 GtkWidget *
 screensaver_settings (Modulus *applet, GlobalPanel *panel)
@@ -947,12 +1025,11 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   GtkWidget *area, *glue, *layer, *pane, *widget;
   GtkWidget *layout = gtk_vbox_new (FALSE, 0);
 
-  ScreensaverConfig *_config = local_.config;
   ScreensaverConfig *_cache = &local_.cache;
+  ScreensaverConfig *_config = local_.config;
 
-  //FileChooser *chooser = filechooser_new (_SCREENSAVER_CONFIG, FALSE);
-  FileChooser *chooser = filechooser_new (_SCREENSAVER_MODES, FALSE);
-
+  FileChooser *chooser = filechooser_new (_SCREENSAVER_CONFIG,
+						screensaver_xmlfile);
   int idx, mark = 0;
   int count = screensaver_populate_modes(_SCREENSAVER_MODES, MAX_SCREENSAVER);
 

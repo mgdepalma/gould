@@ -72,26 +72,15 @@ static FileChooserTypes filetypes[] = {
 
 
 /*
-* (private) dump_names_list
-*/
-static void
-dump_names_list(FileChooser *self)
-{
-  for (GList *iter = self->_names; iter != NULL; iter = iter->next) {
-    printf("%s\n", (char *)iter->data);
-  }
-} /* </dump_names_list> */
-
-/*
 * (private) agent
 */
 static void
 agent(GtkIconView *iconview, FileChooser *self)
 {
+  bool action = false;
   const gchar *curdir;
   gchar *name, pathname[FILENAME_MAX];
   struct stat info;
-  bool action;
 
   /* Compose pathname with self->curdir and the selected icon. */
   curdir = gtk_label_get_text (GTK_LABEL(self->path));
@@ -114,6 +103,9 @@ agent(GtkIconView *iconview, FileChooser *self)
     action = (*self->agent) (self->datum);
   }
 
+  if (action == false) {
+    g_debug("%s action => false\n", __func__);
+  }
   gtk_widget_set_sensitive (GTK_WIDGET(self->dirup), TRUE);
 } /* </agent> */
 
@@ -278,13 +270,13 @@ filechooser_init (FileChooser *self)
   self->_cursor = -1;
   self->_count = -1;
 
-  self->clearname  = FALSE;	/* do not clear file name */
-  self->showhidden = FALSE;	/* do not show hidden files */
+  self->clearname  = false;	/* do not clear file name */
+  self->showhidden = false;	/* do not show hidden files */
 
   if (strcmp(mode, "Tiles") == 0)
-    self->showthumbs = FALSE;	/* do not show thumbnail images */
+    self->showthumbs = false;	/* do not show thumbnail images */
   else {
-    self->showthumbs = TRUE;
+    self->showthumbs = true;
 
     if (iconsize == 0) {	/* not explicitly given */
       if (strcmp(mode, "Small") == 0)
@@ -328,22 +320,22 @@ filechooser_get_type (void)
 } /* </filechooser_get_type> */
 
 /*
-* filechooser_new
+* filechooser_new - variadic implementation of a file chooser
+*   first arg is the directory name path
+*   second arg must be NULL or a void (*IconboxFilter)(IconboxDatum *)
 */
 FileChooser *
 filechooser_new (const gchar *dirname, ...)
 {
   GtkWidget *box, *button, *entry, *label;
   FileChooser *self = gtk_type_new (FILECHOOSER_TYPE);
+  IconBox *iconbox;
   IconIndex nindex;
-
-  char *string;
-  gboolean icons = TRUE;
-  gchar *path;
+  gchar *path;		/* directory path */
 
   va_list param;
-  va_start(param, string);
-  icons = va_arg(param, gboolean);
+  va_start(param, dirname);
+  self->iconboxfilter = va_arg(param, IconboxFilter);
   va_end(param);
 
   if (strcmp(dirname, FILECHOOSER_CWD) == 0)
@@ -351,19 +343,15 @@ filechooser_new (const gchar *dirname, ...)
   else
     path = (gchar *)dirname;
 
-  if (icons) { /* Construct IconBox (builds from GtkIconView) */
-    IconBox *iconbox;
+  /* Construct IconBox (builds from GtkIconView) */
+  if (self->showthumbs)
+    iconbox = self->iconbox = iconbox_new (GTK_ORIENTATION_VERTICAL);
+  else
+    iconbox = self->iconbox = iconbox_new (GTK_ORIENTATION_HORIZONTAL);
 
-    if (self->showthumbs)
-      iconbox = iconbox_new (GTK_ORIENTATION_VERTICAL);
-    else
-      iconbox = iconbox_new (GTK_ORIENTATION_HORIZONTAL);
-
-    g_signal_connect (G_OBJECT(iconbox->view), "selection_changed",
+  g_signal_connect (G_OBJECT(iconbox->view), "selection_changed",
 					  G_CALLBACK(agent), self);
-    self->iconbox = iconbox;
-    self->viewer = iconbox->view;
-  }
+  self->viewer = iconbox->view;
 
   /* Construct the hbox to display the current file name. */
   box = self->namebox = gtk_hbox_new (FALSE, 2);
@@ -417,7 +405,8 @@ filechooser_new (const gchar *dirname, ...)
   gtk_widget_show(button);
 
   /* Populate self->iconbox with the directory contents. */
-  if(icons) filechooser_update (self, path, FALSE);
+  if(self->iconboxfilter) chdir (path);  /* maybe good to do unconditionally */
+  filechooser_update (self, path, false);
 
   return self;
 } /* </filechooser_new> */
@@ -428,13 +417,13 @@ filechooser_new (const gchar *dirname, ...)
 bool
 filechooser_update (FileChooser *self, const gchar *path, bool clearname)
 {
-  gchar *name;
+  gchar *name;			/* filename or displayed name */
   gchar pathname[FILENAME_MAX];
 
   struct dirent **names;
   struct stat info;
 
-  GdkPixbuf *pixbuf;
+  GdkPixbuf *pixbuf = NULL;
   GdkWindow *window = (self->viewer)->window;
   IconIndex index;
   int idx;
@@ -455,10 +444,14 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
       strcpy(pathname, symlink);
     else {
       const gchar *curdir = gtk_label_get_text (GTK_LABEL(self->path));
+      size_t bytes = strlen(symlink) + 1;
+
       if (strcmp(curdir, "/") == 0)
-        sprintf(pathname, "/%s", symlink);
-      else
-        sprintf(pathname, "%s/%s", curdir, symlink);
+        snprintf(pathname, bytes+1, "/%s", symlink);
+      else {
+        bytes += strlen(curdir) + 1;
+        snprintf(pathname, bytes+strlen(curdir), "%s/%s", curdir, symlink);
+      }
     }
   }
   else {
@@ -485,7 +478,7 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
   for (idx = 0; idx < self->_count; idx++) {
     name = names[idx]->d_name;
 
-    if (name[0] == '.' && self->showhidden == FALSE)
+    if (name[0] == '.' && self->showhidden == false)
       continue;
 
     if (strcmp(name, ".") && strcmp(name, "..")) {
@@ -498,7 +491,15 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
         /* g_warning("cannot stat: %s", pathname); */
         continue;
 
-      pixbuf = icon_pixbuf (self, index, pathname);
+      if (self->iconboxfilter != NULL) {
+        IconboxDatum item;
+        item.name = name;     /* manipulated by (*self->iconboxfilter) */
+        if((*self->iconboxfilter) (&item) == false) continue;
+        name = item.label;
+      }
+      else {
+        pixbuf = icon_pixbuf (self, index, pathname);
+      }
       iconbox_append (self->iconbox, pixbuf, name);
       self->_names = g_list_append(self->_names, strdup(name));
     }
@@ -506,11 +507,7 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
 
   /* Update self->path and self->name */
   gtk_label_set_text (GTK_LABEL(self->path), path);
-  if (clearname) gtk_entry_set_text (GTK_ENTRY(self->name), "");
-
-#ifdef DEBUG
-  dump_names_list(self);
-#endif
+  if(clearname) gtk_entry_set_text (GTK_ENTRY(self->name), "");
 
   if (GDK_IS_WINDOW(window))
     gdk_window_set_cursor (window, (self->iconbox)->cursor);

@@ -382,7 +382,7 @@ printdialog_create(GtkWidget *parent, GtkFunction callback)
   GtkWidget *selector = add_printers (get_printers_list ());
   GtkWidget *area, *button, *field, *filer, *frame;
 
-  FileChooser *chooser = filechooser_new (FILECHOOSER_CWD);
+  FileChooser *chooser = filechooser_new (FILECHOOSER_CWD, NULL);
   gchar *savefile;
 
 
@@ -528,7 +528,7 @@ savedialog_create(GtkWidget *parent, GtkFunction callback)
   GtkWidget *selector = add_filetypes(&(story.options));
   GtkWidget *apply, *cancel, *filer, *frame;
 
-  FileChooser *chooser = filechooser_new (FILECHOOSER_CWD);
+  FileChooser *chooser = filechooser_new (FILECHOOSER_CWD, NULL);
   gchar *savefile;
 
   /* Customize behavior and look */

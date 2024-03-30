@@ -37,10 +37,17 @@ G_BEGIN_DECLS
            (G_TYPE_CHECK_INSTANCE_CAST (obj, FILECHOOSER_TYPE, FileChooser))
 
 /* Global program data structure */
-typedef struct _FileChooser       FileChooser;
-typedef struct _FileChooserClass  FileChooserClass;
-typedef struct _FileChooserTypes  FileChooserTypes;
-typedef struct _FileChooserDatum  FileChooserDatum;
+typedef struct _FileChooser      FileChooser;
+typedef struct _FileChooserClass FileChooserClass;
+typedef struct _FileChooserTypes FileChooserTypes;
+typedef struct _FileChooserDatum FileChooserDatum;
+
+typedef struct _IconboxDatum {
+    gchar *name;		/* name displayed or filename */
+    char label[MAX_PATHNAME];	/* screensaver title */
+} IconboxDatum;
+
+typedef bool (*IconboxFilter)(IconboxDatum *);
 
 struct _FileChooser
 {
@@ -48,6 +55,7 @@ struct _FileChooser
 
   GtkFunction agent;		/* callback function invoked on selection */
   FileChooserDatum *datum;	/* user defined data passed to callback */
+  IconboxFilter iconboxfilter;	/* optional iconbox callback filter */
   IconBox *iconbox;		/* IconBox container object */
 
   GtkWidget *split; 		/* Split view layout */
@@ -60,7 +68,7 @@ struct _FileChooser
 
   GtkWidget *namebox;   	/* hbox for file name */
   GtkWidget *actuator;		/* icon button on the left */
-  GtkWidget *name;		/* current file name */
+  GtkWidget *name;		/* current name displayed */
 
   bool clearname;		/* clear name on directory change */
   bool showhidden;		/* show hidden files (TRUE | FALSE) */

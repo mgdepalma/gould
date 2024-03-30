@@ -460,7 +460,7 @@ desktop_new (GlobalPanel *panel, gint iconsize)
     strcpy(dirname, "/usr/share/pixmaps");
   }
 
-  chooser = desktop->chooser = filechooser_new (dirname);
+  chooser = desktop->chooser = filechooser_new (dirname, NULL);
   filechooser_set_callback (chooser, (gpointer)desktop_filer_repaint, panel);
   gtk_entry_set_text (GTK_ENTRY(chooser->name), DefaultIconExec);
   chooser->clearname  = TRUE;	/* clear file name on directory change */

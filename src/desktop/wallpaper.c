@@ -342,7 +342,7 @@ setbg_initialize (GlobalPanel *panel)
   }
 
   /* Make sure we set (desktop->chooser)->agent */
-  chooser = desktop->chooser = filechooser_new (path);
+  chooser = desktop->chooser = filechooser_new (path, NULL);
   filechooser_set_callback (chooser, (gpointer)setbg_selection, desktop);
   gtk_label_set_max_width_chars (GTK_LABEL(chooser->path), 32);
   chooser->clearname = TRUE;	/* clear file name on directory change */
