@@ -36,11 +36,12 @@ static GtkObjectClass *parent = NULL;
 
 static FileChooserTypes filetypes[] = {
   { ".mp3",	ICON_AUDIO },
+  { ".mp4a",	ICON_AUDIO },
   { ".wav",	ICON_AUDIO },
   { ".gif",	ICON_IMAGE },
+  { ".JPG",	ICON_IMAGE },
   { ".jpg",	ICON_IMAGE },
   { ".jpeg",	ICON_IMAGE },
-  { ".JPG",	ICON_IMAGE },
   { ".png",	ICON_IMAGE },
   { ".ppm",	ICON_IMAGE },
   { ".tif",	ICON_IMAGE },
@@ -60,16 +61,17 @@ static FileChooserTypes filetypes[] = {
   { ".ps",	ICON_POSTSCRIPT },
   { ".avi",	ICON_VIDEO },
   { ".mov",	ICON_VIDEO },
+  { ".mp4",	ICON_VIDEO },
   { ".mpeg",	ICON_VIDEO },
   { ".mpeg1",	ICON_VIDEO },
   { ".mpeg2",	ICON_VIDEO },
   { ".mpg",	ICON_VIDEO },
   { ".mpg1",	ICON_VIDEO },
   { ".mpg2",	ICON_VIDEO },
+  { ".xml",     ICON_SCREENSAVER },
   { ".wmv",	ICON_VIDEO },
   { ".",	ICON_ERROR }
 };
-
 
 /*
 * (private) agent
@@ -167,7 +169,7 @@ static void
 showthumbs(GtkWidget *button, FileChooser *self)
 {
   const gchar *curdir = gtk_label_get_text (GTK_LABEL(self->path));
-  GtkWidget *view = self->iconbox->view;
+  GtkWidget *view = (self->iconbox)->view;
 
   if (self->showthumbs) {
     gtk_button_set_image (GTK_BUTTON (button), xpm_image(ICON_ICONS));
@@ -219,14 +221,55 @@ get_icon_from_type(const gchar *pathname)
   return index;
 } /* </get_icon_from_type> */
 
+#ifndef __GDK_DRAWING_CONTEXT_H__ // <gtk-3.0/gdk/gdkdrawingcontext.h>
+#include "gtk3compat.c"
+#endif // ! __GDK_DRAWING_CONTEXT_H__
+
 /*
-* (private) icon_pixbuf
-static
+* icon_pixbuf_label - add text to existing GdkPixbuf *image
 */
 GdkPixbuf *
-icon_pixbuf(FileChooser *self, IconIndex index, const char *pathname)
+icon_pixbuf_label(FileChooser *self, GdkPixbuf *image, const char *label)
 {
+  GdkPixbuf *pixbuf;
+  GdkWindow *gdkwindow = gtk_widget_get_window (GTK_WIDGET(self->viewer));
+  cairo_surface_t *surface;
+  cairo_t *context;
+  int height;
+  int width;
+
+  surface = gdk_cairo_surface_create_from_pixbuf (image, 0, gdkwindow); 
+  context = cairo_create (surface);
+
+  cairo_set_source_rgb (context, 0, 0, 0);
+  cairo_select_font_face (context, "Sans", CAIRO_FONT_SLANT_NORMAL, 
+                                          CAIRO_FONT_WEIGHT_NORMAL);
+  cairo_set_font_size (context, 16.0);
+  cairo_move_to (context, 20.0, 4.0);
+  cairo_show_text (context, label);
+
+  surface = cairo_get_target (context);  /* get resulting pixbuf */
+  height = cairo_xlib_surface_get_height (surface);
+  width = cairo_xlib_surface_get_width (surface);
+
+  pixbuf = gdk_pixbuf_get_from_surface (surface, 0, 0,
+                 (width > 0 ) ? width : 24, (height > 0) ? height : 24);
+  return pixbuf;
+} /* </icon_pixbuf_label> */
+
+/*
+* (private) icon_pixbuf_new - create GdkPixbuf optionally with text
+*/
+static GdkPixbuf *
+icon_pixbuf_new(FileChooser *self, IconIndex index, const char *pathname, ...)
+{
+  const char *label = NULL;
   GdkPixbuf *pixbuf = NULL;
+
+  va_list param;
+  va_start(param, pathname);
+  label = va_arg(param, char *);
+  va_end(param);
 
   if (index == ICON_IMAGE && self->showthumbs) {
     GError    *error = NULL;
@@ -242,11 +285,16 @@ icon_pixbuf(FileChooser *self, IconIndex index, const char *pathname)
   }
 
   if (pixbuf == NULL) {		/* fallback xpm_pixbuf(index, WHITE) */
-    GdkColor white = { 0, 65535, 65535, 65535 };
+    static GdkColor white = { 0, 65535, 65535, 65535 };
     pixbuf = xpm_pixbuf(index, &white);
   }
+
+  if (label != NULL) {
+    GdkPixbuf *source = pixbuf;
+    pixbuf = icon_pixbuf_label (self, source, label);
+  }
   return pixbuf;
-} /* </icon_pixbuf> */
+} /* </icon_pixbuf_new> */
 
 /*
 * (private) filechooser_class_init
@@ -344,7 +392,7 @@ filechooser_new (const gchar *dirname, ...)
     path = (gchar *)dirname;
 
   /* Construct IconBox (builds from GtkIconView) */
-  if (self->showthumbs)
+  if (self->showthumbs && self->iconboxfilter == NULL)
     iconbox = self->iconbox = iconbox_new (GTK_ORIENTATION_VERTICAL);
   else
     iconbox = self->iconbox = iconbox_new (GTK_ORIENTATION_HORIZONTAL);
@@ -405,7 +453,7 @@ filechooser_new (const gchar *dirname, ...)
   gtk_widget_show(button);
 
   /* Populate self->iconbox with the directory contents. */
-  if(self->iconboxfilter) chdir (path);  /* maybe good to do unconditionally */
+  if(self->iconboxfilter) chdir (path); /* might be good unconditionally */
   filechooser_update (self, path, false);
 
   return self;
@@ -424,7 +472,7 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
   struct stat info;
 
   GdkPixbuf *pixbuf = NULL;
-  GdkWindow *window = (self->viewer)->window;
+  GdkWindow *gdkwindow = gtk_widget_get_window(GTK_WIDGET(self->viewer));
   IconIndex index;
   int idx;
 
@@ -459,8 +507,8 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
   }
 
   /* Set display cursor to busy. */
-  if (GDK_IS_WINDOW(window)) {
-    gdk_window_set_cursor (window, gdk_cursor_new (GDK_WATCH));
+  if (GDK_IS_WINDOW(gdkwindow)) {
+    gdk_window_set_cursor (gdkwindow, gdk_cursor_new (GDK_WATCH));
     gdk_display_sync (gtk_widget_get_display (self->viewer));
   }
 
@@ -492,15 +540,20 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
         continue;
 
       if (self->iconboxfilter != NULL) {
-        IconboxDatum item;
-        item.name = name;     /* manipulated by (*self->iconboxfilter) */
+        IconboxDatum item = {name}; /* manipulated by self->iconboxfilter */
+
         if((*self->iconboxfilter) (&item) == false) continue;
-        name = item.label;
+        pixbuf = icon_pixbuf_new (self, index, pathname, item.label, NULL);
+
+        if (pixbuf != NULL)	    /* see, icon_pixbuf_label */
+          iconbox_append (self->iconbox, pixbuf, NULL);
+        else			    /* fallback using only item.label */
+          iconbox_append (self->iconbox, NULL, item.label);
       }
       else {
-        pixbuf = icon_pixbuf (self, index, pathname);
+        pixbuf = icon_pixbuf_new (self, index, pathname, NULL);
+        iconbox_append (self->iconbox, pixbuf, name);
       }
-      iconbox_append (self->iconbox, pixbuf, name);
       self->_names = g_list_append(self->_names, strdup(name));
     }
   }
@@ -509,9 +562,9 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
   gtk_label_set_text (GTK_LABEL(self->path), path);
   if(clearname) gtk_entry_set_text (GTK_ENTRY(self->name), "");
 
-  if (GDK_IS_WINDOW(window))
-    gdk_window_set_cursor (window, (self->iconbox)->cursor);
-
+  if (GDK_IS_WINDOW(gdkwindow)) {
+    gdk_window_set_cursor (gdkwindow, (self->iconbox)->cursor);
+  }
   return true;
 } /* </filechooser_update> */
 

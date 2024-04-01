@@ -73,6 +73,7 @@
 #include "icons/resize.xpm"
 #include "icons/restore.xpm"
 #include "icons/save.xpm"
+#include "icons/screensaver.xpm"
 #include "icons/setting.xpm"
 #include "icons/smile.xpm"
 #include "icons/snapshot.xpm"
@@ -156,6 +157,7 @@ static IconCatalog xpmglyph[] = {
   { ICON_RESTORE,	restore_xpm,	NULL },
   { ICON_SAVE,		save_xpm,	NULL },
   { ICON_SAVE_AS,	save_xpm,	NULL },
+  { ICON_SCREENSAVER,	screensaver_xpm,NULL },
   { ICON_SETTING,	setting_xpm,	NULL },
   { ICON_SMILE,		smile_xpm,	NULL },
   { ICON_SNAPSHOT,	snapshot_xpm,	NULL },
