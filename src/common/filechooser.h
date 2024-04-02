@@ -76,7 +76,8 @@ struct _FileChooser
 
   unsigned short thumbsize;	/* 32 => 32x32, 48 => 48x48, ... */
 
-  GList    *_names;		/* list of directory entries */
+  GHashTable* _hash;		/* used resolving _names to filenames */
+  GList    *_names;		/* list of directory entries or labels */
   int      _cursor;		/* present position in names */
   int      _count;		/* number of directory entries */
 };

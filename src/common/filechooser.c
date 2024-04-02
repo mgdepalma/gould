@@ -89,6 +89,11 @@ agent(GtkIconView *iconview, FileChooser *self)
   name = iconbox_get_selected (self->iconbox, COLUMN_LABEL);
   if (name) gtk_entry_set_text (GTK_ENTRY(self->name), name);
 
+  if (self->iconboxfilter) {
+    char *value = g_hash_table_lookup (self->_hash, (gconstpointer)name);
+    if(value != NULL) name = value;
+  }
+
   if (strcmp(curdir, "/") == 0)
     sprintf(pathname, "/%s", name);
   else
@@ -314,6 +319,7 @@ filechooser_init (FileChooser *self)
   char *mode = getenv("THUMBVIEW") ? getenv("THUMBVIEW") : "Tiles";
   int iconsize = getenv("THUMBSIZE") ? atoi(getenv("THUMBSIZE")) : 0;
 
+  self->_hash = g_hash_table_new(g_str_hash, g_str_equal); 
   self->_names = NULL;		/* must be initialized */
   self->_cursor = -1;
   self->_count = -1;
@@ -519,6 +525,16 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
   g_list_free (self->_names);
   self->_names = NULL;
 
+  if (self->iconboxfilter != NULL) {
+    GHashTableIter iter;
+    gpointer key, value;
+
+    g_hash_table_iter_init (&iter, self->_hash);
+    while (g_hash_table_iter_next (&iter, &key, &value)) free(key);
+
+    g_hash_table_remove_all (self->_hash);
+  }
+
   /* Populate self->icons with directory content. */
   self->_count  = scandir(pathname, &names, NULL, alphasort);
   self->_cursor = 0;
@@ -549,6 +565,8 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
           iconbox_append (self->iconbox, pixbuf, NULL);
         else			    /* fallback using only item.label */
           iconbox_append (self->iconbox, NULL, item.label);
+
+        g_hash_table_insert (self->_hash, strdup(item.label), name);
       }
       else {
         pixbuf = icon_pixbuf_new (self, index, pathname, NULL);

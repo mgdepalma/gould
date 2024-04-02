@@ -78,7 +78,7 @@ struct _ScreensaverConfig
   int selection;		/* save/lock mode selection */
   guint time;			/* screen save in minutes */
   guint lock;			/* screen lock in minutes */
-  int index;			/* _xscreensaver_modes_directory index */
+  int index;			/* _SCREENSAVER_MODES index */
 };
 
 struct _ScreensaverPrivate	/* private global structure */
@@ -318,7 +318,6 @@ queue_initialize (Display *display)
     queue_append (queue, root);
     events_select (display, root, True);
   }
-
   return queue;
 } /* </queue_initialize> */
 
@@ -377,10 +376,10 @@ static void
 screensaver_debug (const char *reason, ScreensaverConfig *saver, gboolean minutes)
 {
   if (minutes)
-    printf("%s::saver.%s(mode=>%s,time=>%d,lock=>%d)\n", Program, reason,
+    printf("%s::saver.%s(mode => %s,time => %d,lock => %d)\n", Program, reason,
                              saver->mode, saver->time, saver->lock);
   else
-    printf("%s::saver.%s(mode=>%s,time=>%d,lock=>%d)\n", Program, reason,
+    printf("%s::saver.%s(mode => %s,time => %d,lock => %d)\n", Program, reason,
                              saver->mode, saver->time/60, saver->lock/60);
 } /* </screensaver_debug> */
 
@@ -483,7 +482,7 @@ screensaver_fullscreen (GtkWidget *button, ScreensaverConfig *saver)
   char command[COMMAND_MAX];
 
   gtk_widget_set_sensitive (GTK_WIDGET(button), FALSE);
-  sprintf(command, "%s/%s", _xscreensaver_modes_directory, saver->mode);
+  sprintf(command, "%s/%s", _SCREENSAVER_MODES, saver->mode);
   vdebug (3, "[%s]%s\n", __func__, command);
   system_command (command);
 
@@ -494,7 +493,7 @@ screensaver_fullscreen (GtkWidget *button, ScreensaverConfig *saver)
 * screensaver_preview
 */
 static pid_t
-screensaver_preview (GdkWindow *window, const gchar *mode)
+screensaver_preview (GdkWindow *window, const char *command)
 {
   Window xwin = GDK_WINDOW_XWINDOW(window);
   char geometry[COMMAND_MAX], parent[COMMAND_MAX];
@@ -511,11 +510,7 @@ screensaver_preview (GdkWindow *window, const gchar *mode)
     waitpid(process, &stat, 0);
     return process;
   }
-
-  execlp(_SCREENSAVER_COMMAND,
-	   _SCREENSAVER_COMMAND,
-           "--activate",
-           NULL);
+  execlp(command, command, NULL);
 
   return 0;
 } /* </screensaver_preview> */
@@ -764,7 +759,7 @@ screensaver_sendmode (GtkComboBox *combo, GlobalPanel *panel)
 
   if (selection >= 0) {
     PanelSetting *settings = panel->settings;
-    ScreensaverConfig  *cache_   = &local_.cache;
+    ScreensaverConfig  *cache_  = &local_.cache;
 
     settings_save_enable (settings, TRUE);
     settings_set_agents (settings,
@@ -951,7 +946,6 @@ screensaver_xmlfile_readline(char *buffer)
 
   buffer[pos] = 0;
   strcpy(line, buffer);
-  //printf("%s newline at %d: %s\n", __func__, pos+1, line);
   buffer[pos] = separator;
 
   return line;
@@ -1014,6 +1008,43 @@ screensaver_xmlfile(IconboxDatum *ptr)
   }
   return active;
 } /* screensaver_xmlfile */
+
+/*
+* screensaver_selection - selection callback function
+*/
+static bool
+screensaver_selection (FileChooserDatum *datum)
+{
+  static char buffer[MAX_PATHNAME];
+  FILE *stream = fopen(datum->file, "r");
+
+  if (stream != NULL) {
+    static char quotechar = '"';
+    static char *pattern = "<screensaver name=";
+    const size_t pattern_length = strlen(pattern);
+
+    char *name = NULL;
+    char *scan;
+
+    while (fgets(buffer, sizeof(buffer)-1, stream) != NULL) {
+      name = strstr(buffer, pattern);
+
+      if (name != NULL) {
+        name += pattern_length + 1;
+        scan = strchr(name, quotechar);
+        *scan = 0;
+
+        sprintf(buffer, "%s/%s", _SCREENSAVER_MODES, scan);
+        FileChooser *chooser = datum->self;
+        GdkWindow *gdkwindow = gtk_widget_get_window (GTK_WIDGET(chooser->viewer));
+        screensaver_preview (gdkwindow, (datum->file = buffer));
+        break;
+      }
+    }
+    fclose(stream);
+  }
+  return true;
+} /* </screensaver_selection> */
 
 /*
 * screensaver_settings - provides configuration pages
@@ -1149,6 +1180,7 @@ screensaver_settings (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(pane), widget, FALSE, FALSE, 5);
   gtk_widget_show (widget);
 
+  filechooser_set_callback (chooser, (gpointer)screensaver_selection, NULL);
 //il SEGNO per oggi
 
   return layout;
@@ -1182,7 +1214,6 @@ screensaver_module_init (Modulus *applet, GlobalPanel *panel)
   screensaver_configuration_read (applet, local_.config);
 
   local_.icon     = "lock.png";
-  //local_.icon     = "exit.png";
   local_.tooltips = gtk_tooltips_new();
 
   /* Construct the settings pages. */

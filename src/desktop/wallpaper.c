@@ -31,35 +31,35 @@ extern const char *Program, *Release;     /* see, gpanel.c */
 /*
 * Data structures used by this module.
 */
-typedef struct _DesktopPanel DesktopPanel;
+typedef struct _WallpaperSettings WallpaperSettings;
 
-struct _DesktopPanel {
-  FileChooser *chooser;	  /* file chooser instance */
+struct _WallpaperSettings {
+  FileChooser *chooser;		/* file chooser instance */
   GlobalPanel *panel;
 
-  GtkWidget *window;	  /* main window: paned top, controls bottom */
-  GtkWidget *browser; 	  /* file browser left side panel */
-  GtkWidget *viewer;	  /* preview image right side panel */
-  GtkWidget *canvas;	  /* image canvas drawing area */
+  GtkWidget *window;		/* main window: paned top, controls bottom */
+  GtkWidget *browser;		/* file browser left side panel */
+  GtkWidget *viewer;		/* preview image right side panel */
+  GtkWidget *canvas;		/* image canvas drawing area */
 
-  GtkWidget *backward;    /* backward one selection button */
-  GtkWidget *forward;     /* forward one selection button */
+  GtkWidget *backward;		/* backward one selection button */
+  GtkWidget *forward;		/* forward one selection button */
 
-  char pathname[MAX_PATHNAME + 2];
-  char resource[MAX_PATHNAME]; /* resource path ($HOME/.config/desktop) */
+  char pathname[MAX_PATHNAME];
+  char resource[MAX_PATHNAME];	/* resource path ($HOME/.config/desktop) */
 };
 
 /* Forward prototype declarations. */
 static void
 setbg_refresh (GtkWidget *canvas, GdkEventExpose *ev, gpointer data);
 
-static DesktopPanel desktop_;	/* private global structure singleton */
+static WallpaperSettings config_;  /* private global structure singleton */
 
 /*
 * (private) configsave
 */
 static bool
-configsave(DesktopPanel *desktop)
+configsave(WallpaperSettings *config)
 {
   FILE *stream;
   char **buffer = NULL;
@@ -67,11 +67,11 @@ configsave(DesktopPanel *desktop)
   int count = 0;
   int idx;
 
-  /* Read desktop->resource in memory buffer. */
-  if ((stream = fopen(desktop->resource, "r"))) {
+  /* Read config->resource in memory buffer. */
+  if ((stream = fopen(config->resource, "r"))) {
     while (fgets(line, MAX_PATHNAME, stream)) ++count;
 
-    /* Allocate memory space for desktop->resource */
+    /* Allocate memory space for config->resource */
     if ((buffer = calloc(count, sizeof (char *))) == NULL) {
       fclose(stream);
       return false;
@@ -85,10 +85,10 @@ configsave(DesktopPanel *desktop)
     fclose(stream);
   }
 
-  /* [Re]open desktop->resource for writing. */
-  if ((stream = fopen(desktop->resource, "w"))) {
+  /* [Re]open config->resource for writing. */
+  if ((stream = fopen(config->resource, "w"))) {
     bool insert = true;
-    gchar *pathname = filechooser_get_selected_name (desktop->chooser);
+    gchar *pathname = filechooser_get_selected_name (config->chooser);
 
     for (idx=0; idx < count; idx++) {
       if (strncmp(buffer[idx], "BACKGROUND=", 11) == 0) {
@@ -100,14 +100,14 @@ configsave(DesktopPanel *desktop)
       }
     }
 
-    /* "BACKGROUND=" was not specified in desktop->resource */
+    /* "BACKGROUND=" was not specified in config->resource */
     if (insert)
       fprintf(stream, "BACKGROUND=\"%s\"\n", pathname);
 
     fclose(stream);
   }
 
-  /* Free the memory space allocated for desktop->resource */
+  /* Free the memory space allocated for config->resource */
   if (buffer) {
     for (idx=0; idx < count; idx++) free(buffer[idx]);
     free(buffer);
@@ -133,14 +133,14 @@ setbg (const gchar *pathname)
 bool
 setbg_settings_apply (Modulus *applet)
 {
-  DesktopPanel *desktop = &desktop_;
-  FileChooser *chooser  = desktop->chooser;
+  WallpaperSettings *config = &config_;
+  FileChooser *chooser  = config->chooser;
   const gchar *pathname = filechooser_get_selected_name (chooser);
 
   if (pathname) {	/* paranoid check */
     setbg (pathname);
-    /* configsave (desktop); */
-    strcpy(desktop->pathname, pathname);
+    /* configsave (config); */
+    strcpy(config->pathname, pathname);
   }
   return true;
 } /* </setbg_settings_apply> */
@@ -148,14 +148,14 @@ setbg_settings_apply (Modulus *applet)
 bool
 setbg_settings_cancel (Modulus *applet)
 {
-  DesktopPanel *desktop = &desktop_;
-  FileChooser *chooser = desktop->chooser;
+  WallpaperSettings *config = &config_;
+  FileChooser *chooser = config->chooser;
 
   static gchar pathname[MAX_PATHNAME];
   const gchar *curdir = gtk_label_get_text (GTK_LABEL(chooser->path));
   gchar *scan;
 
-  strcpy(pathname, desktop->pathname);
+  strcpy(pathname, config->pathname);
   scan = strrchr(pathname, '/');
 
   if (scan != NULL) {	/* paranoid check */
@@ -166,8 +166,7 @@ setbg_settings_cancel (Modulus *applet)
 
     filechooser_set_name (chooser, scan);
   }
-
-  setbg_refresh (desktop->canvas, NULL, NULL);
+  setbg_refresh (config->canvas, NULL, NULL);
 
   return true;
 } /* </setbg_settings_cancel> */
@@ -178,7 +177,7 @@ setbg_settings_close (Modulus *applet)
   GlobalPanel *panel = (GlobalPanel *)applet->data;
 
   settings_set_agents (panel->settings, NULL, NULL, NULL);
-  configsave (&desktop_);
+  configsave (&config_);
 
   return true;
 } /* </setbg_settings_close> */
@@ -189,8 +188,8 @@ setbg_settings_close (Modulus *applet)
 static void
 setbg_refresh (GtkWidget *canvas, GdkEventExpose *ev, gpointer data)
 {
-  DesktopPanel *desktop = &desktop_;
-  gchar *name = filechooser_get_selected_name (desktop->chooser);
+  WallpaperSettings *config = &config_;
+  gchar *name = filechooser_get_selected_name (config->chooser);
 
   if (name) {
     GError *error = NULL;
@@ -198,7 +197,7 @@ setbg_refresh (GtkWidget *canvas, GdkEventExpose *ev, gpointer data)
 
     if (image) {
       if (ev == NULL) {
-        PanelSetting *settings = desktop->panel->settings;
+        PanelSetting *settings = config->panel->settings;
 
         /* Register callbacks for apply and cancel. */
         settings_save_enable (settings, TRUE);
@@ -230,7 +229,7 @@ setbg_selection (FileChooserDatum *datum)
   struct stat info;
 
   if (lstat(file, &info) == 0 && S_ISREG(info.st_mode))
-    setbg_refresh(desktop_.canvas, NULL, NULL);
+    setbg_refresh(config_.canvas, NULL, NULL);
 
   return true;
 } /* </setbg_selection> */
@@ -247,7 +246,7 @@ prevfile(GtkWidget *button, FileChooser *chooser)
 
   if (index > 0) {
     filechooser_set_cursor (chooser, --index);
-    setbg_refresh(desktop_.canvas, NULL, NULL);
+    setbg_refresh(config_.canvas, NULL, NULL);
   }
   return true;
 } /* </prevfile> */
@@ -260,7 +259,7 @@ nextfile(GtkWidget *button, FileChooser *chooser)
 
   if (index < count) {
     filechooser_set_cursor (chooser, ++index);
-    setbg_refresh(desktop_.canvas, NULL, NULL);
+    setbg_refresh(config_.canvas, NULL, NULL);
   }
   return true;
 } /* </nextfile> */
@@ -279,12 +278,12 @@ origfile(GtkWidget *button, Modulus *applet)
 /*
 * setbg_initialize
 */
-DesktopPanel *
+WallpaperSettings *
 setbg_initialize (GlobalPanel *panel)
 {
   static char path[MAX_PATHNAME];  /* dirname(1) of the BACKGROUND resource */
 
-  DesktopPanel *desktop = &desktop_;
+  WallpaperSettings *config = &config_;
   FileChooser *chooser;
   FILE *stream;
 
@@ -296,14 +295,14 @@ setbg_initialize (GlobalPanel *panel)
   int mark;
 
 
-  desktop->panel = panel;	/* save GlobalPanel *panel in singleton */
+  config->panel = panel;	/* save GlobalPanel *panel in singleton */
 
   /* $HOME/.config/desktop is the user specific resource file */
-  sprintf(desktop->resource, "%s/.config/desktop", home);
+  sprintf(config->resource, "%s/.config/desktop", home);
 
   /* /etc/sysconfig/desktop is the system wide resource file */
-  if (access(desktop->resource, R_OK) == 0) {
-    resource = desktop->resource;
+  if (access(config->resource, R_OK) == 0) {
+    resource = config->resource;
   }
   else {
     resource = "/etc/sysconfig/desktop";
@@ -341,9 +340,9 @@ setbg_initialize (GlobalPanel *panel)
     name = ++scan;
   }
 
-  /* Make sure we set (desktop->chooser)->agent */
-  chooser = desktop->chooser = filechooser_new (path, NULL);
-  filechooser_set_callback (chooser, (gpointer)setbg_selection, desktop);
+  /* Make sure we set (config->chooser)->agent */
+  chooser = config->chooser = filechooser_new (path, NULL);
+  filechooser_set_callback (chooser, (gpointer)setbg_selection, config);
   gtk_label_set_max_width_chars (GTK_LABEL(chooser->path), 32);
   chooser->clearname = TRUE;	/* clear file name on directory change */
 
@@ -351,12 +350,11 @@ setbg_initialize (GlobalPanel *panel)
     filechooser_set_name (chooser, name);
 
     if (strcmp(path, "/") == 0)
-      sprintf(desktop->pathname, "/%s", name);
+      sprintf(config->pathname, "/%s", name);
     else
-      sprintf(desktop->pathname, "%s/%s", path, name);
+      sprintf(config->pathname, "%s/%s", path, name);
   }
-
-  return desktop;
+  return config;
 } /* </setbg_initialize> */
 
 /*
@@ -365,8 +363,8 @@ setbg_initialize (GlobalPanel *panel)
 GtkWidget*
 setbg_settings_new (Modulus *applet, GlobalPanel *panel)
 {
-  DesktopPanel *desktop = setbg_initialize (panel);
-  FileChooser *chooser = desktop->chooser;
+  WallpaperSettings *config = setbg_initialize (panel);
+  FileChooser *chooser = config->chooser;
 
   GtkWidget *button, *field, *frame, *inset;
   GtkWidget *canvas, *pane, *scroll, *split;
@@ -381,7 +379,7 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (split);
 
   /* Assemble scrollable file chooser. */
-  area = desktop->browser = gtk_vbox_new(FALSE, 1);
+  area = config->browser = gtk_vbox_new(FALSE, 1);
   gtk_box_pack_start (GTK_BOX (split), area, TRUE, TRUE, 0);
   gtk_widget_show (area);
 
@@ -402,7 +400,7 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (area);
 
   /* Assemble canvas display area. */
-  area = desktop->viewer = gtk_vbox_new(FALSE, 1);
+  area = config->viewer = gtk_vbox_new(FALSE, 1);
   gtk_box_pack_start (GTK_BOX (split), area, TRUE, TRUE, 0);
   gtk_widget_show (area);
 
@@ -411,13 +409,13 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX (area), pane, FALSE, TRUE, 0);
   gtk_widget_show (pane);
 
-  button = desktop->backward = xpm_button (ICON_BACK, NULL, 0, NULL);
+  button = config->backward = xpm_button (ICON_BACK, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX (pane), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(prevfile), chooser);
   gtk_widget_show (button);
 
-  button = desktop->forward = xpm_button (ICON_FORWARD, NULL, 0, NULL);
+  button = config->forward = xpm_button (ICON_FORWARD, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX (pane), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(nextfile), chooser);
@@ -428,7 +426,7 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_container_add (GTK_CONTAINER(area), frame);
   gtk_widget_show (frame);
 
-  canvas = desktop->canvas = gtk_drawing_area_new ();
+  canvas = config->canvas = gtk_drawing_area_new ();
   gtk_container_add (GTK_CONTAINER(frame), canvas);
   g_signal_connect (G_OBJECT (canvas), "expose_event",
                            G_CALLBACK (setbg_refresh), NULL);

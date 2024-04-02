@@ -23,6 +23,7 @@
 #include "gwindow.h"
 #include "xpmglyphs.h"
 
+#include <X11/Xatom.h>
 #include <X11/Xutil.h>
 #include <X11/extensions/shape.h>
 
@@ -273,7 +274,6 @@ redraw_pixbuf (GtkWidget *canvas, GdkPixbuf *image)
 GError *
 set_background_pixbuf (GdkWindow *window, GdkPixbuf *pixbuf)
 {
-  GdkGC     *gc;
   GdkPixbuf *image;
   GdkPixmap *pixmap;
 
@@ -315,7 +315,7 @@ set_background (GdkWindow *window, const gchar *pathname)
 {
   static GError *error = NULL;
 
-  if (pathname == '#') {
+  if (pathname[0] == '#') {
     GdkColor bgcolor;
     GdkColormap *map = gdk_window_get_colormap(window);
 
@@ -397,6 +397,27 @@ draw_pixmap (GdkDrawable *target,
 } /* </draw_pixmap> */
 
 /*
+* sticky_window_all_desktops - window must be already mapped
+*/
+void
+sticky_window_all_desktops(GdkWindow *gdkwindow)
+{
+  static unsigned long prop = 0xFFFFFFFF; // note long! even if long is 64 bit
+  
+  Display *display = GDK_WINDOW_XDISPLAY( GDK_ROOT_PARENT() );
+  Window window = GDK_WINDOW_XWINDOW( gdkwindow );
+
+  XChangeProperty(display, window, XInternAtom(display, "_NET_WM_DESKTOP", 1),
+                  XA_CARDINAL, // note CARDINAL not ATOM
+                  32,
+                  PropModeReplace,
+                  (unsigned char*)&prop,
+                  1); // note 1
+
+  XMapWindow(display, window); // map after changing the property
+} /* </sticky_window_all_desktops> */
+
+/*
 * sticky_window_new - create a sticky GTK_WINDOW_TOPLEVEL window
 */
 GtkWidget *
@@ -423,26 +444,26 @@ sticky_window_new (GdkWindowTypeHint hint,
   gtk_window_move (window, xpos, ypos);
   gtk_window_stick(window);
 
-#if 0
+#if 0 // enable this code portion to keep window above all other
   if (hint == GDK_WINDOW_TYPE_HINT_DOCK || hint == GDK_WINDOW_TYPE_HINT_TOOLBAR)
-  {
-    /* http://standards.freedesktop.org/wm-spec/1.3/ar01s05.html */
-    GdkAtom card  = gdk_atom_intern("CARDINAL",      FALSE);
-    GdkAtom strut = gdk_atom_intern("_NET_WM_STRUT", FALSE);
+    {
+	/* http://standards.freedesktop.org/wm-spec/1.3/ar01s05.html */
+	GdkAtom card  = gdk_atom_intern("CARDINAL",      FALSE);
+	GdkAtom strut = gdk_atom_intern("_NET_WM_STRUT", FALSE);
 
-    long wm_strut[] = { 0,			/* Left   */
-                        0,			/* Right  */
-                        height,			/* Top    */
-                        0,			/* Bottom */
-                      };
+	long wm_strut[] = { 0,			/* Left   */
+			    0,			/* Right  */
+			    height,		/* Top    */
+			    0,			/* Bottom */
+			  };
 
-    gdk_property_change (GDK_WINDOW (widget->window), strut, card,
-                         32, GDK_PROP_MODE_REPLACE,
-                         (guchar *)(&wm_strut), 4);
+	gdk_property_change (GDK_WINDOW (widget->window), strut,
+			     card, 32, GDK_PROP_MODE_REPLACE,
+			     (guchar *)(&wm_strut), 4);
 
-    /* Explicitly keep the window above all others. */
-    gtk_window_set_keep_above (window, TRUE);
-  }
+	/* Explicitly keep the window above all others. */
+	gtk_window_set_keep_above (window, TRUE);
+    }
 #endif
 
   if (hint != GDK_WINDOW_TYPE_HINT_MENU) {
