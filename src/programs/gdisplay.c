@@ -471,7 +471,7 @@ initialize (GlobalDisplay *display, char *pathname)
   }
 
   /* Make sure we set (display->chooser)->agent */
-  chooser = display->chooser = filechooser_new (path);
+  chooser = display->chooser = filechooser_new (path, NULL);
   filechooser_set_callback (chooser, (gpointer)agent, display);
   gtk_label_set_max_width_chars (GTK_LABEL(chooser->path), 32);
 

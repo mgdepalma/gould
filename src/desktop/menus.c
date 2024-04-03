@@ -261,14 +261,9 @@ exit_suspend (GtkWidget *button, GlobalPanel *panel)
 static void
 screenlock (GtkWidget *button, GlobalPanel *panel)
 {
-  char command[MAX_COMMAND];
-  int idx = screensaver_get_selection();
+  static char command[MAX_COMMAND];
 
-  if (idx >= 0)
-    sprintf(command, "%s --select %d", _SCREENSAVER_COMMAND, idx);
-  else
-    sprintf(command, "%s --activate", _SCREENSAVER_COMMAND);
-
+  sprintf(command, _SCREENSAVER_ACTIVATE);
   vdebug (1, "[%s]%s\n", __func__, command);
   exit_cancel(button, panel);
 

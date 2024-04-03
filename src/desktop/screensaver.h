@@ -35,8 +35,8 @@
 #define _SCREENSAVER_COMMAND  _xscreensaver_command
 #define _SCREENSAVER_DAEMON   _xscreensaver_daemon
 
-#define _SCREENSAVER_ACTIVATE _SCREENSAVER_COMMAND " --activate"
-#define _SCREENSAVER_GRACEFUL _SCREENSAVER_COMMAND " --exit"
+#define _SCREENSAVER_ACTIVATE _SCREENSAVER_COMMAND " -activate"
+#define _SCREENSAVER_GRACEFUL _SCREENSAVER_COMMAND " -exit"
 
 #define _SCREENSAVER_RESERVED "xscreensaver"
 

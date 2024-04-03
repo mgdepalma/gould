@@ -249,6 +249,7 @@ void settings_set_agents (PanelSetting *settings,
                           GtkFunction close_cb);
 
 GtkWidget *setbg_settings_new (Modulus *applet, GlobalPanel *panel);
+GtkWidget *screensaver_settings_new (Modulus *applet, GlobalPanel *panel);
 GtkWidget *shutdown_dialog_new (GlobalPanel *panel);
 
 void

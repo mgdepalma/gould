@@ -56,10 +56,20 @@ setbg_refresh (GtkWidget *canvas, GdkEventExpose *ev, gpointer data);
 static WallpaperSettings config_;  /* private global structure singleton */
 
 /*
-* (private) configsave
+* (private) set background callback
+*/
+static void
+setbg (const gchar *pathname)
+{
+  GError *error = set_background (gdk_get_default_root_window(), pathname);
+  if (error) g_printerr("%s: %s\n", Program, _(error->message));
+} /* </setbg> */
+
+/*
+* (private) setbg_configsave
 */
 static bool
-configsave(WallpaperSettings *config)
+setbg_configsave(WallpaperSettings *config)
 {
   FILE *stream;
   char **buffer = NULL;
@@ -113,17 +123,7 @@ configsave(WallpaperSettings *config)
     free(buffer);
   }
   return true;
-} /* </configsave> */
-
-/*
-* (private) set background callback
-*/
-static void
-setbg (const gchar *pathname)
-{
-  GError *error = set_background (gdk_get_default_root_window(), pathname);
-  if (error) g_printerr("%s: %s\n", Program, _(error->message));
-} /* </setbg> */
+} /* </setbg_configsave> */
 
 /*
 * setbg_settings_apply
@@ -139,7 +139,7 @@ setbg_settings_apply (Modulus *applet)
 
   if (pathname) {	/* paranoid check */
     setbg (pathname);
-    /* configsave (config); */
+    setbg_configsave (config);
     strcpy(config->pathname, pathname);
   }
   return true;
@@ -175,10 +175,7 @@ bool
 setbg_settings_close (Modulus *applet)
 {
   GlobalPanel *panel = (GlobalPanel *)applet->data;
-
   settings_set_agents (panel->settings, NULL, NULL, NULL);
-  configsave (&config_);
-
   return true;
 } /* </setbg_settings_close> */
 
@@ -235,12 +232,12 @@ setbg_selection (FileChooserDatum *datum)
 } /* </setbg_selection> */
 
 /*
-* (private) prevfile
-* (private) nextfile
-* (private) origfile
+* (private) setbg_prevfile
+* (private) setbg_nextfile
+* (private) setbg_origfile
 */
 static bool
-prevfile(GtkWidget *button, FileChooser *chooser)
+setbg_prevfile(GtkWidget *button, FileChooser *chooser)
 {
   int index = filechooser_get_cursor (chooser);
 
@@ -249,10 +246,10 @@ prevfile(GtkWidget *button, FileChooser *chooser)
     setbg_refresh(config_.canvas, NULL, NULL);
   }
   return true;
-} /* </prevfile> */
+} /* </setbg_prevfile> */
 
 static bool
-nextfile(GtkWidget *button, FileChooser *chooser)
+setbg_nextfile(GtkWidget *button, FileChooser *chooser)
 {
   int index = filechooser_get_cursor (chooser);
   int count = filechooser_get_count (chooser);
@@ -262,18 +259,16 @@ nextfile(GtkWidget *button, FileChooser *chooser)
     setbg_refresh(config_.canvas, NULL, NULL);
   }
   return true;
-} /* </nextfile> */
+} /* </setbg_nextfile> */
 
 static bool
-origfile(GtkWidget *button, Modulus *applet)
+setbg_origfile(GtkWidget *button, Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
-
   setbg_settings_cancel (applet);
   settings_save_enable (panel->settings, FALSE);
-
   return true;
-} /* </origfile> */
+} /* </setbg_origfile> */
 
 /*
 * setbg_initialize
@@ -363,14 +358,14 @@ setbg_initialize (GlobalPanel *panel)
 GtkWidget*
 setbg_settings_new (Modulus *applet, GlobalPanel *panel)
 {
+  GtkWidget *layout = gtk_vbox_new (FALSE, 0);
+  GtkWidget *area, *button, *canvas, *field, *frame;
+  GtkWidget *inset, *pane, *scroll, *split;
+
   WallpaperSettings *config = setbg_initialize (panel);
   FileChooser *chooser = config->chooser;
 
-  GtkWidget *button, *field, *frame, *inset;
-  GtkWidget *canvas, *pane, *scroll, *split;
-
-  GtkWidget *area, *layout = gtk_vbox_new (FALSE, 0);
-  gint width = 34 * gdk_screen_width() / 100;
+  gint width = 20 * gdk_screen_width() / 100;
 
 
   /* Split view: chooser on the left, preview on the right. */
@@ -412,13 +407,15 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   button = config->backward = xpm_button (ICON_BACK, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX (pane), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
-  g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(prevfile), chooser);
+  g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(setbg_prevfile),
+								    chooser);
   gtk_widget_show (button);
 
   button = config->forward = xpm_button (ICON_FORWARD, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX (pane), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
-  g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(nextfile), chooser);
+  g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(setbg_nextfile),
+								    chooser);
   gtk_widget_show (button);
 
   /* Image preview canvas drawing area. */
@@ -444,10 +441,11 @@ setbg_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(inset), button, FALSE, TRUE, 4);
   gtk_widget_show (button);
 
-  button = xpm_button (ICON_FILE, NULL, 0, NULL);
+  button = xpm_button (ICON_RESTORE, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX(inset), button, FALSE, TRUE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
-  g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(origfile), applet);
+  g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(setbg_origfile),
+								     applet);
   gtk_widget_show (button);
 
   area = chooser->namebox;
