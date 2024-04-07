@@ -68,8 +68,6 @@ void draw_pixmap (GdkDrawable *target,
                   GdkPixmap *pixmap, GdkGC *gc,
                   gint xpos, gint ypos);
 
-void sticky_window_all_desktops(GdkWindow *gdkwindow);
-
 GtkWidget *sticky_window_new (GdkWindowTypeHint hint,
                               gint width, gint height,
                               gint xpos, gint ypos);

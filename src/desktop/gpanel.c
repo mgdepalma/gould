@@ -829,9 +829,6 @@ panel_constructor(GlobalPanel *panel)
   gtk_container_add (GTK_CONTAINER(frame), layout);
   gtk_widget_show (layout);
 
-  /* Xlib level call to show on all desktops (window must be mapped) */
-  sticky_window_all_desktops (gtk_widget_get_window (GTK_WIDGET(layout)));
-
   /* Iterate the alert notices list. */
   for (iter = panel->notice; iter != NULL; iter = iter->next) {
     gpanel_dialog(100,100, ICON_WARNING,"%s: %s.", Program, (gchar*)iter->data);
