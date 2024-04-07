@@ -75,9 +75,6 @@ struct _ScreensaverSettings
 {
   GlobalPanel *panel;
 
-  GtkWidget *canvas;		/* image canvas drawing area */
-  GtkWidget *preview;		/* preview image right side panel */
-
   gboolean active;		/* saver active (or not) */
   const gchar *mode;		/* screen save/lock mode */
   int selection;		/* save/lock mode selection */
@@ -542,26 +539,28 @@ screensaver_preview (GdkWindow *gdkwindow, const char *mode)
   Window xwin = GDK_WINDOW_XWINDOW (gdkwindow);
 
   static char command[COMMAND_MAX];
-  char geometry[COMMAND_MAX], parent[COMMAND_MAX];
+  char geometry[COMMAND_MAX];
+  char parent[COMMAND_MAX];
+
+  if(local_.preview > 0) killproc (&local_.preview, SIGTERM);
   pid_t process = fork();
 
   gint width, height;
   gdk_drawable_get_size (gdkwindow, &width, &height);
 
-  sprintf(parent, "%ld", (unsigned long)xwin);
+  sprintf(parent, "0x%X", (unsigned long)xwin);
+  //sprintf(parent, "%ld", (unsigned long)xwin);
   sprintf(geometry, "%dx%d", width, height);
 
-  if (process > 0) {	/* not in spawned process */
-    int stat;
-    waitpid(process, &stat, 0);
-    return process;
+  if (process == 0) {		/* child process */
+    sprintf(command, "%s/%s", _SCREENSAVER_MODES, mode);
+    vdebug(2, "%s command => %s, window-id => 0x%X\n",
+				__func__, command, parent);
+    execlp(command, command,
+           "-window-id", parent,
+           NULL);
   }
-
-  sprintf(command, "%s/%s", _SCREENSAVER_MODES, mode);
-  vdebug(2, "%s command => %s\n", __func__, command);
-  execlp(command, command, NULL);
-
-  return 0;
+  return process;
 } /* </screensaver_preview> */
 
 /*
@@ -1067,8 +1066,8 @@ screensaver_selection (FileChooserDatum *datum)
 
         if (datum->user) {	// preview window
           ScreensaverSettings *config = datum->user;
-          GdkWindow *gdkwindow = gtk_widget_get_window (GTK_WIDGET(config->canvas));
-          screensaver_preview (gdkwindow, name);
+          GdkWindow *gdkwindow = local_.preview_pane->window;
+          local_.preview = screensaver_preview (gdkwindow, name);
         }
         found = true;
         break;
@@ -1280,9 +1279,10 @@ GtkWidget*
 screensaver_settings_new (Modulus *applet, GlobalPanel *panel)
 {
   GtkWidget *layout = gtk_vbox_new (FALSE, 0);
-
   GtkWidget *area, *button, *canvas, *frame, *glue;
   GtkWidget *layer, *pane, *scroll, *split, *widget;
+  GtkTextBuffer *buffer;
+  GdkColor color;
 
   FileChooser *chooser = filechooser_new (_SCREENSAVER_CONFIG,
 						screensaver_xmlfile);
@@ -1303,12 +1303,6 @@ screensaver_settings_new (Modulus *applet, GlobalPanel *panel)
   area = gtk_vbox_new(FALSE, 0);
   gtk_box_pack_start (GTK_BOX (split), area, FALSE, FALSE, 0);
   gtk_widget_show (area);
-
-  /* spacer on left side
-  glue = gtk_label_new (" ");
-  gtk_box_pack_start (GTK_BOX(area), glue, FALSE, FALSE, 2);
-  gtk_widget_show (glue);
-  */
 
   /* screensaver modes: label + combo_box */
   pane = gtk_hbox_new (FALSE, 1);
@@ -1341,42 +1335,46 @@ screensaver_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(layer), glue, FALSE, FALSE, 2);
   gtk_widget_show (glue);
 
-  /* Assemble file selector. */
+  /* Assemble file selector in a scrolled window. */
   scroll = gtk_scrolled_window_new (NULL, NULL);
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW(scroll),
                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
   gtk_box_pack_start (GTK_BOX(layer), scroll, TRUE, TRUE, 5);
   gtk_widget_show (scroll);
 
-  if (chooser->viewer) {  /* careful: may not have one, yet */
-    widget = chooser->viewer;
-    gtk_container_add (GTK_CONTAINER(scroll), widget);
-    gtk_widget_show (widget);
-  }
+  widget = chooser->viewer;
+  gtk_container_add (GTK_CONTAINER(scroll), widget);
+  gtk_widget_show (widget);
 
   /* Blank After, Cycle After, and Lock Screen After */
   widget = screensaver_settings_grid();
   gtk_box_pack_start (GTK_BOX(area), widget, FALSE, FALSE, 4);
   gtk_widget_show (widget);
 
-  /* Assemble canvas display area. */
-  area = _config->preview = gtk_vbox_new(FALSE, 1);
+  /* Assemble preview display area. */
+  area = gtk_vbox_new(FALSE, 1);
   gtk_box_pack_start (GTK_BOX(split), area, TRUE, TRUE, 8);
-  local_.preview_pane = area; // TODO mix of legacy and new code
   gtk_widget_show (area);
 
-  pane = gtk_hbox_new(FALSE, 4);
-  gtk_box_pack_start (GTK_BOX(area), pane, FALSE, FALSE, 0);
-  gtk_widget_show (pane);
+  canvas = local_.preview_pane = gtk_text_view_new ();
+  gtk_text_view_set_editable (GTK_TEXT_VIEW(canvas), FALSE);
+  gtk_text_view_set_cursor_visible (GTK_TEXT_VIEW(canvas), FALSE);
+  gtk_text_view_set_justification (GTK_TEXT_VIEW(canvas), GTK_JUSTIFY_CENTER);
+  gtk_text_view_set_pixels_above_lines (GTK_TEXT_VIEW(canvas), 30);
+
+  gdk_color_parse ("red", &color);
+  buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (canvas));
+  gtk_text_buffer_set_text (buffer, _("\nScreen saver preview"), -1);
+  gtk_widget_modify_text (canvas, GTK_STATE_NORMAL, &color);
+
+  gtk_box_pack_start (GTK_BOX(area), canvas, FALSE, FALSE, 6);
+  gtk_widget_set_usize (canvas, 300, 225);
+  gtk_widget_show (canvas);
 
   /* Draw frame around display area. */
   frame = gtk_frame_new (NULL);
-  gtk_container_add (GTK_CONTAINER(area), frame);
+  gtk_container_add (GTK_CONTAINER(canvas), frame);
   gtk_widget_show (frame);
-
-  canvas = _config->canvas = gtk_drawing_area_new ();
-  gtk_container_add (GTK_CONTAINER(frame), canvas);
-  gtk_widget_show (canvas);
 
   //g_signal_connect (G_OBJECT (canvas), "expose_event",
   //                         G_CALLBACK (preview_refresh), NULL);
@@ -1390,7 +1388,7 @@ screensaver_settings_new (Modulus *applet, GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(pane), widget, TRUE, TRUE, 0);
   gtk_widget_show (widget);
 
-  button = gtk_button_new_with_label(_("Preview"));
+  button = gtk_button_new_with_label(_("Fullscreen"));
   gtk_box_pack_start (GTK_BOX(pane), button, FALSE, FALSE, 5);
   gtk_widget_show (button);
 
