@@ -22,6 +22,10 @@
 #include "gwindow.h"
 #include "filechooser.h"
 
+#ifndef UNIX_PATH_MAX
+#define UNIX_PATH_MAX 128
+#endif
+
 #ifndef get_current_dir_name
 extern char *get_current_dir_name(void);
 #endif
@@ -74,15 +78,16 @@ static FileChooserTypes filetypes[] = {
 };
 
 /*
-* (private) agent
+* (private) filechooser_agent
 */
 static void
-agent(GtkIconView *iconview, FileChooser *self)
+filechooser_agent(GtkIconView *iconview, FileChooser *self)
 {
   bool action = false;
   const gchar *curdir;
-  gchar *name, pathname[FILENAME_MAX];
+  static char pathname[UNIX_PATH_MAX];
   struct stat info;
+  gchar *name;
 
   /* Compose pathname with self->curdir and the selected icon. */
   curdir = gtk_label_get_text (GTK_LABEL(self->path));
@@ -99,6 +104,8 @@ agent(GtkIconView *iconview, FileChooser *self)
   else
     sprintf(pathname, "%s/%s", curdir, name);
 
+  self->datum->file = pathname;
+
   /* Populate self->iconbox with directory contents. */
   if (lstat(pathname, &info) == 0)
     if (S_ISDIR(info.st_mode) || S_ISLNK(info.st_mode)) {
@@ -106,7 +113,6 @@ agent(GtkIconView *iconview, FileChooser *self)
     }
 
   if (self->agent)  { /* if specified invoke additional agent callback */
-    self->datum->file = pathname;
     action = (*self->agent) (self->datum);
   }
 
@@ -114,14 +120,14 @@ agent(GtkIconView *iconview, FileChooser *self)
     g_debug("%s action => false\n", __func__);
   }
   gtk_widget_set_sensitive (GTK_WIDGET(self->dirup), TRUE);
-} /* </agent> */
+} /* </filechooser_agent> */
 
 /*
-* (private) dirup
-* (private) dirhome
+* (private) filechooser_dirup
+* (private) filechooser_dirhome
 */
 static void
-dirup(GtkWidget *button, FileChooser *self)
+filechooser_dirup(GtkWidget *button, FileChooser *self)
 {
   const gchar *curdir = gtk_label_get_text (GTK_LABEL(self->path));
   gchar *scan;
@@ -140,21 +146,21 @@ dirup(GtkWidget *button, FileChooser *self)
     gtk_widget_set_sensitive (GTK_WIDGET(self->dirup), FALSE);
 
   filechooser_update (self, curdir, self->clearname); /* update directory */
-} /* </dirup> */
+} /* </filechooser_dirup> */
 
 static void
-dirhome(GtkWidget *button, FileChooser *self)
+filechooser_dirhome(GtkWidget *button, FileChooser *self)
 {
   filechooser_update (self, getenv("HOME"), self->clearname);
   gtk_widget_set_sensitive (GTK_WIDGET(self->dirup), TRUE);
-} /* </dirhome> */
+} /* </filechooser_dirhome> */
 
 /*
-* (private) showhidden
-* (private) showthumbs
+* (private) filechooser_showhidden
+* (private) filechooser_showthumbs
 */
 static void
-showhidden(GtkWidget *button, FileChooser *self)
+filechooser_showhidden(GtkWidget *button, FileChooser *self)
 {
   const gchar *curdir = gtk_label_get_text (GTK_LABEL(self->path));
 
@@ -168,10 +174,10 @@ showhidden(GtkWidget *button, FileChooser *self)
   }
 
   filechooser_update (self, curdir, FALSE);
-} /* </showhidden> */
+} /* </filechooser_showhidden> */
 
 static void
-showthumbs(GtkWidget *button, FileChooser *self)
+filechooser_showthumbs(GtkWidget *button, FileChooser *self)
 {
   const gchar *curdir = gtk_label_get_text (GTK_LABEL(self->path));
   GtkWidget *view = (self->iconbox)->view;
@@ -190,13 +196,13 @@ showthumbs(GtkWidget *button, FileChooser *self)
   }
 
   filechooser_update (self, curdir, FALSE);
-} /* </showthumbs> */
+} /* </filechooser_showthumbs> */
 
 /*
-* (private) get_icon_from_type
+* (private) filechooser_get_icon_from_type
 */
 static IconIndex
-get_icon_from_type(const gchar *pathname)
+filechooser_get_icon_from_type(const gchar *pathname)
 {
   IconIndex index = ICON_FILE;
   struct stat info;
@@ -224,17 +230,17 @@ get_icon_from_type(const gchar *pathname)
     }
   }
   return index;
-} /* </get_icon_from_type> */
+} /* </filechooser_get_icon_from_type> */
 
 #ifndef __GDK_DRAWING_CONTEXT_H__ // <gtk-3.0/gdk/gdkdrawingcontext.h>
 #include "gtk3compat.c"
 #endif // ! __GDK_DRAWING_CONTEXT_H__
 
 /*
-* icon_pixbuf_label - add text to existing GdkPixbuf *image
+* filechooser_icon_pixbuf_label - add text to existing GdkPixbuf *image
 */
 GdkPixbuf *
-icon_pixbuf_label(FileChooser *self, GdkPixbuf *image, const char *label)
+filechooser_icon_pixbuf_label(FileChooser *self, GdkPixbuf *image, const char *label)
 {
   GdkPixbuf *pixbuf;
   GdkWindow *gdkwindow = gtk_widget_get_window (GTK_WIDGET(self->viewer));
@@ -260,13 +266,13 @@ icon_pixbuf_label(FileChooser *self, GdkPixbuf *image, const char *label)
   pixbuf = gdk_pixbuf_get_from_surface (surface, 0, 0,
                  (width > 0 ) ? width : 24, (height > 0) ? height : 24);
   return pixbuf;
-} /* </icon_pixbuf_label> */
+} /* </filechooser_icon_pixbuf_label> */
 
 /*
-* (private) icon_pixbuf_new - create GdkPixbuf optionally with text
+* (private) filechooser_icon_pixbuf_new - create GdkPixbuf optionally with text
 */
 static GdkPixbuf *
-icon_pixbuf_new(FileChooser *self, IconIndex index, const char *pathname, ...)
+filechooser_icon_pixbuf_new(FileChooser *self, IconIndex index, const char *pathname, ...)
 {
   const char *label = NULL;
   GdkPixbuf *pixbuf = NULL;
@@ -296,10 +302,10 @@ icon_pixbuf_new(FileChooser *self, IconIndex index, const char *pathname, ...)
 
   if (label != NULL) {
     GdkPixbuf *source = pixbuf;
-    pixbuf = icon_pixbuf_label (self, source, label);
+    pixbuf = filechooser_icon_pixbuf_label (self, source, label);
   }
   return pixbuf;
-} /* </icon_pixbuf_new> */
+} /* </filechooser_icon_pixbuf_new> */
 
 /*
 * (private) filechooser_class_init
@@ -404,7 +410,7 @@ filechooser_new (const gchar *dirname, ...)
     iconbox = self->iconbox = iconbox_new (GTK_ORIENTATION_HORIZONTAL);
 
   g_signal_connect (G_OBJECT(iconbox->view), "selection_changed",
-					  G_CALLBACK(agent), self);
+					  G_CALLBACK(filechooser_agent), self);
   self->viewer = iconbox->view;
 
   /* Construct the hbox to display the current file name. */
@@ -427,14 +433,14 @@ filechooser_new (const gchar *dirname, ...)
   gtk_box_pack_start (GTK_BOX(box), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(button), "clicked",
-                          G_CALLBACK (dirup), self);
+                          G_CALLBACK (filechooser_dirup), self);
   gtk_widget_show (button);
 
   button = self->home = xpm_button (ICON_HOME, NULL, 0, NULL);
   gtk_box_pack_start (GTK_BOX(box), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT (button), "clicked",
-                          G_CALLBACK (dirhome), self);
+                          G_CALLBACK (filechooser_dirhome), self);
   gtk_widget_show (button);
 
   /* self->path to display directory name */
@@ -446,7 +452,7 @@ filechooser_new (const gchar *dirname, ...)
   gtk_box_pack_start (GTK_BOX (box), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT (button), "clicked",
-                          G_CALLBACK (showhidden), self);
+                          G_CALLBACK (filechooser_showhidden), self);
   gtk_widget_show (button);
 
   nindex = self->showthumbs ? ICON_THUMBNAIL : ICON_ICONS;
@@ -455,7 +461,7 @@ filechooser_new (const gchar *dirname, ...)
   gtk_box_pack_start (GTK_BOX (box), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT (button), "clicked",
-                          G_CALLBACK (showthumbs), self);
+                          G_CALLBACK (filechooser_showthumbs), self);
   gtk_widget_show(button);
 
   /* Populate self->iconbox with the directory contents. */
@@ -550,7 +556,7 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
       sprintf(pathname, "%s/%s", path, name);
 
       if (lstat(pathname, &info) == 0)
-        index = get_icon_from_type(pathname);
+        index = filechooser_get_icon_from_type(pathname);
       else
         /* g_warning("cannot stat: %s", pathname); */
         continue;
@@ -559,9 +565,9 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
         IconboxDatum item = {name}; /* manipulated by self->iconboxfilter */
 
         if((*self->iconboxfilter) (&item) == false) continue;
-        pixbuf = icon_pixbuf_new (self, index, pathname, item.label, NULL);
+        pixbuf = filechooser_icon_pixbuf_new (self, index, pathname, item.label, NULL);
 
-        if (pixbuf != NULL)	    /* see, icon_pixbuf_label */
+        if (pixbuf != NULL)	    /* see, filechooser_icon_pixbuf_label */
           iconbox_append (self->iconbox, pixbuf, NULL);
         else			    /* fallback using only item.label */
           iconbox_append (self->iconbox, NULL, item.label);
@@ -569,7 +575,7 @@ filechooser_update (FileChooser *self, const gchar *path, bool clearname)
         g_hash_table_insert (self->_hash, strdup(item.label), name);
       }
       else {
-        pixbuf = icon_pixbuf_new (self, index, pathname, NULL);
+        pixbuf = filechooser_icon_pixbuf_new (self, index, pathname, NULL);
         iconbox_append (self->iconbox, pixbuf, name);
       }
       self->_names = g_list_append(self->_names, strdup(name));

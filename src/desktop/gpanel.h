@@ -216,13 +216,12 @@ int panel_loader (GlobalPanel *panel);
 void panel_config_orientation (GlobalPanel *panel);
 void panel_update_pack_position (GlobalPanel *panel, Modulus *applet);
 
-void pager_module_init (Modulus *applet, GlobalPanel *panel);
 void pager_module_open (Modulus *applet);
-void pager_module_close (Modulus *applet);
+void pager_module_init (Modulus *applet, GlobalPanel *panel);
 
-void tasklist_module_init (Modulus *applet, GlobalPanel *panel);
 void tasklist_module_open (Modulus *applet);
-void tasklist_module_close (Modulus *applet);
+void tasklist_module_init (Modulus *applet, GlobalPanel *panel);
+void tasklist_module_set_active_cb(GtkFunction active_changed, gpointer data);
 
 bool screensaver_module_init (Modulus *applet, GlobalPanel *panel);
 void screensaver_module_open (Modulus *applet);

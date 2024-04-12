@@ -32,19 +32,23 @@ typedef struct _TasklistConfig TasklistConfig;
 
 struct _PagerConfig
 {
-  bool enable;			/* enable (or not) pager */
+  bool enable;				/* enable (or not) pager */
 
-  guint workspaces;		/* number of virtual desktops */
-  guint rows;			/* number of pager rows */
+  guint workspaces;			/* number of virtual desktops */
+  guint rows;				/* number of pager rows */
 
-  ModulusPlace order;		/* left or right placement */
-  GSList *stead;		/* left, right radio group */
+  ModulusPlace order;			/* left or right placement */
+  GSList *stead;			/* left, right radio group */
 };
 
 struct _TasklistConfig
 {
-  bool enable;			/* enable (or not) tasklist */
+  bool enable;				/* enable (or not) tasklist */
   bool allspaces;
+
+  GtkFunction active_workspace_change;	/* active workspace change callback */
+  gpointer active_workspace_data;
+
   TasklistGroupingType grouping;
 };
 
@@ -53,19 +57,19 @@ typedef struct _TaskbarPrivate TaskbarPrivate;
 
 struct _TaskbarPrivate
 {
-  PagerConfig *pager_data;	/* applet configuration data, pager */
-  PagerConfig pager_cache;	/* cache for configuration data, pager */
-  GtkWidget *pager_enable;	/* enable (or not) check box */
+  PagerConfig *pager_data;	  /* applet configuration data, pager */
+  PagerConfig pager_cache;	  /* cache for configuration data, pager */
+  GtkWidget *pager_enable;	  /* enable (or not) check box */
 
-  GtkWidget *workspaces_scale;	/* scale to adjust number of workspaces */
+  GtkWidget *workspaces_scale;	  /* scale to adjust number of workspaces */
   GtkWidget *rows_scale;
 
-  TasklistConfig *tasklist_data;/* applet configuration data, tasklist */
-  TasklistConfig tasklist_cache;/* cache for configuration data, tasklist */
-  GtkWidget *tasklist_enable;	/* enable (or not) check box */
+  TasklistConfig *tasklist_data;  /* applet configuration data, tasklist */
+  TasklistConfig tasklist_cache;  /* cache for configuration data, tasklist */
+  GtkWidget *tasklist_enable;	  /* enable (or not) check box */
 };
 
-static TaskbarPrivate local_;	/* private structure singleton */
+static TaskbarPrivate local_;	  /* private structure singleton */
 
 /*
 * taskbar_config configuration of pager and tasklist
@@ -614,8 +618,8 @@ void
 pager_module_open (Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
-  Pager *pager = pager_new (panel->green);
   PagerConfig *config = local_.pager_data;
+  Pager *pager = pager_new (panel->green);
 
   pager_set_n_rows (pager, config->rows);
   green_change_workspace_count (panel->green, config->workspaces);
@@ -911,8 +915,24 @@ tasklist_settings_new (Modulus *applet, TasklistConfig *config)
 } /* </tasklist_settings_new> */
 
 /*
-* tasklist_module_init
 * tasklist_module_open
+*/
+void
+tasklist_module_open (Modulus *applet)
+{
+  GlobalPanel *panel = applet->data;
+  Tasklist *tasklist = tasklist_new (panel->green);
+  TasklistConfig *config = local_.tasklist_data;
+
+  tasklist_set_grouping (tasklist, config->grouping);
+  tasklist_set_include_all_workspaces (tasklist, config->allspaces);
+  tasklist_set_orientation (tasklist, panel->orientation);
+
+  applet->widget = GTK_WIDGET (tasklist);
+} /* </tasklist_module_open> */
+
+/*
+* tasklist_module_init
 */
 void
 tasklist_module_init (Modulus *applet, GlobalPanel *panel)
@@ -942,16 +962,13 @@ tasklist_module_init (Modulus *applet, GlobalPanel *panel)
                         -1);
 } /* </tasklist_module_init> */
 
+/*
+* tasklist_module_set_active_cb
+*/
 void
-tasklist_module_open (Modulus *applet)
+tasklist_module_set_active_cb(GtkFunction active_change_cb, gpointer data)
 {
-  GlobalPanel *panel = applet->data;
-  Tasklist *tasklist = tasklist_new (panel->green);
   TasklistConfig *config = local_.tasklist_data;
-
-  tasklist_set_grouping (tasklist, config->grouping);
-  tasklist_set_include_all_workspaces (tasklist, config->allspaces);
-  tasklist_set_orientation (tasklist, panel->orientation);
-
-  applet->widget = GTK_WIDGET (tasklist);
-} /* </tasklist_module_open> */
+  config->active_workspace_change = active_change_cb;
+  config->active_workspace_data = data;
+} /* </tasklist_module_set_active_cb> */

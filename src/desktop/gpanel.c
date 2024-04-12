@@ -177,6 +177,16 @@ start_menu_open(Modulus *applet)
 } /* </start_menu_open> */
 
 /*
+* active_workspace_changed - supplemental callback on workspace change
+*/
+static void
+active_workspace_changed(GlobalPanel *panel)
+{
+  vdebug(2, "%s panel->gwindow => 0x%X\n", __func__, panel->gwindow);
+  gtk_widget_show (panel->gwindow);
+} /* </workspace_changed> */
+
+/*
 * (private) applets_builtin - setup internal applets
 */
 static GList *
@@ -207,13 +217,16 @@ applets_builtin(GlobalPanel *panel)
   /* Add pager applet. */
   applet = panel->pager = g_new0 (Modulus, 1);
   applet->module_open = pager_module_open;
+
   pager_module_init (applet, panel);
   list = g_list_append (list, applet);
 
   /* Add tasklist applet. */
   applet = panel->tasklist = g_new0 (Modulus, 1);
   applet->module_open = tasklist_module_open;
+
   tasklist_module_init (applet, panel);
+  tasklist_module_set_active_cb(active_workspace_changed, (gpointer)panel);
   list = g_list_append (list, applet);
 
   /* Set fallback/initial defaults. */
@@ -811,10 +824,10 @@ panel_constructor(GlobalPanel *panel)
   widget = panel->gwindow = sticky_window_new (GDK_WINDOW_TYPE_HINT_DOCK,
                                                panel->width, panel->height,
                                                panel->xpos, panel->ypos);
-
   g_signal_connect(G_OBJECT(widget), "destroy",
 			G_CALLBACK(gtk_main_quit), NULL);
 
+  vdebug(2, "%s panel->gwindow => 0x%X\n", __func__, panel->gwindow);
   gtk_window_set_keep_below (GTK_WINDOW(widget), true);
   if(panel->visible) gtk_widget_show (widget);
 

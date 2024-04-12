@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<panel version="1.2">
+<panel version="2.0">
 
  <!-- Automatically generated ~/.config/panel, please DO NOT edit. Manual
    changes made will be lost when the program using this file exits.  -->
@@ -183,8 +183,8 @@
   <applet name="clock" icon="clock.png">
    <settings format="%H:%M" />
   </applet>
-  <applet name="screensaver" icon="exit.png">
-   <settings mode="blank" time="20" />
+  <applet name="screensaver" icon="exit.png" mode="blank">
+   <settings timeout="10" cycle="10" lock="5" program="qix" />
   </applet>
  </modules>
 
