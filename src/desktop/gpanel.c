@@ -30,7 +30,7 @@
 static GlobalPanel *_desktop;	/* (protected)encapsulated program data */
 
 const char *Program = "gpanel";	/* (public) published program name    */
-const char *Release = "1.6.6";	/* (public) published program version */
+const char *Release = "2.0.1";	/* (public) published program version */
 
 const char *Description =
 "is a desktop navigation and control panel.\n"
