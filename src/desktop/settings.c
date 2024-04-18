@@ -856,6 +856,19 @@ settings_missing_new (Modulus *applet, GlobalPanel *panel)
 } /* </settings_missing_new> */
 
 /*
+* settings_page_switch handler for settings page change
+*/
+static void
+settings_page_switch (GtkNotebook *book, GtkNotebookPage *page,
+                      gint index, GlobalPanel *panel)
+{
+  g_return_if_fail (book != NULL);
+  g_return_if_fail (page != NULL);
+  vdebug(2, "%s index => %d\n", __func__, index);
+  if(index > 0) screensaver_preview_pane();
+} /* </settings_page_switch> */
+
+/*
 * settings_notebook_new build an initial notebook layout
 */
 GtkWidget *
@@ -871,6 +884,9 @@ settings_notebook_new (Modulus *applet, GlobalPanel *panel, ...)
   /* Create a new notebook, place the position of the tabs. */
   notebook = gtk_notebook_new ();
   gtk_notebook_set_tab_pos (GTK_NOTEBOOK (notebook), GTK_POS_TOP);
+
+  g_signal_connect (G_OBJECT(notebook), "switch_page",
+                    G_CALLBACK(settings_page_switch), panel);
 
   /* Iterate arguments, finishing with -1 */
   va_start (ap, panel);
@@ -916,19 +932,6 @@ settings_page_new (GtkTreeStore *store, GtkTreeIter *node,
                       -1);
   return page;
 } /* </settings_page_new> */
-
-#ifdef __settings_page_switch_
-/*
-* settings_page_switch handler for settings page change
-*/
-static void
-settings_page_switch (GtkNotebook *book, GtkNotebookPage *page,
-                      gint index, GlobalPanel *panel)
-{
-  g_return_if_fail (book != NULL);
-  g_return_if_fail (page != NULL);
-} /* </settings_page_switch> */
-#endif
 
 /*
 * getSettingsPanelWidth - width of settings panel adjusted by resolution
@@ -1173,12 +1176,6 @@ settings_new (GlobalPanel *panel)
 
   /* Set the initial notebook page. */
   gtk_notebook_set_current_page (notebook, 0);
-
-#ifdef __SETTINGS_PAGE_SWITCH_
-  g_signal_connect (G_OBJECT(notebook), "switch_page",
-                    G_CALLBACK(settings_page_switch), panel);
-#endif
-
   menuicondialog_ = panel->desktop->filer;
 } /* </settings_new> */
 

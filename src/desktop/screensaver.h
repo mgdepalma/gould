@@ -43,4 +43,20 @@
 
 #define _SCREENSAVER_RESERVED "xscreensaver"
 
+/* enumeration type for mode selection */
+typedef enum _screensaver_modes screensaver_modes_t;
+
+enum _screensaver_modes {
+  SCREENSAVER_DISABLE,
+  SCREENSAVER_SINGLE,
+  SCREENSAVER_RANDOM,
+  SCREENSAVER_BLANK,
+  N_SCREENSAVER_MODES
+};
+
+const int screensaver_get_mode (const char *buffer);
+const int screensaver_get_selected (const char *buffer);
+
+pid_t screensaver_preview_pane (void);
+
 #endif /* </_SCREENSAVER_H */

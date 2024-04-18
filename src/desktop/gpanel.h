@@ -227,12 +227,6 @@ bool screensaver_module_init (Modulus *applet, GlobalPanel *panel);
 void screensaver_module_open (Modulus *applet);
 void screensaver_module_close (Modulus *applet);
 
-const int screensaver_get_mode (const char *buffer);
-const int screensaver_get_selected (const char *buffer);
-
-GtkWidget *screensaver_settings (Modulus *applet, GlobalPanel *panel);
-void screensaver_wake (GtkWidget *widget, GlobalPanel *panel);
-
 GtkWidget *settings_manpage_new (Modulus *applet, GlobalPanel *panel);
 GtkWidget *settings_missing_new (Modulus *applet, GlobalPanel *panel);
 GtkWidget *settings_notebook_new (Modulus *applet, GlobalPanel *panel, ...);
