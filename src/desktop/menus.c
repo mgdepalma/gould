@@ -263,7 +263,7 @@ screenlock (GtkWidget *button, GlobalPanel *panel)
 {
   static char command[MAX_COMMAND];
 
-  sprintf(command, _SCREENSAVER_ACTIVATE);
+  sprintf(command, _SCREENSAVER_LOCK);
   vdebug (1, "[%s]%s\n", __func__, command);
   exit_cancel(button, panel);
 
@@ -888,7 +888,6 @@ menu_config (Modulus *applet, GlobalPanel *panel)
   }
   else {
     button = taskbar->button = gtk_toggle_button_new ();
-
     g_signal_connect (G_OBJECT (button), "button-press-event",
                       G_CALLBACK (activate), panel); 
   }

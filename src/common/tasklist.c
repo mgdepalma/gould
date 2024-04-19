@@ -88,6 +88,9 @@ struct _TasklistItem
 struct _TasklistPrivate {
   Green *green;			/* GREEN instance acted upon */
 
+  GtkFunction active_workspace_change_cb;
+  gpointer callback_data;	/* data passed to callbacks */
+
   TasklistGroupingType grouping;
   bool include_all_workspaces;
   GtkOrientation orientation;
@@ -1609,6 +1612,10 @@ tasklist_active_workspace_changed (Green *green, Tasklist *tasklist)
   tasklist_construct_visible_list (tasklist, workspace);
   tasklist_update_active_list (tasklist, workspace);
 
+  if (tasklist->active_workspace_changed_cb) {
+    vdebug(2, "%s callback_data => 0x%lx\n", __func__,tasklist->callback_data);
+    (*tasklist->active_workspace_changed_cb) (tasklist->callback_data);
+  }
   gtk_widget_queue_resize (GTK_WIDGET (tasklist));
 } /* </tasklist_active_workspace_changed> */
 

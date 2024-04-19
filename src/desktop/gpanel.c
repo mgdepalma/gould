@@ -182,7 +182,7 @@ start_menu_open(Modulus *applet)
 static void
 active_workspace_changed(GlobalPanel *panel)
 {
-  vdebug(2, "%s panel->gwindow => 0x%X\n", __func__, panel->gwindow);
+  vdebug(2, "%s panel->gwindow => 0x%lx\n", __func__, panel->gwindow);
   gtk_widget_show (panel->gwindow);
 } /* </workspace_changed> */
 
@@ -827,7 +827,7 @@ panel_constructor(GlobalPanel *panel)
   g_signal_connect(G_OBJECT(widget), "destroy",
 			G_CALLBACK(gtk_main_quit), NULL);
 
-  vdebug(2, "%s panel->gwindow => 0x%X\n", __func__, panel->gwindow);
+  vdebug(2, "%s panel->gwindow => 0x%lx\n", __func__, panel->gwindow);
   gtk_window_set_keep_below (GTK_WINDOW(widget), true);
   if(panel->visible) gtk_widget_show (widget);
 

@@ -53,6 +53,9 @@ struct _Tasklist
 {
   GtkContainer instance;	/* parent instance */
   TasklistPrivate *priv;	/* private data */
+
+  GtkFunction active_workspace_changed_cb;
+  gpointer callback_data;
 };
 
 struct _TasklistClass

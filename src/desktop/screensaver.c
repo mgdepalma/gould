@@ -120,9 +120,9 @@ void screensaver_settings_close (Modulus *applet);
 
 #ifndef __GDK_DRAWING_CONTEXT_H__ // <gtk-3.0/gdk/gdkdrawingcontext.h>
 void
-gtk_window_close (GtkWindow* window)
+gtk_window_close (GtkWindow* gwindow)
 {
-  gtk_widget_hide (window);
+  gtk_widget_hide (gwindow);
   killproc (&local_.screenview, SIGTERM);
 } /* </gtk_window_close> */
 #endif
@@ -461,7 +461,7 @@ screensaver_configuration_read (Modulus *applet, ScreensaverSettings *saver)
 static void
 screensaver_fullscreen (GtkWidget *button, ScreensaverSettings *config)
 {
-  const int margin = 2;
+  const gint16 margin = 0;
   static char command[COMMAND_MAX];
   char xidstring[MAX_LABEL];
 
@@ -470,15 +470,19 @@ screensaver_fullscreen (GtkWidget *button, ScreensaverSettings *config)
 
   GtkWidget *widget = sticky_window_new (GDK_WINDOW_TYPE_HINT_DOCK,
 					  width, height, margin, 0);
-  gtk_widget_show (widget); // widget must be realized
+  gtk_widget_show (widget); // widget must be realized!
 
   GdkWindow *gdkwindow = gtk_widget_get_window (GTK_WIDGET (widget));
+  GdkEventMask gdkevmask = GDK_BUTTON_PRESS_MASK | GDK_KEY_PRESS_MASK;
   Window xwin = GDK_WINDOW_XWINDOW (gdkwindow);
 
   g_assert (GDK_IS_WINDOW (gdkwindow));
-  gdk_window_set_events (gdkwindow, GDK_BUTTON_PRESS_MASK);
+  gdk_window_set_events (gdkwindow, gdkevmask);
 
   g_signal_connect (G_OBJECT(widget), "button-press-event",
+                     G_CALLBACK (gtk_window_close), widget);
+
+  g_signal_connect (G_OBJECT(widget), "key-press-event",
                      G_CALLBACK (gtk_window_close), widget);
 
   gtk_widget_set_sensitive (GTK_WIDGET(button), FALSE);
@@ -532,12 +536,17 @@ screensaver_preview_pane (void)
 {
   pid_t process = 0;
 
-  if (local_.config->selection > 0 && local_.preview == 0) {
-    GdkWindow *gdkwindow = local_.preview_pane->window;
+  if (local_.preview == 0) {
+    ScreensaverSettings *config = local_.config;
+    screensaver_modes_t mode = config->selection;
 
-    if (gdkwindow != NULL) {
-      const char *program = screensaver_modes_[local_.config->index];
-      process = local_.preview = screensaver_preview (gdkwindow, program);
+    if (mode == SCREENSAVER_SINGLE || mode == SCREENSAVER_RANDOM) {
+      GdkWindow *gdkwindow = local_.preview_pane->window;
+
+      if (gdkwindow != NULL) {
+        const char *program = screensaver_modes_[config->index];
+        process = local_.preview = screensaver_preview (gdkwindow, program);
+      }
     }
   }
   return process;
@@ -1344,8 +1353,8 @@ screensaver_module_init (Modulus *applet, GlobalPanel *panel)
         fseek(stream, 0, SEEK_END);
         long filesize = local_.confile_size = ftell(stream);
 
-        buffer = malloc(filesize + 1);	/* allocate memory  */
-        fseek(stream, 0, SEEK_SET);	/* same as rewind() */
+        buffer = local_.confile = malloc(filesize + 1);	/* allocate memory  */
+        fseek(stream, 0, SEEK_SET);			/* same as rewind() */
 
         fread(buffer, filesize, 1, stream);
         buffer[filesize] = 0;
@@ -1383,7 +1392,6 @@ screensaver_module_init (Modulus *applet, GlobalPanel *panel)
       gpanel_dialog (300, 400, ICON_ERROR,
 			"%s internal program error (null buffer)\n", __func__);
     }
-    local_.confile = buffer;		/* make available in this module */
   }
   applet->settings = screensaver_settings_new (applet, panel);
 
@@ -1564,5 +1572,21 @@ screensaver_settings_new (Modulus *applet, GlobalPanel *panel)
 
   g_signal_connect (G_OBJECT(button), "clicked",
                      G_CALLBACK(screensaver_fullscreen), _config);
+
+  switch (_config->selection) {
+    case SCREENSAVER_DISABLE:
+      gtk_widget_set_sensitive(local_.preview_pane, FALSE);
+      gtk_widget_set_sensitive(local_.selector_pane, FALSE);
+      gtk_widget_set_sensitive(local_.settings_pane, FALSE);
+      gtk_widget_set_sensitive(local_.fullscreen, FALSE);
+      break;
+
+    case SCREENSAVER_BLANK:
+      gtk_widget_set_sensitive(local_.preview_pane, FALSE);
+      gtk_widget_set_sensitive(local_.selector_pane, FALSE);
+      //gtk_widget_set_sensitive(local_.settings_pane, TRUE);
+      gtk_widget_set_sensitive(local_.fullscreen, FALSE);
+      break;
+  }
   return layout;
 } /* </screensaver_settings_new> */

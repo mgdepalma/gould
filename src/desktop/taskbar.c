@@ -44,12 +44,12 @@ struct _PagerConfig
 struct _TasklistConfig
 {
   bool enable;				/* enable (or not) tasklist */
-  bool allspaces;
+  bool allspaces;			/* include allspaces (or not) */
 
   GtkFunction active_workspace_change;	/* active workspace change callback */
   gpointer active_workspace_data;
 
-  TasklistGroupingType grouping;
+  TasklistGroupingType grouping;	/* tasklist grouping enum type */
 };
 
 /* Private data structures */
@@ -57,19 +57,19 @@ typedef struct _TaskbarPrivate TaskbarPrivate;
 
 struct _TaskbarPrivate
 {
-  PagerConfig *pager_data;	  /* applet configuration data, pager */
-  PagerConfig pager_cache;	  /* cache for configuration data, pager */
-  GtkWidget *pager_enable;	  /* enable (or not) check box */
+  GtkWidget *pager_enable;	   /* pager enable (or not) check box */
+  PagerConfig pager_cache;	   /* cache for configuration data, pager */
+  PagerConfig *pager_config;	   /* applet configuration data, pager */
 
-  GtkWidget *workspaces_scale;	  /* scale to adjust number of workspaces */
+  GtkWidget *tasklist_enable;	   /* tasklist enable (or not) check box */
+  TasklistConfig tasklist_cache;   /* cache for configuration data, tasklist */
+  TasklistConfig *tasklist_config; /* applet configuration data, tasklist */
+  Tasklist *tasklist;		   /* GREEN_TASKLIST container */
+
+  GtkWidget *workspaces_scale;	   /* scale to adjust number of workspaces */
   GtkWidget *rows_scale;
-
-  TasklistConfig *tasklist_data;  /* applet configuration data, tasklist */
-  TasklistConfig tasklist_cache;  /* cache for configuration data, tasklist */
-  GtkWidget *tasklist_enable;	  /* enable (or not) check box */
 };
-
-static TaskbarPrivate local_;	  /* private structure singleton */
+static TaskbarPrivate local_;	   /* private structure singleton */
 
 /*
 * taskbar_config configuration of pager and tasklist
@@ -77,20 +77,22 @@ static TaskbarPrivate local_;	  /* private structure singleton */
 void
 taskbar_config (GlobalPanel *panel)
 {
-  PagerConfig *pager_data = g_new0 (PagerConfig, 1);
-  TasklistConfig *tasklist_data = g_new0 (TasklistConfig, 1);
-
-  /* Initial fallback values for pager and tasklist. */
-  pager_data->rows = 1;
-
-  tasklist_data->allspaces = true;
-  tasklist_data->grouping  = TASKLIST_ALWAYS_GROUP;
+  static PagerConfig _pager_config;
+  static TasklistConfig _tasklist_config;
 
   /* Initialize private data structure singleton. */
+  memset(&_pager_config, 0, sizeof (PagerConfig));
+  memset(&_tasklist_config, 0, sizeof (PagerConfig));
   memset(&local_, 0, sizeof (TaskbarPrivate));
 
-  local_.tasklist_data = tasklist_data;
-  local_.pager_data = pager_data;
+  /* Initial fallback values for pager and tasklist. */
+  _pager_config.rows = 1;
+
+  _tasklist_config.allspaces = true;
+  _tasklist_config.grouping  = TASKLIST_ALWAYS_GROUP;
+
+  local_.tasklist_config = &_tasklist_config;
+  local_.pager_config = &_pager_config;
 } /* </taskbar_config> */
 
 /*
@@ -272,35 +274,33 @@ pager_place_config (PagerConfig *config)
 static void
 pager_settings_apply (Modulus *applet)
 {
-  GlobalPanel *panel = applet->data;
-  PagerConfig *config = local_.pager_data;
-
-  const char *spec;
-  bool moved = (config->order != local_.pager_cache.order);
-  gchar *data;
-
-  /* Save configuration settings from singleton cache settings. */
-  memcpy(config, &local_.pager_cache, sizeof(PagerConfig));
-
-  /* Save configuration settings in cache. */
-  spec =
+  static char *spec =
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<applet name=\"%s\" icon=\"%s\"%s place=\"%s\">\n"
 " <settings workspaces=\"%d\" rows=\"%d\" />\n"
 "</applet>\n";
 
-  data = g_strdup_printf (spec, applet->name, applet->icon,
-                          ((config->enable) ? "" : " enable=\"no\""),
-                          (config->order == PLACE_START) ? "START" : "END",
-                          config->workspaces, config->rows);
+  GlobalPanel *panel = applet->data;
+  PagerConfig *config = local_.pager_config;
+
+  bool moved = (config->order != local_.pager_cache.order);
+  static char data[MAX_PATHNAME];
+
+  /* Save configuration settings from singleton cache settings. */
+  memcpy(config, &local_.pager_cache, sizeof(PagerConfig));
+
+  /* Save configuration settings in cache. */
+  sprintf(data, spec, applet->name, applet->icon,
+			((config->enable) ? "" : " enable=\"no\""),
+			(config->order == PLACE_START) ? "START" : "END",
+			config->workspaces, config->rows);
   vdebug (2, "\n%s\n", data);
 
   /* Replace configuration item. */
   configuration_replace (panel->config, data,
                          "modules", "applet", applet->name);
-  g_free (data);
 
-  /* Memory was freed when original item was removed, read configuration. */
+  /* See if any changes, read configuration. */
   pager_configuration_read (applet, config);
 
   /* Save configuration to singleton settings cache. */
@@ -325,7 +325,7 @@ pager_settings_apply (Modulus *applet)
 static void
 pager_settings_cancel (Modulus *applet)
 {
-  PagerConfig *config = local_.pager_data;
+  PagerConfig *config = local_.pager_config;
 
   /* Revert to previous settings. */
   memcpy(&local_.pager_cache, config, sizeof(PagerConfig));
@@ -452,8 +452,8 @@ pager_settings_new (Modulus *applet, PagerConfig *config)
   GtkWidget *area, *frame, *layer, *widget;
   GtkWidget *layout = gtk_vbox_new (FALSE, 2);
 
-  gchar *caption = g_strdup_printf ("%s [%s]", _(applet->label), _("builtin"));
-
+  static char caption[MAX_LABEL];
+  sprintf(caption, "%s [%s]", _(applet->label), _("builtin"));
 
   /* Save configuration to singleton settings cache. */
   memcpy(&local_.pager_cache, config, sizeof(PagerConfig));
@@ -464,7 +464,6 @@ pager_settings_new (Modulus *applet, PagerConfig *config)
   gtk_container_set_border_width (GTK_CONTAINER (frame), 10);
   gtk_container_add (GTK_CONTAINER(layout), frame);
   gtk_widget_show (frame);
-  g_free (caption);
 
   area = gtk_vbox_new (FALSE, 4);
   gtk_container_add (GTK_CONTAINER(frame), area);
@@ -509,11 +508,10 @@ pager_settings_new (Modulus *applet, PagerConfig *config)
   gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 0);
   gtk_widget_show (layer);
 
-  caption = g_strdup_printf ("\t%s:", _("Number of workspaces"));
+  sprintf(caption, "\t%s:", _("Number of workspaces"));
   widget = gtk_label_new (caption);
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 2);
   gtk_widget_show (widget);
-  g_free (caption);
 
   widget = local_.workspaces_scale = gtk_hscale_new_with_range (1, 16, 1);
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 0);
@@ -530,11 +528,10 @@ pager_settings_new (Modulus *applet, PagerConfig *config)
   gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 0);
   gtk_widget_show (layer);
 
-  caption = g_strdup_printf ("\t%s:", _("Number of pager rows"));
+  sprintf(caption, "\t%s:", _("Number of pager rows"));
   widget = gtk_label_new (caption);
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 2);
   gtk_widget_show (widget);
-  g_free (caption);
 
   widget = local_.rows_scale = gtk_hscale_new_with_range (1, 4, 1);
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 0);
@@ -552,11 +549,10 @@ pager_settings_new (Modulus *applet, PagerConfig *config)
   gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 6);
   gtk_widget_show (layer);
 
-  caption = g_strdup_printf ("\t%s:", _("Placement"));
+  sprintf(caption, "\t%s:", _("Placement"));
   widget = gtk_label_new (caption);
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, TRUE, 2);
   gtk_widget_show (widget);
-  g_free (caption);
 
   widget = gtk_radio_button_new_with_label (radio, _("Ahead"));
   gtk_box_pack_start (GTK_BOX(layer), widget, FALSE, FALSE, 0);
@@ -588,7 +584,7 @@ pager_settings_new (Modulus *applet, PagerConfig *config)
 void
 pager_module_init (Modulus *applet, GlobalPanel *panel)
 {
-  PagerConfig *config = local_.pager_data;
+  PagerConfig *config = local_.pager_config;
 
   /* Modulus structure initialization. */
   applet->data    = panel;
@@ -618,7 +614,7 @@ void
 pager_module_open (Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
-  PagerConfig *config = local_.pager_data;
+  PagerConfig *config = local_.pager_config;
   Pager *pager = pager_new (panel->green);
 
   pager_set_n_rows (pager, config->rows);
@@ -679,27 +675,23 @@ tasklist_configuration_read (Modulus *applet, TasklistConfig *config)
 static void
 tasklist_settings_apply (Modulus *applet)
 {
-  GlobalPanel *panel = applet->data;
-
-  TasklistConfig *config = local_.tasklist_data;
-  Tasklist *tasklist = GREEN_TASKLIST (applet->widget);
-
-  const char *spec;
-  gchar *data;
-
-
-  /* Save configuration settings from singleton cache settings. */
-  memcpy(config, &local_.tasklist_cache, sizeof(TasklistConfig));
-
-  /* Save configuration settings in cache. */
-  spec =
+  static char *spec =
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<applet name=\"%s\" icon=\"%s\"%s>\n"
 " <settings allspaces=\"%d\" grouping=\"%d\">\n"
 " </settings>\n"
 "</applet>\n";
 
-  data = g_strdup_printf (spec, applet->name, applet->icon,
+  GlobalPanel *panel = applet->data;
+  TasklistConfig *config = local_.tasklist_config;
+  Tasklist *tasklist = GREEN_TASKLIST (applet->widget);
+  static char data[MAX_PATHNAME];
+
+  /* Save configuration settings from singleton cache settings. */
+  memcpy(config, &local_.tasklist_cache, sizeof(TasklistConfig));
+
+  /* Save configuration settings in cache. */
+  sprintf(data, spec, applet->name, applet->icon,
                           ((config->enable) ? "" : " enable=\"no\""),
                           config->allspaces, config->grouping);
   vdebug (2, "\n%s\n", data);
@@ -707,9 +699,8 @@ tasklist_settings_apply (Modulus *applet)
   /* Replace configuration item. */
   configuration_replace (panel->config, data,
                          "modules", "applet", applet->name);
-  g_free (data);
 
-  /* Memory was freed when original item was removed, read configuration. */
+  /* See if any changes, read configuration. */
   tasklist_configuration_read (applet, config);
 
   /* Save configuration to singleton settings cache. */
@@ -729,7 +720,7 @@ tasklist_settings_apply (Modulus *applet)
 static void
 tasklist_settings_cancel (Modulus *applet)
 {
-  TasklistConfig *config = local_.tasklist_data;
+  TasklistConfig *config = local_.tasklist_config;
 
   /* Revert to previous settings. */
   memcpy(&local_.tasklist_cache, config, sizeof(TasklistConfig));
@@ -817,7 +808,8 @@ tasklist_settings_new (Modulus *applet, TasklistConfig *config)
   GtkWidget *area, *frame, *layer, *widget;
   GtkWidget *layout = gtk_vbox_new (FALSE, 2);
 
-  gchar *caption = g_strdup_printf ("%s [%s]", _(applet->label), _("builtin"));
+  static char caption[MAX_LABEL];
+  sprintf(caption, "%s [%s]", _(applet->label), _("builtin"));
 
    /* Save configuration to singleton settings cache. */
   memcpy(&local_.tasklist_cache, config, sizeof(TasklistConfig));
@@ -828,7 +820,6 @@ tasklist_settings_new (Modulus *applet, TasklistConfig *config)
   gtk_container_set_border_width (GTK_CONTAINER (frame), 10);
   gtk_container_add (GTK_CONTAINER(layout), frame);
   gtk_widget_show (frame);
-  g_free (caption);
 
   area = gtk_vbox_new (FALSE, 4);
   gtk_container_add (GTK_CONTAINER(frame), area);
@@ -921,8 +912,11 @@ void
 tasklist_module_open (Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
-  Tasklist *tasklist = tasklist_new (panel->green);
-  TasklistConfig *config = local_.tasklist_data;
+  Tasklist *tasklist = local_.tasklist = tasklist_new (panel->green);
+  TasklistConfig *config = local_.tasklist_config;
+
+  tasklist->active_workspace_changed_cb = config->active_workspace_change;
+  tasklist->callback_data = config->active_workspace_data;
 
   tasklist_set_grouping (tasklist, config->grouping);
   tasklist_set_include_all_workspaces (tasklist, config->allspaces);
@@ -937,7 +931,7 @@ tasklist_module_open (Modulus *applet)
 void
 tasklist_module_init (Modulus *applet, GlobalPanel *panel)
 {
-  TasklistConfig *config = local_.tasklist_data;
+  TasklistConfig *config = local_.tasklist_config;
 
   /* Modulus structure initialization. */
   applet->data    = panel;
@@ -963,12 +957,12 @@ tasklist_module_init (Modulus *applet, GlobalPanel *panel)
 } /* </tasklist_module_init> */
 
 /*
-* tasklist_module_set_active_cb
+* tasklist_module_set_active_cb - add callback for active-workspace-changed
 */
 void
 tasklist_module_set_active_cb(GtkFunction active_change_cb, gpointer data)
 {
-  TasklistConfig *config = local_.tasklist_data;
+  TasklistConfig *config = local_.tasklist_config;
   config->active_workspace_change = active_change_cb;
   config->active_workspace_data = data;
 } /* </tasklist_module_set_active_cb> */
