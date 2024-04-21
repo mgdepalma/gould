@@ -28,6 +28,7 @@
 
 #include "gould.h"
 #include "iconbox.h"
+#include "util.h"
 
 /* (private) variables */
 static GtkObjectClass *parent = NULL;
@@ -78,10 +79,10 @@ get_names_list (IconBox *iconbox)
 #endif
 
 /*
-* (private) active
+* (private) iconbox_active
 */
 static void
-active (GtkIconView *iconview, GtkTreePath *path, gpointer data)
+iconbox_active (GtkIconView *iconview, GtkTreePath *path, gpointer data)
 {
   GtkTreeIter iterator;
   GtkTreeModel *model = gtk_icon_view_get_model (iconview);
@@ -92,7 +93,7 @@ active (GtkIconView *iconview, GtkTreePath *path, gpointer data)
     gtk_tree_model_get (model, &iterator, item->column, &value, -1);
     item->data = value;
   }
-} /* </active> */
+} /* </iconbox_active> */
 
 /*
 * (private) iconbox_class_init
@@ -174,7 +175,7 @@ iconbox_get_selected (IconBox *iconbox, IconBoxColumn column)
   IconBoxItem item = { column, NULL };
   GtkIconView *iconview = GTK_ICON_VIEW(iconbox->view);
   
-  gtk_icon_view_selected_foreach (iconview, active, &item);
+  gtk_icon_view_selected_foreach (iconview, iconbox_active, &item);
 
   return item.data;
 } /* </iconbox_get_selected> */

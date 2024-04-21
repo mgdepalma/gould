@@ -145,10 +145,10 @@ static PanelSettings current_;		/* singleton for panel settings */
 * intervene gtk_widget_show() unresponsive
 */
 void
-stubborn (int signum)
+settings_stubborn (int signum)
 {
   killall (_GSESSION_TASKBAR, SIGKILL);
-}
+} /* </settings_stubborn> */
 
 /*
 * activate popup window for editing configuration settings
@@ -158,12 +158,13 @@ settings_activate (GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
 
-  signal (SIGALRM, stubborn);
+  signal (SIGALRM, settings_stubborn);
   alarm (_SIGALRM_GRACETIME);
   gtk_widget_show (panel->settings->window);
-  gtk_widget_hide (desktop->gwindow);	/* hide desktop panel */
+  gtk_window_stick (panel->settings->window);
+  /* gtk_widget_hide (desktop->gwindow); /* hide desktop panel */
   desktop->active = FALSE;
-  alarm (0);				/* disarm alarm() */
+  alarm (0);	/* disarm alarm() */
 } /* </settings_activate> */
 
 /*

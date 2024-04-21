@@ -1179,6 +1179,7 @@ screensaver_selection (FileChooserDatum *datum)
 {
   static char buffer[MAX_PATHNAME];
   FILE *stream = fopen(datum->file, "r");
+  //[reminder] FileChooser *chooser = datum->self;
   bool found = false;
 
   if (stream != NULL) {
@@ -1193,8 +1194,6 @@ screensaver_selection (FileChooserDatum *datum)
       name = strstr(buffer, pattern);
 
       if (name != NULL) {
-        FileChooser *chooser = datum->self;
-
         name += pattern_length + 1;
         scan = strchr(name, quotechar);
         *scan = 0;

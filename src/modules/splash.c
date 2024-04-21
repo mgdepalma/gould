@@ -62,12 +62,12 @@ struct _SplashPrivate
 static SplashPrivate local_;	/* private global structure singleton */
 
 /*
- * (private) dismiss callback to unmap splash widgets
- * (private) realize callback to display splash widgets
- * (private) onclick callback to unmap splash widget on button_press
+ * (private) splash_dismiss callback to unmap splash widgets
+ * (private) splash_realize callback to display splash widgets
+ * (private) splash_onclick callback to unmap splash widget on button_press
  */
 static gboolean
-dismiss (Modulus *applet)
+splash_dismiss (Modulus *applet)
 {
   GlobalPanel  *panel  = applet->data;
   SplashConfig *splash = local_.splash;
@@ -76,10 +76,10 @@ dismiss (Modulus *applet)
   gtk_widget_hide (applet->widget);
 
   return FALSE;
-} /* </dismiss> */
+} /* </splash_dismiss> */
 
 static void
-realize (GtkWidget *button, Modulus *applet)
+splash_realize (GtkWidget *button, Modulus *applet)
 {
   if (applet->widget != NULL) {
     GlobalPanel  *panel  = applet->data;
@@ -92,15 +92,15 @@ realize (GtkWidget *button, Modulus *applet)
       gtk_widget_show (applet->widget);
 
     if (splash->expire > 0)	/* dismiss after 'expire' seconds */
-      g_timeout_add (1000 * splash->expire, (GSourceFunc)dismiss, applet);
+      g_timeout_add (1000 * splash->expire,(GSourceFunc)splash_dismiss, applet);
   }
-} /* </realize> */
+} /* </splash_realize> */
 
 static void
-onclick (GtkWidget *widget, GdkEventButton *event, Modulus *applet)
+splash_onclick (GtkWidget *widget, GdkEventButton *event, Modulus *applet)
 {
-  dismiss (applet);
-} /* </onclick> */
+  splash_dismiss (applet);
+} /* </splash_onclick> */
 
 /*
  * splash_configuration_read
@@ -314,7 +314,7 @@ module_settings (Modulus *applet, GlobalPanel *panel)
   gtk_container_add (GTK_CONTAINER (button), widget);
 
   g_signal_connect (G_OBJECT(button), "clicked",
-                    G_CALLBACK(realize), applet);
+                    G_CALLBACK(splash_realize), applet);
 
   layer = gtk_hbox_new (FALSE, 4);
   gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 0);
@@ -448,10 +448,10 @@ module_open (Modulus *applet)
   }
   else if (splash->message != NULL) {  /* without splash->message, abend */
     applet->widget = module_interface (applet, panel);
-    realize (NULL, applet);
+    splash_realize (NULL, applet);
 
     g_signal_connect(G_OBJECT (applet->widget), "button_press_event",
-                     G_CALLBACK (onclick), applet);
+                     G_CALLBACK (splash_onclick), applet);
   }
 } /* module_open */
 

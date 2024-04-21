@@ -184,6 +184,7 @@ active_workspace_changed(GlobalPanel *panel)
 {
   vdebug(2, "%s panel->gwindow => 0x%lx\n", __func__, panel->gwindow);
   gtk_widget_show (panel->gwindow);
+  gtk_window_stick (panel->gwindow);
 } /* </workspace_changed> */
 
 /*
