@@ -24,7 +24,7 @@
 
 extern gboolean _silent;	/* see, gpanel.c */
 extern const char *Program;     /* see, gpanel.c */
-const char *Release = "1.6.7";
+const char *Release = "2.0";
 
 /*
 * Data structures used by this module.
@@ -62,10 +62,8 @@ struct _SplashPrivate
 static SplashPrivate local_;	/* private global structure singleton */
 
 /*
- * (private) splash_dismiss callback to unmap splash widgets
- * (private) splash_realize callback to display splash widgets
- * (private) splash_onclick callback to unmap splash widget on button_press
- */
+* (private) splash_dismiss - callback to unmap splash widgets
+*/
 static gboolean
 splash_dismiss (Modulus *applet)
 {
@@ -78,6 +76,18 @@ splash_dismiss (Modulus *applet)
   return FALSE;
 } /* </splash_dismiss> */
 
+/*
+* (private) splash_onclick - callback to unmap splash widget on button_press
+*/
+static void
+splash_onclick (GtkWidget *widget, GdkEventButton *event, Modulus *applet)
+{
+  splash_dismiss (applet);
+} /* </splash_onclick> */
+
+/*
+* (private) splash_realize - callback to display splash widget
+*/
 static void
 splash_realize (GtkWidget *button, Modulus *applet)
 {
@@ -96,15 +106,9 @@ splash_realize (GtkWidget *button, Modulus *applet)
   }
 } /* </splash_realize> */
 
-static void
-splash_onclick (GtkWidget *widget, GdkEventButton *event, Modulus *applet)
-{
-  splash_dismiss (applet);
-} /* </splash_onclick> */
-
 /*
- * splash_configuration_read
- */
+* splash_configuration_read
+*/
 static void
 splash_configuration_read (Modulus *applet, SplashConfig *splash)
 {
@@ -173,29 +177,26 @@ splash_configuration_read (Modulus *applet, SplashConfig *splash)
 } /* </splash_configuration_read> */
 
 /*
- * splash_settings_apply callback to save settings
- * splash_settings_cancel callback to rollback settings
- */
+* splash_settings_apply - callback to save settings
+*/
 static void
 splash_settings_apply (Modulus *applet)
 {
+  static char *spec =
+"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+"<applet name=\"%s\" icon=\"%s\"%s>\n"
+" <settings expire=\"%d\" font=\"%s\" fg=\"%s\" />\n"
+"</applet>\n";
+
   GlobalPanel *panel = applet->data;
   SplashConfig *splash = local_.splash;
-
-  const char *spec;
   gchar *data;
-
 
   /* Save configuration settings from singleton. */
   memcpy(splash, &local_.cache, sizeof(SplashConfig));
   applet->enable = local_.enable;
 
   /* Save configuration settings in cache. */
-  spec =
-"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-"<applet name=\"%s\" icon=\"%s\"%s>\n"
-" <settings expire=\"%d\" font=\"%s\" fg=\"%s\" />\n"
-"</applet>\n";
 
   data = g_strdup_printf (spec, applet->name, applet->icon,
                           ((applet->enable) ? "" : " enable=\"no\""),
@@ -213,6 +214,9 @@ splash_settings_apply (Modulus *applet)
   memcpy(&local_.cache, splash, sizeof(SplashConfig));
 } /* </splash_settings_apply> */
 
+/*
+* splash_settings_cancel - callback to rollback settings
+*/
 static void
 splash_settings_cancel (Modulus *applet)
 {
@@ -226,8 +230,8 @@ splash_settings_cancel (Modulus *applet)
 } /* </splash_settings_cancel> */
 
 /*
- * (private) splash_enable
- */
+* (private) splash_enable
+*/
 static void
 splash_enable (GtkWidget *button, Modulus *applet)
 {
@@ -249,10 +253,10 @@ splash_enable (GtkWidget *button, Modulus *applet)
 } /* </splash_enable> */
 
 /*
- * module_settings provides configuration pages
- */
+* splash_module_settings - provide configuration pages
+*/
 GtkWidget *
-module_settings (Modulus *applet, GlobalPanel *panel)
+splash_module_settings (Modulus *applet, GlobalPanel *panel)
 {
   SplashConfig *splash = local_.splash;
 
@@ -306,7 +310,7 @@ module_settings (Modulus *applet, GlobalPanel *panel)
   gtk_label_set_use_markup (GTK_LABEL (label), TRUE);
 
   gtk_label_set_line_wrap (GTK_LABEL (label), TRUE);
-  //gtk_label_set_max_width_chars (GTK_LABEL (label), 20);
+  //gtk_label_set_max_width_chars (GTK_LABEL (label), 36);
   gtk_widget_modify_font (label, pango_font_description_from_string(font));
   gtk_widget_show (label);
 
@@ -336,13 +340,13 @@ module_settings (Modulus *applet, GlobalPanel *panel)
   gtk_widget_show (label);
 
   return layout;
-} /* </module_settings> */
+} /* </splash_module_settings> */
 
 /*
- * module_interface contructs the splash panel window
- */
+* splash_module_interface contructs the splash panel window
+*/
 GtkWidget *
-module_interface (Modulus *applet, GlobalPanel *panel)
+splash_module_interface (Modulus *applet, GlobalPanel *panel)
 {
   const gchar  *icon   = icon_path_finder (panel->icons, applet->icon);
   SplashConfig *splash = local_.splash;
@@ -394,11 +398,11 @@ module_interface (Modulus *applet, GlobalPanel *panel)
   gtk_window_move (GTK_WINDOW(widget), (width-xsize) / 2, (height-ysize) / 2);
 
   return widget;
-} /* </module_interface> */
+} /* </splash_module_interface> */
 
-/*
- * Required methods
- */
+/**
+* Required methods
+*/
 void
 module_init (Modulus *applet)
 {
@@ -422,16 +426,16 @@ module_init (Modulus *applet)
 
   /* Construct the settings pages. */
   applet->label       = "Splash Screen";
-  applet->description = _(
-"Splash screen displayed upon startup."
-);
+  applet->description = _("Splash screen displayed upon startup.");
   applet->settings = settings_notebook_new (applet, panel,
-                       _("Settings"), module_settings (applet, panel),
+                       _("Settings"), splash_module_settings (applet, panel),
                        _("About"), settings_manpage_new (applet, panel),
                        -1);
 } /* </module_init> */
 
-/* Construct the user interface. */
+/*
+* module_open - construct the user interface
+*/
 void
 module_open (Modulus *applet)
 {
@@ -447,7 +451,7 @@ module_open (Modulus *applet)
     /* shutdown (panel, SIGCONT); */
   }
   else if (splash->message != NULL) {  /* without splash->message, abend */
-    applet->widget = module_interface (applet, panel);
+    applet->widget = splash_module_interface (applet, panel);
     splash_realize (NULL, applet);
 
     g_signal_connect(G_OBJECT (applet->widget), "button_press_event",
@@ -458,6 +462,8 @@ module_open (Modulus *applet)
 void
 module_close (Modulus *applet)
 {
-  if (GTK_IS_WIDGET(applet->widget))
-    gtk_widget_destroy (applet->widget);
+  if (GTK_IS_WIDGET(applet->widget)) {
+    /*gtk_widget_destroy (applet->widget); /* not a good idea! */
+    splash_dismiss (applet);
+  }
 } /* module_close */

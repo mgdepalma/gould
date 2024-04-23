@@ -30,7 +30,7 @@
 static GlobalPanel *_desktop;	/* (protected)encapsulated program data */
 
 const char *Program = "gpanel";	/* (public) published program name    */
-const char *Release = "2.0.1";	/* (public) published program version */
+const char *Release = "2.0";	/* (public) published program version */
 
 const char *Description =
 "is a desktop navigation and control panel.\n"
@@ -808,6 +808,8 @@ gpanel_initialize(GlobalPanel *panel)
 
   /* arrange plugin modules according to configuration settings */
   panel_config_moduli (panel, builtin, plugins);
+
+  if(_silent == false) vdebug(1, "[splash] %s\n", lsb_release_full());
 } /* </gpanel_initialize> */
 
 /*
@@ -1071,7 +1073,6 @@ main(int argc, char *argv[])
   GlobalPanel memory;	/* master data structure (gpanel.h) */
 
   char *alias = NULL;	/* used to change process name */
-  char *quiet;		/* check {GOULD_ENVIRON} for "no-splash" */
 
   int signal = SIGUSR1;	/* when already running, show controls */
   int status = EX_OK;
@@ -1081,10 +1082,8 @@ main(int argc, char *argv[])
   /* disable invalid option messages */
   opterr = 0;
 
-  if (genviron) {
-    quiet = strstr(genviron, "no-splash");
-    if(quiet) _silent = true;
-  }
+  /* check {GOULD_ENVIRON} for "no-splash" */
+  if(genviron && strstr(genviron, "no-splash") != NULL) _silent = true;
   if(gmonitor && strcasecmp(gmonitor, "yes") == 0) _monitor = true;
      
   while ((opt = getopt (argc, argv, "d:hvacnp:so")) != -1) {

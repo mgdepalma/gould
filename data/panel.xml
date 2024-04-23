@@ -64,8 +64,8 @@
     <item name="Display Images" icon="image.png">
      <exec>gdisplay</exec>
     </item>
-    <item name="Camera and Cam" icon="camera.png" check="cheese">
-     <exec>cheese</exec>
+    <item name="Camera and Cam" icon="camera.png" check="webcam">
+     <exec>webcam</exec>
     </item>
     <item name="Graphics Editor" icon="designer.png" check="inkscape">
      <exec>inkscape</exec>

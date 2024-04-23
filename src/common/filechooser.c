@@ -78,6 +78,30 @@ static FileChooserTypes filetypes[] = {
 };
 
 /*
+* (public) filechooser_iconbox_selection - name lookup of iconbox selection
+*/
+const char *
+filechooser_iconbox_selection(const char *name, FileChooser *self)
+{
+  const char *selection = name;		// default: selection => name
+
+  if (self->iconboxfilter != NULL) {	// name of the screensaver program
+    GHashTableIter iter;
+    gpointer key, value;
+
+    g_hash_table_iter_init (&iter, self->_hash);
+
+    while (g_hash_table_iter_next (&iter, &key, &value)) {
+      if (strncmp(name, (const char *)value, strlen(name)) == 0) {
+        selection = (const char *)key;	// _label from .xml config file
+        break;
+      }
+    }
+  }
+  return selection;
+} /* </filechooser_iconbox_selection> */
+
+/*
 * (private) filechooser_agent
 */
 static void
@@ -92,7 +116,7 @@ filechooser_agent(GtkIconView *iconview, FileChooser *self)
   /* Compose pathname with self->curdir and the selected icon. */
   curdir = gtk_label_get_text (GTK_LABEL(self->path));
   name = iconbox_get_selected (self->iconbox, COLUMN_LABEL);
-  if (name) gtk_entry_set_text (GTK_ENTRY(self->name), name);
+  if(name) gtk_entry_set_text (GTK_ENTRY(self->name), name);
 
   if (self->iconboxfilter) {
     char *value = g_hash_table_lookup (self->_hash, (gconstpointer)name);

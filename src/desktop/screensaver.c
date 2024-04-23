@@ -93,6 +93,7 @@ struct _ScreensaverPrivate	/* private global structure */
   GtkWidget *mode_selection;	/* screensaver mode pane */
   GtkWidget *selector_pane;	/* selected screensaver pane */
   GtkWidget *settings_pane;	/* settings pane widget */
+  GtkWidget *preview_name;	/* preview program name */
   GtkWidget *preview_pane;	/* preview pane widget */
   GtkWidget *fullscreen;	/* fullscreen button */
 
@@ -507,14 +508,19 @@ static pid_t
 screensaver_preview (GdkWindow *gdkwindow, const char *program)
 {
   static char command[COMMAND_MAX];
+  ScreensaverSettings *_config = local_.config;
   Window xwin = GDK_WINDOW_XWINDOW (gdkwindow);
   char xidstring[MAX_LABEL];
+  char *caption;
 
   killproc (&local_.preview, SIGTERM);	/* ensure preview process sigleton */
   pid_t process = fork();
 
   gint width, height;
   gdk_drawable_get_size (gdkwindow, &width, &height);
+
+  caption = filechooser_iconbox_selection (_config->program, _config->chooser);
+  gtk_label_set_text (GTK_LABEL(local_.preview_name), caption);
 
   if (process == 0) {			/* child process */
     sprintf(xidstring, "0x%lx", (unsigned long)xwin);
@@ -545,6 +551,10 @@ screensaver_preview_pane (void)
 
       if (gdkwindow != NULL) {
         const char *program = screensaver_modes_[config->index];
+        char *caption = filechooser_iconbox_selection (config->program,
+							config->chooser);
+
+        gtk_label_set_text (GTK_LABEL(local_.preview_name), caption);
         process = local_.preview = screensaver_preview (gdkwindow, program);
       }
     }
@@ -718,6 +728,7 @@ screensaver_set_mode (GtkComboBox *combo, GlobalPanel *panel)
 
   switch (selection) {
     case SCREENSAVER_DISABLE:	// Disable Screen Saver
+      gtk_label_set_text (GTK_LABEL(local_.preview_name), "");
       gtk_widget_set_sensitive(local_.preview_pane, FALSE);
       gtk_widget_set_sensitive(local_.selector_pane, FALSE);
       gtk_widget_set_sensitive(local_.settings_pane, FALSE);
@@ -743,6 +754,7 @@ screensaver_set_mode (GtkComboBox *combo, GlobalPanel *panel)
       break;
 
     case SCREENSAVER_BLANK:	// Blank Screen Only
+      gtk_label_set_text (GTK_LABEL(local_.preview_name), "");
       gtk_widget_set_sensitive(local_.preview_pane, FALSE);
       gtk_widget_set_sensitive(local_.selector_pane, FALSE);
       gtk_widget_set_sensitive(local_.settings_pane, TRUE);
@@ -1458,6 +1470,7 @@ screensaver_settings_new (Modulus *applet, GlobalPanel *panel)
   FileChooser *chooser = filechooser_new (_SCREENSAVER_CONFIG,
 						screensaver_xmlfile);
   ScreensaverSettings *_config = local_.config;
+  char *caption = "";
 
   filechooser_set_callback (chooser, screensaver_selection, _config);
   local_.selector_pane = chooser->viewer;
@@ -1532,6 +1545,17 @@ screensaver_settings_new (Modulus *applet, GlobalPanel *panel)
   area = gtk_vbox_new(FALSE, 1);
   gtk_box_pack_start (GTK_BOX(split), area, TRUE, TRUE, 8);
   gtk_widget_show (area);
+
+  /* program descriptive name above preview area */
+  if(_config->selection == SCREENSAVER_SINGLE
+     || _config->selection == SCREENSAVER_RANDOM)
+    caption = filechooser_iconbox_selection (_config->program, chooser);
+
+  widget = local_.preview_name = gtk_label_new (caption);
+  gdk_color_parse ("blue", &color);
+  gtk_widget_modify_fg (widget, GTK_STATE_NORMAL, &color);
+  gtk_box_pack_start (GTK_BOX(area), widget, FALSE, FALSE, 2);
+  gtk_widget_show (widget);
 
   canvas = local_.preview_pane = gtk_text_view_new ();
   gtk_text_view_set_editable (GTK_TEXT_VIEW(canvas), FALSE);
