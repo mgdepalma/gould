@@ -60,9 +60,9 @@ typedef struct _PanelTaskbar PanelTaskbar;
 
 struct _GlobalShare
 {
+  Atom    saver;		/* IPC with screensaver */
   Display *display;		/* Xlib Display object */
-  Window  xwindow;		/* Xlib Window object  */
-  Atom    saver;		/* IPC with PanelSaver */
+  Window  xwindow;		/* Xlib Window object */
 };
 
 struct _GlobalPanel
@@ -112,6 +112,8 @@ struct _GlobalPanel
 
 struct _PanelDesktop
 {
+  bool active;			/* true if desktop panel is active */
+
   gchar *folder;		/* usually $HOME/Desktop/ */
   const gchar *init;		/* initialization command */
 
@@ -136,11 +138,10 @@ struct _PanelDesktop
   GtkWidget *hint;		/* action hints */
 
   const gchar *icon;		/* default icon image pathname */
-  bool active;			/* TRUE if desktop panel is active*/
-  gint iconsize;		/* fixed icon width and height */
+  gint16 iconsize;		/* fixed icon width and height */
 
-  gint xpos, ypos;		/* coordinates for new shortcut */
-  gint step;			/* spacing between shortcuts */
+  gint16 xpos, ypos;		/* coordinates for new shortcut */
+  gint16 step;			/* spacing between shortcuts */
 };
 
 struct _PanelIcons
@@ -196,16 +197,16 @@ GtkWidget *interface (GlobalPanel *panel);
 GtkWidget *menu_config (Modulus *applet, GlobalPanel *panel);
 GtkWidget *menu_options_config (ConfigurationNode *node,
 				GlobalPanel *panel,
-				gint iconsize);
+				gint16 iconsize);
 
 GtkWidget *menu_submenu_config (ConfigurationNode *node,
 				GlobalPanel *panel,
-				gint iconsize);
+				gint16 iconsize);
 
 Docklet *desktop_create (GlobalPanel *panel,
                          ConfigurationNode *node,
-                         gint width, gint height,
-                         gint xpos, gint ypos,
+                         gint16 width, gint16 height,
+                         gint16 xpos, gint16 ypos,
                          const gchar *icon,
                          const gchar *text,
                          const gchar *font,

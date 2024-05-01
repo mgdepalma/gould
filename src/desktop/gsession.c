@@ -226,6 +226,7 @@ session_monitor(const char *name)
 {
   bool gmonitor = false;
   const char *monitor = getenv("GOULD_MONITOR");
+  const char *grespawn = getenv("GOULD_RESPAWN");
 
   int idx;		/* SessionMonitor monitor_[] index */
   char procfile[MAX_LABEL];
@@ -257,7 +258,13 @@ session_monitor(const char *name)
   /* {WINDOWMANAGER}, {SCREENSAVER}, {LAUNCHER}, {TASKBAR} */
   for (idx = 0; idx < SessionMonitorCount; idx++) {
     monitor_[idx].enabled = (monitor_[idx].program) ? true : false;
+  }
+  if (grespawn && strcasecmp(grespawn, "no") == 0) {
+    sessionlog_stamp(1, "[%s] {TASKBAR} => false\n", name);
+    monitor_[_TASKBAR].enabled = false;  // monitor {TASKBAR} => false
+  }
 
+  for (idx = 0; idx < SessionMonitorCount; idx++) {
     if (monitor_[idx].enabled) {  // may be turned off by request later on
       pid = session_spawn(idx, false);
       monitor_[idx].process = pid;

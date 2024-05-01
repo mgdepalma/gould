@@ -769,7 +769,7 @@ menu_element_config (ConfigurationNode *node, GlobalPanel *panel, gint iconsize)
 * menu_submenu_config
 */
 GtkWidget *
-menu_submenu_config (ConfigurationNode *chain, GlobalPanel *panel, gint iconsize)
+menu_submenu_config (ConfigurationNode *chain, GlobalPanel *panel, gint16 iconsize)
 {
   ConfigurationNode *node;
   GtkWidget *item, *options = gtk_menu_new ();
@@ -792,7 +792,7 @@ menu_submenu_config (ConfigurationNode *chain, GlobalPanel *panel, gint iconsize
 * menu_options_config
 */
 GtkWidget *
-menu_options_config (ConfigurationNode *menu, GlobalPanel *panel, gint iconsize)
+menu_options_config (ConfigurationNode *menu, GlobalPanel *panel, gint16 iconsize)
 {
   GtkWidget *item;
   GtkWidget *options = gtk_menu_new();

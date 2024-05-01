@@ -290,30 +290,35 @@ panel_config_orientation(GlobalPanel *panel)
 static void
 panel_config_settings(GlobalPanel *panel)
 {
+  const char delim[2] = ":";
+  const char *searchpath = getenv("PATH");
+
+  static GlobalShare _global;	// 2024 no longer in use (see, xscreensaver)
+
   ConfigurationNode *item;
   ConfigurationNode *chain;
   ConfigurationNode *config = panel->config;
 
   Display *display = GDK_WINDOW_XDISPLAY( GDK_ROOT_PARENT() );
-  GlobalShare *shared = g_new0 (GlobalShare, 1);
+  //GlobalShare *shared = g_new0 (GlobalShare, 1);
+  GlobalShare *shared = &_global;
 
   PanelIcons *icons = panel->icons = g_new0 (PanelIcons, 1);
 
-  const char delim[2] = ":";
-  const char *searchpath = getenv("PATH");
   char *member = strtok((char *)searchpath, delim);
+  char attrib[MAX_PATHNAME];
 
-  gchar *attrib = g_strdup_printf ("%s:%s", Program, _SCREENSAVER_COMMAND);
-  /* gchar **path = g_strsplit (getenv("PATH"), ":", MAX_PATHNAME); */
+  //gchar *attrib = g_strdup_printf ("%s:%s", Program, _SCREENSAVER_COMMAND);
+  sprintf(attrib, "%s:%s", Program, _SCREENSAVER_COMMAND);
 
   /* initialize panel->shared for interprocess communication */
   shared->display = display;
   shared->xwindow = DefaultRootWindow (display);
   shared->saver   = XInternAtom (display, attrib, False);
   panel->shared   = shared;
+  //g_free (attrib);
 
   XSetSelectionOwner(display, shared->saver, shared->xwindow, CurrentTime);
-  g_free (attrib);
 
   /* configuration for general settings  */
   panel->notice = NULL;		/* initialize alert notices */
@@ -388,7 +393,6 @@ panel_config_settings(GlobalPanel *panel)
 
 /*
 * (private) panel_quicklaunch
-* (private) panel_quicklaunch_open
 */
 static void
 panel_quicklaunch(GtkWidget *widget, Modulus *applet)
@@ -406,6 +410,9 @@ panel_quicklaunch(GtkWidget *widget, Modulus *applet)
 
 } /* </panel_quicklaunch> */
 
+/*
+* (private) panel_quicklaunch_open
+*/
 static void
 panel_quicklaunch_open(Modulus *applet)
 {
@@ -592,7 +599,6 @@ applets_loadable(GlobalPanel *panel, guint space)
 
     applet->enable = true;
   }
-
   return moduli;
 } /* </applets_loadable> */
 

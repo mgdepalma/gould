@@ -287,31 +287,32 @@ settings_selection (GtkTreeSelection *selection, GlobalPanel *panel)
 * settings_about_new provides the information page
 */
 Modulus *
-settings_about_new ()
+settings_about_new (void)
 {
   GtkWidget *frame, *info;
   GtkWidget *layout = gtk_vbox_new (FALSE, 2);
-  Modulus *applet = g_new0 (Modulus, 1);
-  gchar *description;
 
-  description = g_strdup_printf ("%s %s", Program, Release);
-  frame = gtk_frame_new (description);
+  static Modulus _about;
+  Modulus *applet = &_about;
+
+  static char caption[MAX_BUFFER_SIZE];
+  sprintf(caption, "%s %s", Program, Release);
+
+  frame = gtk_frame_new (caption);
   gtk_frame_set_shadow_type (GTK_FRAME(frame), GTK_SHADOW_ETCHED_IN);
   gtk_container_set_border_width (GTK_CONTAINER (frame), 4);
   gtk_container_add (GTK_CONTAINER(layout), frame);
   gtk_widget_show (frame);
-  g_free (description);
 
-  description = g_strdup_printf (
-                  "<span font_desc=\"Arial 14\">%s %s</span>",
+  sprintf(caption, "<span font_desc=\"Arial 14\">%s %s</span>",
                                       Program, Description);
-  info = gtk_label_new (description);
+  info = gtk_label_new (caption);
   gtk_label_set_use_markup (GTK_LABEL (info), TRUE);
   gtk_misc_set_alignment (GTK_MISC(info), 0.06, 0.5);
   gtk_container_add (GTK_CONTAINER(frame), info);
   gtk_widget_show (info);
-  g_free (description);
 
+  /* Modulus structure initialization. */
   applet->name = _("About");
   applet->settings = layout;
 
@@ -976,9 +977,12 @@ settings_new (GlobalPanel *panel)
   GtkWidget *button, *layer, *layout, *widget;
   GtkNotebook *notebook;
 
-  PanelSetting *settings = panel->settings = g_new0(PanelSetting, 1);
-  gboolean screen_expand = TRUE;
-  gboolean panel_expand  = TRUE;
+  Modulus *desktop_settings = desktop_settings_new (panel);
+
+  static PanelSetting _settings;
+  PanelSetting *settings = panel->settings = &_settings;
+  const char *selections[2] = {"1", "3"};  // expand Screen & Modules items
+  const int expansions = 2;
 
   Modulus *applet;              /* plugin modules */
   GList *iter;
@@ -1101,11 +1105,11 @@ settings_new (GlobalPanel *panel)
     }
   }
 
-  /* [2]Third entry is the menu editor. */
+  /* [2]Third entry is the start menu editor. */
   gtk_tree_store_append (store, &cell, NULL);
   settings_page_new (store, &cell, notebook, panel->start, panel);
 
-  /* [3]Fourth entry is the taskbar. */
+  /* [3]Fourth entry is for Modules. */
   gtk_tree_store_append (store, &cell, NULL);
   gtk_tree_store_set (store, &cell,
                       PAGE_COLUMN, -1,
@@ -1122,18 +1126,17 @@ settings_new (GlobalPanel *panel)
       }
   }
 
-  /* [4]Last entry is for general information. */
+  /* [4]Next to last entry is for desktop settings. */
+  gtk_tree_store_append (store, &cell, NULL);
+  settings_page_new (store, &cell, notebook, desktop_settings, panel);
+
+  /* [5]Last entry is for general information. */
   gtk_tree_store_append (store, &cell, NULL);
   settings_page_new (store, &cell, notebook, settings_about_new(), panel);
 
   /* Expand selections based on variable settings. */
-  if (screen_expand) {
-    path = gtk_tree_path_new_from_string ("1");
-    gtk_tree_view_expand_row (GTK_TREE_VIEW(view), path, TRUE);
-    gtk_tree_path_free (path);
-  }
-  if (panel_expand) {
-    path = gtk_tree_path_new_from_string ("3");
+  for (int idx = 0; idx < expansions; idx++) {
+    path = gtk_tree_path_new_from_string (selections[idx]);
     gtk_tree_view_expand_row (GTK_TREE_VIEW(view), path, TRUE);
     gtk_tree_path_free (path);
   }

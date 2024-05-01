@@ -21,24 +21,40 @@
 #include "gpanel.h"
 #include "docklet.h"
 
+extern const char *Program, *Release;	/* see, gpanel.c */
+
 #define desktop_file_get_string(file, key) \
 	g_key_file_get_string(file, G_KEY_FILE_DESKTOP_GROUP, key, NULL)
-
-extern const char *Release, *Information;	/* see, gpanel.c */
 
 static gchar *ActionHintDelete = "Press the apply button to delete.";
 static gchar *ActionHintEdit   = "Click on the icon to change it.";
 
+static gchar *DefaultIconHome = "home.png";	/* default icon for shortcut */
 static gchar *DefaultIconExec = "exec.png";	/* default icon for programs */
 // static gchar *DefaultIconURL = "earth.png";	/* default icon for URLs */
 
-typedef struct {
+/*
+* Data structures used by this module.
+*/
+typedef struct _DesktopEntry DesktopEntry;
+typedef struct _DesktopSettings DesktopSettings;
+
+struct _DesktopEntry {
   gchar *name;
   gchar *icon;
   gchar *exec;
-} DesktopEntry;
+};
 
-const char *DesktopEntryComplete =
+struct _DesktopSettings {
+  bool active;			/* settings realized */
+  GlobalPanel *panel;		/* GlobalPanel instance */
+  GtkWidget   *canvas;		/* icon preview pane */
+  const char *iconpath;		/* preview icon file */
+  guint8 fontselected;		/* font array index */
+  gint16 iconsize;
+};
+
+const char *DesktopEntrySpec =
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<item name=\"%s\" icon=\"%s\">\n"
 " <exec>%s</exec>\n"
@@ -46,18 +62,56 @@ const char *DesktopEntryComplete =
 " <ypos>%d</ypos>\n"
 "</item>\n";
 
-const char *DesktopEntryMinimal =
-"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-"<item file=\"%s\">\n"
-" <xpos>%d</xpos>\n"
-" <ypos>%d</ypos>\n"
-"</item>\n";
+const char *DesktopFileSpec =
+"[Desktop Entry]\n\n"
+"# The version of the desktop entry specification to which this file complies\n"
+"Version=1.0\n\n"
+"# The name of the application\n"
+"Name=%s\n\n"
+"# A comment which can/will be used as a tooltip\n"
+"Comment=%s\n\n"
+"# The name of the icon that will be used to display this entry\n"
+"Icon=%s\n\n"
+"# The executable of the application, possibly with arguments.\n"
+"Exec=%s\n\n"
+"# The path to the folder in which the executable is run\n"
+"Path=/usr/bin\n\n"
+"# Describes whether this application needs to be run in a terminal or not\n"
+"Terminal=false\n\n"
+"Type=Application\n\n"
+"# Describes the categories in which this entry should be shown\n"
+"Categories=Applications;Desktop;\n";
+
+#define DesktopFontMax 8
+const char *DesktopFont[DesktopFontMax] = {
+  "Arial 10"
+ ,"Arial 12"
+ ,"Arial 14"
+ ,"Times 9"
+ ,"Times 12"
+ ,"Times 14"
+ ,"Sans 12"
+ ,"Sans 14"
+};
+
+DesktopSettings settings_;	/* DesktopSettings private to this module */
+
+
+/*
+* desktop_default_iconsize
+*/
+gint16
+desktop_default_iconsize(GlobalPanel *panel)
+{
+  PanelDesktop *desktop = panel->desktop;
+  return desktop->iconsize;
+} /* </desktop_default_iconsize> */
 
 /*
 * desktop_parse_file
 */
 DesktopEntry *
-desktop_file_parse (const char *filename)
+desktop_file_parse(const char *filename)
 {
   DesktopEntry *entry = NULL;
   GKeyFile *file = g_key_file_new ();
@@ -74,13 +128,13 @@ desktop_file_parse (const char *filename)
 
   g_key_file_free (file);
   return entry;
-}
+} /* </desktop_file_parse> */
 
 /*
 * (private) desktop_move - change the position of a desktop shortcut
 */
 static void
-desktop_move (ConfigurationNode *node, gint xpos, gint ypos)
+desktop_move(ConfigurationNode *node, gint16 xpos, gint16 ypos)
 {
   ConfigurationNode *item;
   gchar *name = configuration_attrib(node, "name");
@@ -101,7 +155,7 @@ desktop_move (ConfigurationNode *node, gint xpos, gint ypos)
 * (private) desktop_filer_cancel
 */
 static bool
-desktop_filer_apply (GtkWidget *button, GlobalPanel *panel)
+desktop_filer_apply(GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
 
@@ -116,7 +170,7 @@ desktop_filer_apply (GtkWidget *button, GlobalPanel *panel)
 } /* </desktop_filer_apply> */
 
 static bool
-desktop_filer_cancel (GtkWidget *button, GlobalPanel *panel)
+desktop_filer_cancel(GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
   gtk_widget_hide (desktop->filer);
@@ -128,9 +182,9 @@ desktop_filer_cancel (GtkWidget *button, GlobalPanel *panel)
 * (private) desktop_filer_repaint
 */
 bool
-desktop_filer_refresh (GtkWidget *canvas,
-                       GdkEventExpose *event,
-                       GlobalPanel *panel)
+desktop_filer_refresh(GtkWidget *canvas,
+                      GdkEventExpose *event,
+                      GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
   redraw_pixbuf (canvas, desktop->render);
@@ -138,7 +192,7 @@ desktop_filer_refresh (GtkWidget *canvas,
 } /* </desktop_filer_refresh> */
 
 static bool
-desktop_filer_repaint (FileChooserDatum *datum)
+desktop_filer_repaint(FileChooserDatum *datum)
 {
   GlobalPanel *panel = datum->user;
   PanelDesktop *desktop = panel->desktop;
@@ -146,7 +200,7 @@ desktop_filer_repaint (FileChooserDatum *datum)
   struct stat info;
 
   if (lstat(file, &info) == 0 && S_ISREG(info.st_mode)) {
-    gint iconsize = desktop->iconsize;
+    gint16 iconsize = desktop->iconsize;
 
     desktop->render = pixbuf_new_from_file_scaled (file, iconsize, iconsize);
     desktop_filer_refresh (desktop->canvas, NULL, panel);
@@ -155,11 +209,10 @@ desktop_filer_repaint (FileChooserDatum *datum)
 } /* </desktop_filer_repaint> */
 
 /*
-* (private) desktop_setting_apply
-* (private) desktop_setting_cancel
+* (private) desktop_settings_apply
 */
 static bool
-desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
+desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
   DesktopAction action = desktop->action;
@@ -167,6 +220,7 @@ desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
 
   /* Dismiss the desktop->gwindow interface. */
   gtk_widget_hide (desktop->gwindow);
+  settings_.active = false;
   desktop->active = false;
 
   /* Handle the user specified action. */
@@ -217,12 +271,10 @@ desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
       ConfigurationNode *mark;
       Docklet *docklet;
 
-      gchar *stub = (gchar *)DesktopEntryComplete;
       gchar *spec;
-
-      gint iconsize = desktop->iconsize;
-      gint xpos;
-      gint ypos;
+      gint16 iconsize = desktop->iconsize;
+      gint16 xpos;
+      gint16 ypos;
 
 
       /* Calculate where to place and form the XML. */
@@ -231,7 +283,7 @@ desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
       xpos = desktop->xpos;
       ypos = desktop->ypos + desktop->step;
 
-      spec = g_strdup_printf (stub, text, iconame, run, xpos, ypos);
+      spec = g_strdup_printf (DesktopEntrySpec, text, iconame, run, xpos, ypos);
       item = configuration_read (spec, NULL, TRUE);
       mark = configuration_find (config, "/desktop");
 
@@ -259,24 +311,45 @@ desktop_setting_apply (GtkWidget *button, GlobalPanel *panel)
     }
   }
   return TRUE;
-} /* </desktop_setting_apply> */
+} /* </desktop_settings_apply> */
 
+/*
+* (private) desktop_settings_cancel
+*/
 static bool
-desktop_setting_cancel (GtkWidget *button, GlobalPanel *panel)
+desktop_settings_cancel(GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
 
   gtk_widget_hide (desktop->gwindow);
+  settings_.active = false;
   desktop->active = false;
 
   return true;
-} /* </desktop_setting_cancel> */
+} /* </desktop_settings_cancel> */
+
+/*
+* desktop_settings_enable - register callbacks for apply and cancel
+*/
+static void
+desktop_settings_enable(DesktopSettings *desktop)
+{
+  if (desktop->active) {
+    PanelSetting *settings = desktop->panel->settings;
+    settings_save_enable (settings, TRUE);
+    settings_set_agents (settings,
+			(gpointer)desktop_settings_apply,
+			(gpointer)desktop_settings_cancel,
+			NULL);
+  }
+  desktop->active = true;
+} /* </desktop_settings_enable> */
 
 /*
 * (private) desktop_setting_iconview
 */
 static bool
-desktop_setting_iconview (GtkWidget *button, GlobalPanel *panel)
+desktop_setting_iconview(GtkWidget *button, GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
   gtk_widget_show (desktop->filer);
@@ -287,7 +360,7 @@ desktop_setting_iconview (GtkWidget *button, GlobalPanel *panel)
 * desktop_new - object for creating and editing desktop shortcuts
 */
 PanelDesktop *
-desktop_new (GlobalPanel *panel, gint iconsize)
+desktop_new(GlobalPanel *panel, gint16 iconsize)
 {
   GtkWidget *window, *frame, *layout, *layer;
   GtkWidget *button, *entry, *label, *split;
@@ -299,13 +372,13 @@ desktop_new (GlobalPanel *panel, gint iconsize)
   PanelIcons *icons = panel->icons;
 
   gchar *value = configuration_attrib(menu, "iconsize");
-  gint menuiconsize = (value) ? atoi(value) : panel->taskbar->iconsize;
+  gint16 menuiconsize = (value) ? atoi(value) : panel->taskbar->iconsize;
 
   FileChooser *chooser;
   gchar dirname[FILENAME_MAX];
   gchar *scan;
 
-  desktop->active = FALSE;
+  desktop->active = false;
   desktop->iconsize = iconsize;
   desktop->folder = g_strdup_printf ("%s/Desktop", getenv("HOME"));
   desktop->menu = menu_options_config (menu, panel, menuiconsize);
@@ -414,7 +487,7 @@ desktop_new (GlobalPanel *panel, gint iconsize)
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
 
   g_signal_connect (G_OBJECT(button), "clicked",
-                     G_CALLBACK(desktop_setting_apply), panel);
+                     G_CALLBACK(desktop_settings_apply), panel);
   gtk_widget_show (button);
 
   button = xpm_button (ICON_CANCEL, NULL, 0, _("Cancel"));
@@ -423,7 +496,7 @@ desktop_new (GlobalPanel *panel, gint iconsize)
 
   /* 2023.06.07 DEBUG - child process stuck,,, desktop.c:425 */
   g_signal_connect (G_OBJECT(button), "clicked",
-                     G_CALLBACK(desktop_setting_cancel), panel);
+                     G_CALLBACK(desktop_settings_cancel), panel);
   gtk_widget_show (button);
 
   /* Save the initial default image path. */
@@ -432,7 +505,8 @@ desktop_new (GlobalPanel *panel, gint iconsize)
 
   /* Create popup window for choosing a different icon. */
   window = desktop->filer = gtk_window_new (GTK_WINDOW_POPUP);
-  gtk_widget_set_uposition (GTK_WIDGET(window), 120, 120);
+  gtk_window_set_default_size (GTK_WINDOW(window),480, 300);
+  gtk_widget_set_uposition (GTK_WIDGET(window), 60, 120);
 
   frame = gtk_frame_new (NULL);
   gtk_frame_set_shadow_type (GTK_FRAME(frame), GTK_SHADOW_OUT);
@@ -466,14 +540,14 @@ desktop_new (GlobalPanel *panel, gint iconsize)
   chooser->clearname  = TRUE;	/* clear file name on directory change */
 
   layer = filechooser_layout (chooser);
-  gtk_widget_set_size_request (layer, 380, 4*iconsize);
-  gtk_box_pack_start (GTK_BOX(layout), layer, TRUE, TRUE, 5);
+  gtk_widget_set_size_request (layer, 440, 5*iconsize);
+  gtk_box_pack_start (GTK_BOX(layout), layer, TRUE, TRUE, 0);
   /* gtk_widget_hide (chooser->namebox); */
   gtk_widget_show (layer);
 
   layer = desktop->canvas = gtk_drawing_area_new ();
   gtk_widget_set_size_request (layer, iconsize, iconsize);
-  gtk_box_pack_start (GTK_BOX(layout), layer, TRUE, TRUE, 5);
+  gtk_box_pack_start (GTK_BOX(layout), layer, FALSE, TRUE, 2*iconsize/3);
   gtk_widget_show (layer);
 
   g_signal_connect (G_OBJECT (layer), "expose_event",
@@ -487,10 +561,10 @@ desktop_new (GlobalPanel *panel, gint iconsize)
   button = xpm_button (ICON_APPLY, NULL, 0, _("Apply"));
   gtk_box_pack_end (GTK_BOX(layout), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
+  gtk_widget_show (button);
 
   g_signal_connect (G_OBJECT(button), "clicked",
                      G_CALLBACK(desktop_filer_apply), panel);
-  gtk_widget_show (button);
 
   button = xpm_button (ICON_CANCEL, NULL, 0, _("Cancel"));
   gtk_box_pack_end (GTK_BOX(layout), button, FALSE, FALSE, 0);
@@ -500,6 +574,11 @@ desktop_new (GlobalPanel *panel, gint iconsize)
   g_signal_connect (G_OBJECT(button), "clicked",
                      G_CALLBACK(desktop_filer_cancel), panel);
 
+  /* right margin space */
+  label = gtk_label_new ("  ");
+  gtk_box_pack_end (GTK_BOX(layout), label, TRUE, TRUE, 0);
+  gtk_widget_show (label);
+
   return desktop;
 } /* desktop_new */
 
@@ -507,7 +586,7 @@ desktop_new (GlobalPanel *panel, gint iconsize)
 * (private) desktop_shortcut - present menu of desktop shortcut
 */
 void
-desktop_shortcut (Docklet *docklet, ConfigurationNode *node)
+desktop_shortcut(Docklet *docklet, ConfigurationNode *node)
 {
   GlobalPanel *panel = node->data;	 /* cannot be NULL */
   PanelDesktop *desktop = panel->desktop;
@@ -521,7 +600,7 @@ desktop_shortcut (Docklet *docklet, ConfigurationNode *node)
 
   gchar *name = configuration_attrib (node, "name");
   const gchar *file = icon_path_finder (panel->icons, icon);
-  gint iconsize = desktop->iconsize;
+  gint16 iconsize = desktop->iconsize;
 
   vdebug(2, "[desktop]%s.icon %s %dx%d\n", name, file, iconsize, iconsize);
 
@@ -546,7 +625,7 @@ desktop_shortcut (Docklet *docklet, ConfigurationNode *node)
 * (private) desktop_shortcut_callback - callback agent for Docklet events
 */
 static bool
-desktop_shortcut_callback (DockletDatum *datum)
+desktop_shortcut_callback(DockletDatum *datum)
 {
   ConfigurationNode *node = (ConfigurationNode *)datum->payload;
   GdkEvent *event = datum->event;
@@ -571,7 +650,7 @@ desktop_shortcut_callback (DockletDatum *datum)
 * (private) desktop_settings - change the settings of desktop shortcut
 */
 void
-desktop_settings (GlobalPanel *panel, DesktopAction act)
+desktop_settings(GlobalPanel *panel, DesktopAction act)
 {
   PanelDesktop *desktop = panel->desktop;
   GtkWidget *iconview = desktop->iconview;
@@ -587,7 +666,7 @@ desktop_settings (GlobalPanel *panel, DesktopAction act)
 
   if (act == DESKTOP_SHORTCUT_CREATE) {
     const gchar *file = desktop->icon;
-    gint iconsize = desktop->iconsize;
+    gint16 iconsize = desktop->iconsize;
 
     desktop->render = pixbuf_new_from_file_scaled (file, iconsize, iconsize);
     gtk_button_set_image (GTK_BUTTON(iconview),
@@ -626,7 +705,7 @@ desktop_settings (GlobalPanel *panel, DesktopAction act)
   else {
     gtk_widget_hide (panel->settings->window);  /* hide settings window */
     gtk_widget_show (desktop->gwindow);		/* show manager window */
-    desktop->active = TRUE;
+    desktop->active = true;
   }
 
   desktop->action = act; /* action applied on shortcut */
@@ -636,7 +715,7 @@ desktop_settings (GlobalPanel *panel, DesktopAction act)
 * desktop_change - GFileMonitor callback for $HOME/Desktop changes
 */
 static inline ConfigurationNode *
-desktop_change_node (ConfigurationNode *config, const char *match)
+desktop_change_node(ConfigurationNode *config, const char *match)
 {
   ConfigurationNode *chain = configuration_find(config, "desktop");
   ConfigurationNode *mark  = configuration_find (chain, "/desktop");
@@ -657,8 +736,8 @@ desktop_change_node (ConfigurationNode *config, const char *match)
 }
 
 static void
-desktop_change (GFileMonitor *monitor, GFile *file, GFile *other,
-		GFileMonitorEvent event_type, GlobalPanel *panel)
+desktop_change(GFileMonitor *monitor, GFile *file, GFile *other,
+	       GFileMonitorEvent event_type, GlobalPanel *panel)
 {
   char *filename = g_file_get_path (file);
   const char *name = basename(filename);
@@ -689,7 +768,7 @@ configuration_write (chain, "<%s>\n", stdout);
 
       panel->desktop->shortcut = node->widget;
       panel->desktop->action = DESKTOP_SHORTCUT_DELETE;
-      desktop_setting_apply (NULL, panel);
+      desktop_settings_apply (NULL, panel);
 
       configuration_write (chain, "<%s>\n", stdout);
       break;
@@ -704,7 +783,7 @@ configuration_write (chain, "<%s>\n", stdout);
 * desktop_config - add gtk_event_box_new() to the interface layout
 */
 void
-desktop_config (GlobalPanel *panel, bool once)
+desktop_config(GlobalPanel *panel, bool once)
 {
   const gchar *icon;
 
@@ -714,15 +793,15 @@ desktop_config (GlobalPanel *panel, bool once)
   PanelIcons *icons = panel->icons;
   guint depth = node->depth + 1;
 
-  /* gint width  = gdk_screen_width(); */
-  gint height = gdk_screen_height();
+  //gint16 width  = gdk_screen_width();
+  gint16 height = gdk_screen_height();
 
-  gint xpos = -1;	/* used to calculate position */
-  gint ypos = -1;
+  gint16 xpos = -1;	/* used to calculate position */
+  gint16 ypos = -1;
 
-  gint step = 70;	/* should be computed from font and icon */
-  gint xorg = 5;	/* position for a new shortcut */
-  gint yorg = 5;
+  gint16 step = 70;	/* should be computed from font and icon */
+  gint16 xorg = 5;	/* position for a new shortcut */
+  gint16 yorg = 5;
 
   gchar *font, *name;
   gchar *init  = configuration_attrib(node, "init");
@@ -832,15 +911,15 @@ desktop_config (GlobalPanel *panel, bool once)
 * desktop_create - instantiate a new desktop launcher 
 */
 Docklet *
-desktop_create (GlobalPanel *panel,
-                ConfigurationNode *node,
-                gint width, gint height,
-                gint xpos, gint ypos,
-                const gchar *icon,
-                const gchar *text,
-                const gchar *font,
-                GdkColor *fg,
-                GdkColor *bg)
+desktop_create(GlobalPanel *panel,
+               ConfigurationNode *node,
+               gint16 width, gint16 height,
+               gint16 xpos, gint16 ypos,
+               const gchar *icon,
+               const gchar *text,
+               const gchar *font,
+               GdkColor *fg,
+               GdkColor *bg)
 {
   Docklet *docklet = docklet_new (GDK_WINDOW_TYPE_HINT_NORMAL,
                                   width, height, xpos, ypos,
@@ -856,3 +935,175 @@ desktop_create (GlobalPanel *panel,
 
   return docklet;
 } /* </desktop_create> */
+
+/*
+* desktop_iconsize_preview
+*/
+static void
+desktop_iconsize_preview(GtkWidget *button, gpointer scale)
+{
+  gint16 iconsize = settings_.iconsize = GPOINTER_TO_INT (scale);
+  GdkPixbuf *render = pixbuf_new_from_file_scaled (settings_.iconpath,
+						   iconsize, iconsize);
+  GdkWindow *gdkwindow = settings_.canvas->window;
+
+  vdebug(1, "%s iconfile => %s, iconsize => %d\n", __func__,
+			basename(settings_.iconpath), settings_.iconsize);
+
+  desktop_settings_enable (&settings_);  // register callbacks
+} /* </desktop_iconsize_preview> */
+
+/*
+* dialog_iconsize_radio_button
+*/
+GtkWidget *
+dialog_iconsize_radio_button(GSList *radiogroup, const char *selected)
+{
+  static char label[MAX_LABEL];
+  sprintf(label, "%sx%s", selected, selected);
+
+  GtkWidget *button = gtk_radio_button_new_with_label (radiogroup, label);
+  gint iconsize = settings_.iconsize = atoi(selected);
+
+  g_signal_connect (G_OBJECT(button), "clicked",
+                    G_CALLBACK(desktop_iconsize_preview),
+		    GINT_TO_POINTER (iconsize));
+  return button;
+} /* </dialog_iconsize_radio_button> */
+
+/*
+* desktop_icon_font - set icon font according to selection
+*/
+static void
+desktop_icon_font(GtkComboBox *combo, GlobalPanel *panel)
+{
+  gint selection = gtk_combo_box_get_active (combo);
+
+  vdebug(1, "%s DesktopFont[%d] => %s\n", __func__,
+				selection, DesktopFont[selection]);
+
+  settings_.active = true; // idiosyncrasy 
+  desktop_settings_enable (&settings_);
+} /* </desktop_icon_font> */
+
+/*
+* desktop_settings_new
+*/
+Modulus *
+desktop_settings_new(GlobalPanel *panel)
+{
+  int idx;
+  char *iconsize_selected[5] = {"24", "32", "48", "64", "96"};
+  guint8 iconsize_maxsel = 5;  // must match iconsize_selected[] array size
+
+  GSList *radiogroup = NULL;
+  GtkWidget *area,*button,*canvas,*combo,*frame,*glue,*label,*layer,*radio;
+  GtkWidget *layout = gtk_vbox_new (FALSE, 2);
+  GtkTextBuffer *buffer;
+
+  static Modulus _applet;
+  Modulus *applet = &_applet;
+
+  /* Modulus structure initialization. */
+  applet->data  = panel;
+  applet->name  = "desktop";
+  applet->label = _("Desktop");
+  applet->description = _("Desktop settings module.");
+  applet->release  = Release;
+  applet->authors  = Authors;
+  applet->settings = layout;
+
+  /* DesktopSettings initialization. */
+  settings_.active = false;
+  settings_.iconpath = icon_path_finder (panel->icons, DefaultIconHome);
+  settings_.iconsize = desktop_default_iconsize (panel);
+  settings_.fontselected = 4; // TODO read from .panel
+  settings_.panel = panel;
+
+  static char caption[MAX_BUFFER_SIZE];
+  sprintf(caption, "%s [builtin]", applet->label);
+
+  frame = gtk_frame_new (caption);
+  gtk_frame_set_shadow_type (GTK_FRAME(frame), GTK_SHADOW_ETCHED_IN);
+  gtk_container_set_border_width (GTK_CONTAINER (frame), 4);
+  gtk_container_add (GTK_CONTAINER(layout), frame);
+  gtk_widget_show (frame);
+
+  /* Area inside the frame. */
+  area = gtk_vbox_new (TRUE, 4);
+  gtk_container_add (GTK_CONTAINER(frame), area);
+  gtk_widget_show (area);
+
+  /* Add selection widget for iconsize. */
+  layer = gtk_hbox_new (FALSE, 8);
+  gtk_box_pack_start (GTK_BOX(area), layer, FALSE, FALSE, 0);
+  gtk_widget_show (layer);
+
+  /* Add spacing on the left side. */
+  glue = gtk_label_new ("\t ");
+  gtk_box_pack_start (GTK_BOX(layer), glue, FALSE, FALSE, 0);
+  gtk_widget_show (glue);
+
+  /* Add radio buttons for iconsize. */
+  radio = gtk_vbox_new (FALSE, 0);
+  gtk_box_pack_start (GTK_BOX(layer), radio, FALSE, FALSE, 0);
+  gtk_widget_show (radio);
+
+  frame = gtk_frame_new (_("Icon Size"));
+  gtk_container_set_border_width (GTK_CONTAINER (frame), 4);
+  gtk_container_add (GTK_CONTAINER(radio), frame);
+  gtk_widget_show (frame);
+
+  for (idx = 0; idx < iconsize_maxsel; idx++) {
+    button = dialog_iconsize_radio_button (radiogroup, iconsize_selected[idx]);
+    gtk_box_pack_start (GTK_BOX(radio), button, FALSE, FALSE, 0);
+    radiogroup = g_slist_append (radiogroup, button);
+    gtk_widget_show (button);
+  }
+
+  /* Add font selection combo box. */
+  glue = gtk_vbox_new (FALSE, 8);
+  gtk_box_pack_start (GTK_BOX(layer), glue, FALSE, FALSE, 0);
+  gtk_widget_show (glue);
+
+  area = gtk_hbox_new (FALSE, 0);
+  gtk_box_pack_start (GTK_BOX(glue), area, FALSE, FALSE, 0);
+  gtk_widget_show (area);
+
+  label = gtk_label_new (_("Font: "));
+  gtk_box_pack_start (GTK_BOX(area), label, FALSE, FALSE, 0);
+  gtk_widget_show (label);
+
+  combo = gtk_combo_box_new_text ();
+  for (idx = 0; idx < DesktopFontMax; idx++) {
+    gtk_combo_box_append_text(GTK_COMBO_BOX(combo), DesktopFont[idx]);
+  }
+  gtk_combo_box_set_active (GTK_COMBO_BOX(combo), settings_.fontselected);
+  gtk_box_pack_start (GTK_BOX(area), combo, FALSE, FALSE, 0);
+  gtk_widget_show (combo);
+
+  g_signal_connect (G_OBJECT(combo), "changed",
+                      G_CALLBACK (desktop_icon_font), panel);
+
+  label = gtk_label_new ("\t");
+  gtk_box_pack_start (GTK_BOX(area), label, FALSE, FALSE, 0);
+  gtk_widget_show (label);
+
+  /* Add canvas for preview area. */
+  canvas = settings_.canvas = gtk_text_view_new ();
+  gtk_text_view_set_editable (GTK_TEXT_VIEW(canvas), FALSE);
+  gtk_text_view_set_cursor_visible (GTK_TEXT_VIEW(canvas), FALSE);
+  gtk_text_view_set_justification (GTK_TEXT_VIEW(canvas), GTK_JUSTIFY_CENTER);
+  gtk_text_view_set_pixels_above_lines (GTK_TEXT_VIEW(canvas), 30);
+  gtk_box_pack_start (GTK_BOX(layer), canvas, FALSE, FALSE, 0);
+  gtk_widget_set_size_request (canvas, 128, 128);
+  gtk_widget_show (canvas);
+
+  buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (canvas));
+  gtk_text_buffer_set_text (buffer, "Home", -1);
+
+  //DEBUG
+  //g_signal_connect (G_OBJECT (canvas), "expose_event",
+  //                         G_CALLBACK (desktop_iconsize_preview), NULL);
+  return applet;
+} /* </desktop_settings_new> */
