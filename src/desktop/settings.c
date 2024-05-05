@@ -858,7 +858,7 @@ settings_missing_new (Modulus *applet, GlobalPanel *panel)
 } /* </settings_missing_new> */
 
 /*
-* settings_page_switch handler for settings page change
+* settings_page_switch - handler for settings page change
 */
 static void
 settings_page_switch (GtkNotebook *book, GtkNotebookPage *page,
@@ -977,15 +977,14 @@ settings_new (GlobalPanel *panel)
   GtkWidget *button, *layer, *layout, *widget;
   GtkNotebook *notebook;
 
-  Modulus *desktop_settings = desktop_settings_new (panel);
-
   static PanelSetting _settings;
   PanelSetting *settings = panel->settings = &_settings;
   const char *selections[2] = {"1", "3"};  // expand Screen & Modules items
   const int expansions = 2;
 
   Modulus *applet;              /* plugin modules */
-  GList *iter;
+  Modulus *desktop_settings = desktop_settings_new (panel); /* builtin */
+  GList *iter;			/* plugin modules iteration */
 
   gint width, height;		/* settings window preferred dimentions */
   gint xorg, yorg;		/* ... (x,y) origin coordinates */

@@ -1321,7 +1321,7 @@ screensaver_get_setting(const char *buffer, const char *pattern)
 } /* </screensaver_get_setting> */
 
 /*
-* screensaver_module_init screen saver module initialization
+* screensaver_module_init - screen saver module initialization
 */
 bool
 screensaver_module_init (Modulus *applet, GlobalPanel *panel)
@@ -1354,7 +1354,15 @@ screensaver_module_init (Modulus *applet, GlobalPanel *panel)
   char pathname[UNIX_PATH_MAX];
   sprintf(pathname, "%s/%s", homedir, _xscreensaver_user_config);
 
-  if (access(pathname, R_OK) == 0) {
+  if (access(pathname, R_OK) != 0)   // _xscreensaver_system_config fallback
+    sprintf(pathname, "%s", _xscreensaver_system_config);
+
+  if (access(pathname, R_OK) != 0) { // not enough! program will crash later
+    static char *message = "screensaver initialization error.";
+    gpanel_dialog (200, 300, ICON_ERROR, "%s: %s", Program, _(message));
+    gould_error ("%s::%s: %s\n", Program, __func__, message);
+  }
+  else {
     static char *buffer = NULL;
 
     if (buffer == NULL) {
@@ -1379,13 +1387,16 @@ screensaver_module_init (Modulus *applet, GlobalPanel *panel)
           fclose(stream);
         }
         else {
-          gpanel_dialog (300, 400, ICON_WARNING, "%s:cannot write: %s\n",
-						__func__, pathname);
+          static char *message = "cannot write";
+          gpanel_dialog (300, 400, ICON_WARNING, "%s: %s: %s\n",
+					__func__, _(message), pathname);
         }
       }
-      else {
-        gpanel_dialog (300, 400, ICON_WARNING, "%s:cannot read: %s\n",
-						__func__, pathname);
+      else {	// not enough! program will crash later
+        static char *message = "cannot read";
+        gould_error ("%s: %s: %s\n", __func__, message, pathname);
+        gpanel_dialog (300, 400, ICON_ERROR, "%s: %s: %s\n",
+				__func__, _(message), pathname);
       }
     }
 
@@ -1394,14 +1405,22 @@ screensaver_module_init (Modulus *applet, GlobalPanel *panel)
 
       _config->active = TRUE;		/* screensaver is enabled */
       _config->count = screensaver_populate_modes (buffer);
-      _config->selection = screensaver_get_mode (buffer);
       _config->index = screensaver_get_selected (buffer);
+      _config->selection = screensaver_get_mode (buffer);
       _config->program = screensaver_modes_[_config->index];
       _config->lock = strcmp(attrib, "True") ? false : true;
     }
-    else {
-      gpanel_dialog (300, 400, ICON_ERROR,
-			"%s internal program error (null buffer)\n", __func__);
+    else {	// [TODO]confirm safe fallbacks settings
+      static char *message = "internal program error (null buffer)";
+
+      _config->active = FALSE;  	/* screensaver is disabled */
+      _config->count = 0;
+      _config->index = -1;
+      _config->selection = 0;
+      _config->program = "qix";
+      _config->lock = false;
+
+      gpanel_dialog (300, 400, ICON_ERROR, "%s %s\n", __func__, _(message));
     }
   }
   applet->settings = screensaver_settings_new (applet, panel);

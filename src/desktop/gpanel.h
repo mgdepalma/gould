@@ -42,6 +42,7 @@ G_BEGIN_DECLS
 typedef enum _desktop_actions DesktopAction;
 
 enum _desktop_actions {
+  DESKTOP_SAVECONFIG,
   DESKTOP_SHORTCUT_CREATE,
   DESKTOP_SHORTCUT_DELETE,
   DESKTOP_SHORTCUT_EDIT,

@@ -24,7 +24,7 @@
 
 #define _xscreensaver_daemon	    "xscreensaver"
 #define _xscreensaver_command	    "xscreensaver-command"
-#define _xscreensaver_system_config "/etc/default/.xscreensaver"
+#define _xscreensaver_system_config "/etc/default/xscreensaver"
 #define _xscreensaver_backup_config ".xscreensaver~"
 #define _xscreensaver_user_config   ".xscreensaver"
 
