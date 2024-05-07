@@ -27,7 +27,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 
-static GlobalPanel *_desktop;	/* (protected)encapsulated program data */
+static GlobalPanel *gpanel_;	/* (protected)encapsulated program data */
 
 const char *Program = "gpanel";	/* (public) published program name    */
 const char *Release = "2.0";	/* (public) published program version */
@@ -306,7 +306,7 @@ panel_config_settings(GlobalPanel *panel)
   PanelIcons *icons = panel->icons = g_new0 (PanelIcons, 1);
 
   char *member = strtok((char *)searchpath, delim);
-  char attrib[MAX_PATHNAME];
+  char attrib[UNIX_PATH_MAX];
 
   //gchar *attrib = g_strdup_printf ("%s:%s", Program, _SCREENSAVER_COMMAND);
   sprintf(attrib, "%s:%s", Program, _SCREENSAVER_COMMAND);
@@ -615,11 +615,11 @@ dispatch(int stream, const char *command)
     pid = spawn (command);
   else {
     int  nbytes;
-    char reply[MAX_PATHNAME];
+    char reply[UNIX_PATH_MAX];
 
     alarm (_SIGALRM_GRACETIME);
     write(stream, command, strlen(command));
-    nbytes = read(stream, reply, MAX_PATHNAME);
+    nbytes = read(stream, reply, UNIX_PATH_MAX);
     reply[nbytes] = 0;
     pid = atoi(reply);
     alarm(0);
@@ -633,9 +633,8 @@ dispatch(int stream, const char *command)
 pid_t
 gpanel_respawn(int stream, int seconds)
 {
-  static char command[MAX_PATHNAME];
-
-  sprintf(command, "%s -s", path_finder(_desktop->path, Program));
+  static char command[UNIX_PATH_MAX];
+  sprintf(command, "%s -s", path_finder(gpanel_->path, Program));
   vdebug(2, "%s: command => %s\n", __func__, command);
   pid_t instance = dispatch (stream, command);
   if(seconds > 0) sleep(seconds);
@@ -769,7 +768,7 @@ gpanel_initialize(GlobalPanel *panel)
   GList *builtin, *plugins;
   SchemaVersion *version = NULL;
 
-  char dirname[MAX_PATHNAME];
+  char dirname[UNIX_PATH_MAX];
   char *home = getenv("HOME");
   char *scan;
 
@@ -891,7 +890,7 @@ void
 gpanel_instance(GlobalPanel *panel)
 {
   memset(panel, 0, sizeof(GlobalPanel));
-  _desktop = panel;		/* save GlobalPanel data structure */
+  gpanel_ = panel;		/* save GlobalPanel data structure */
 
   if (panel_loader(panel) != EX_OK) {
     printf("%s: %s.", Program, _("cannot find configuration file"));
@@ -924,6 +923,16 @@ gpanel_graceful(int signum, bool verbose)
 } /* </gpanel_graceful> */
 
 /*
+* (public) gpanel_restart
+*/
+void
+gpanel_restart(GlobalPanel *panel, int signum)
+{
+  gpanel_respawn (panel->session, 0);
+  gpanel_graceful (signum, false);
+} /* </gpanel_restart> */
+
+/*
 * signal_responder - signal handler
 */
 void
@@ -935,24 +944,24 @@ signal_responder(int signum)
     case SIGHUP:		/* action required backdrop (ARB) */
     case SIGCONT:		/* dismiss logout panel and/or ARB */
     case SIGTERM:		/* show logout panel */
-      shutdown_panel (_desktop, signum);
+      shutdown_panel (gpanel_, signum);
       break;
 
     case SIGUSR1:		/* show setting panel */
-      settings_activate (_desktop);
+      settings_activate (gpanel_);
       break;
 
     case SIGUSR2:		/* create new shortcut */
-      desktop_settings (_desktop, DESKTOP_SHORTCUT_CREATE);
+      desktop_settings (gpanel_, DESKTOP_SHORTCUT_CREATE);
       break;
 
     case SIGALRM:
       if (_monitor) {		/* acknowledgement timed out */
-        gpanel_respawn (_desktop->session, 2);
+        gpanel_respawn (gpanel_->session, 2);
         gpanel_graceful (signum, verbose);
       }
       else {
-        _desktop->session = -1;	/* needs work! */
+        gpanel_->session = -1;	/* needs work! */
       }
       break;
 
@@ -976,7 +985,7 @@ signal_responder(int signum)
       break;
 
     case SIGURG:		/* forced restart */
-      gpanel_respawn (_desktop->session, 2);
+      gpanel_respawn (gpanel_->session, 2);
       gpanel_graceful (signum, verbose);
       break;
 
@@ -988,14 +997,14 @@ signal_responder(int signum)
     default:
       gould_diagnostics ("%s: caught signal %d\n", Program, signum);
 
-      gtk_widget_show (_desktop->backdrop);
+      gtk_widget_show (gpanel_->backdrop);
       gpanel_dialog (150, 100, ICON_ERROR, "%s: %s. (caught signal => %d)",
 						Program, _(Bugger), signum);
-      gtk_widget_hide (_desktop->backdrop);
+      gtk_widget_hide (gpanel_->backdrop);
 
       if (_persistent) {
         sleep(2);		/* wait 2 seconds before respawn */
-        gpanel_respawn (_desktop->session, 0);
+        gpanel_respawn (gpanel_->session, 0);
       }
       gpanel_graceful (signum, verbose);
       break;
@@ -1013,9 +1022,9 @@ session_signal_responder(int signum, siginfo_t *siginfo, void *context)
   switch (signum) {
     case SIGUSR3:
       alarm (_SIGALRM_GRACETIME);	// acknowledgement timeout
-      if (_desktop->gwindow) {
-        gtk_widget_show (_desktop->gwindow);
-        gtk_window_stick (_desktop->gwindow);
+      if (gpanel_->gwindow) {
+        gtk_widget_show (gpanel_->gwindow);
+        gtk_window_stick (gpanel_->gwindow);
       }
       kill (sender, SIGUSR3);		// acknowledge `sender'
       alarm (0);			// disarm alarm()

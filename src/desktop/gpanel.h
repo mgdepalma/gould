@@ -38,8 +38,18 @@
 
 G_BEGIN_DECLS
 
-/* Desktop shortcut actions. */
+/* Configuration and Desktop shortcut actions. */
+typedef enum _configuration_menu ConfigurationMenu;
 typedef enum _desktop_actions DesktopAction;
+
+enum _configuration_menu {
+  CONFIGURATION_GENERAL,
+  CONFIGURATION_SCREEN,
+  CONFIGURATION_STARTMENU,
+  CONFIGURATION_MODULES,
+  CONFIGURATION_DESKTOP,
+  CONFIGURATION_ABOUT
+};
 
 enum _desktop_actions {
   DESKTOP_SAVECONFIG,
@@ -138,6 +148,7 @@ struct _PanelDesktop
   GtkWidget *exec;		/* exec text entry field */
   GtkWidget *hint;		/* action hints */
 
+  GSList *icongroup;		/* desktop iconsize group */
   const gchar *icon;		/* default icon image pathname */
   gint16 iconsize;		/* fixed icon width and height */
 
@@ -191,6 +202,7 @@ void taskbar_initialize (GlobalPanel *panel, GtkWidget *layout);
 void desktop_config (GlobalPanel *panel, bool once);
 void desktop_shortcut (Docklet *docklet, ConfigurationNode *node);
 void desktop_settings (GlobalPanel *panel, DesktopAction act);
+void desktop_default_iconsize (GlobalPanel *panel);
 
 const char *icon_path_finder (PanelIcons *icons, const char *name);
 GtkWidget *interface (GlobalPanel *panel);
@@ -247,22 +259,21 @@ GtkWidget *setbg_settings_new (Modulus *applet, GlobalPanel *panel);
 GtkWidget *screensaver_settings_new (Modulus *applet, GlobalPanel *panel);
 GtkWidget *shutdown_dialog_new (GlobalPanel *panel);
 
-void
-startmenu (GtkMenu *menu, gint *x, gint *y, bool *pushin, gpointer data);
+void executer (GtkWidget *widget, ConfigurationNode *node);
+void startmenu (GtkMenu *menu, gint *x, gint *y, bool *pushin, gpointer data);
 
 pid_t session_request (int stream, const char *command);
 pid_t spawn_selected (ConfigurationNode *node, GlobalPanel *panel);
 pid_t dispatch (int stream, const char *command);
 
-void executer (GtkWidget *widget, ConfigurationNode *node);
-
-void panel_restart (GlobalPanel *panel);
-void panel_reconstruct (GlobalPanel *panel);
-
-void shutdown_panel (GlobalPanel *panel, int sig);
-
 void gpanel_dialog(gint xpos, gint ypos, IconIndex icon, const gchar* fmt, ...);
 gint spawn_dialog(gint xpos, gint ypos, IconIndex icon, const gchar* fmt, ...);
+
+void gpanel_restart (GlobalPanel *panel, int signum);
+void shutdown_panel (GlobalPanel *panel, int signum);
+
+void panel_reconstruct (GlobalPanel *panel);
+void panel_restart (GlobalPanel *panel);
 
 int saveconfig (GlobalPanel *panel);
 G_END_DECLS

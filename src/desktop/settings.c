@@ -20,6 +20,7 @@
 #include "gould.h"      /* common package declarations */
 #include "gpanel.h"
 #include "gsession.h"
+#include "screensaver.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
@@ -157,22 +158,19 @@ void
 settings_activate (GlobalPanel *panel)
 {
   PanelDesktop *desktop = panel->desktop;
+  PanelSetting *settings = panel->settings;
 
   signal (SIGALRM, settings_stubborn);
   alarm (_SIGALRM_GRACETIME);
-  gtk_widget_show (panel->settings->window);
-  gtk_window_stick (panel->settings->window);
-  /* gtk_widget_hide (desktop->gwindow); /* hide desktop panel */
-  desktop->active = FALSE;
+  gtk_widget_show (settings->window);
+  gtk_window_stick (settings->window);
+  desktop_default_iconsize (panel);
+  desktop->active = false;
   alarm (0);	/* disarm alarm() */
 } /* </settings_activate> */
 
 /*
 * settings_apply
-* settings_cancel
-* settings_close
-* settings_dismiss
-* settings_key_press
 */
 static void
 settings_apply (GtkWidget *button, GlobalPanel *panel)
@@ -182,9 +180,12 @@ settings_apply (GtkWidget *button, GlobalPanel *panel)
   if (settings->apply_cb != NULL)
     (*settings->apply_cb) (settings->applet);
 
-  settings_save_enable (settings, FALSE);
+  settings_save_enable (settings, false);
 } /* </settings_apply> */
 
+/*
+* settings_cancel
+*/
 static void
 settings_cancel (GtkWidget *button, GlobalPanel *panel)
 {
@@ -193,9 +194,12 @@ settings_cancel (GtkWidget *button, GlobalPanel *panel)
   if (settings->cancel_cb != NULL)
     (*settings->cancel_cb) (settings->applet);
 
-  settings_save_enable (settings, FALSE);
+  settings_save_enable (settings, false);
 } /* </settings_cancel> */
 
+/*
+* settings_close
+*/
 static void
 settings_close (GtkWidget *button, GlobalPanel *panel)
 {
@@ -211,25 +215,30 @@ settings_close (GtkWidget *button, GlobalPanel *panel)
   gtk_widget_hide (settings->window);
 } /* </settings_close> */
 
-/* static */void
+/*
+* settings_dismiss
+*/
+static void
 settings_dismiss (GtkWidget *widget, GlobalPanel *panel)
 {
   gtk_widget_hide (menuicondialog_);
   gtk_widget_hide (widget);
 }
 
-#if __key_press_event_
+/*
+* settings_key_press
+*/
 static void
 settings_key_press (GtkWidget *window, GdkEventKey *event, GlobalPanel *panel)
 {
+#if __key_press_event_
   if (event->keyval == GDK_Escape)
     gtk_widget_hide (window);
-} /* </settings_key_press> */
 #endif
+} /* </settings_key_press> */
 
 /*
 * settings_save_enable
-* settings_set_agents
 */
 void
 settings_save_enable (PanelSetting *settings, bool state)
@@ -240,6 +249,9 @@ settings_save_enable (PanelSetting *settings, bool state)
   gtk_widget_set_sensitive (settings->view, !state);
 } /* </settings_save_enable> */
 
+/*
+* settings_set_agents
+*/
 void
 settings_set_agents (PanelSetting *settings,
                      GtkFunction apply_cb,
@@ -517,7 +529,7 @@ panel_place (GtkWidget *button, gpointer value)
 
     /* Register callbacks for apply and cancel. */
     if (current_.place != place) {
-      settings_save_enable (settings, TRUE);
+      settings_save_enable (settings, true);
       settings_set_agents (settings,
                            (gpointer)panel_settings_apply,
                            (gpointer)panel_settings_cancel,
@@ -538,7 +550,7 @@ panel_thickness (GtkRange *range, GlobalPanel *panel)
 {
   PanelSetting *settings = panel->settings;
 
-  settings_save_enable (settings, TRUE);
+  settings_save_enable (settings, true);
   settings_set_agents (settings,
                        (gpointer)panel_settings_apply,
                        (gpointer)panel_settings_cancel,
@@ -552,7 +564,7 @@ panel_margin (GtkRange *range, GlobalPanel *panel)
 {
   PanelSetting *settings = panel->settings;
 
-  settings_save_enable (settings, TRUE);
+  settings_save_enable (settings, true);
   settings_set_agents (settings,
                        (gpointer)panel_settings_apply,
                        (gpointer)panel_settings_cancel,
@@ -566,7 +578,7 @@ panel_indent (GtkRange *range, GlobalPanel *panel)
 {
   PanelSetting *settings = panel->settings;
 
-  settings_save_enable (settings, TRUE);
+  settings_save_enable (settings, true);
   settings_set_agents (settings,
                        (gpointer)panel_settings_apply,
                        (gpointer)panel_settings_cancel,
@@ -1083,12 +1095,12 @@ settings_new (GlobalPanel *panel)
   gtk_box_pack_start (GTK_BOX(layout), widget, TRUE, TRUE, 0);
   gtk_widget_show (widget);
 
-  /* [0]First entry is for general settings. */
+  /* [0 = CONFIGURATION_GENERAL]First entry is for general settings. */
   gtk_tree_store_append (store, &cell, NULL);
   settings->applet = settings_general_new (panel);
   settings_page_new (store, &cell, notebook, settings->applet, panel);
 
-  /* [1]Second entry are SCREEN applets. */
+  /* [1 = CONFIGURATION_SCREEN]Second entry are SCREEN applets. */
   gtk_tree_store_append (store, &cell, NULL);
   gtk_tree_store_set (store, &cell,
                       PAGE_COLUMN, -1,
@@ -1104,11 +1116,11 @@ settings_new (GlobalPanel *panel)
     }
   }
 
-  /* [2]Third entry is the start menu editor. */
+  /* [2 = CONFIGURATION_STARTMENU]Third entry is the start menu editor. */
   gtk_tree_store_append (store, &cell, NULL);
   settings_page_new (store, &cell, notebook, panel->start, panel);
 
-  /* [3]Fourth entry is for Modules. */
+  /* [3 = CONFIGURATION_MODULES]Fourth entry is for Modules. */
   gtk_tree_store_append (store, &cell, NULL);
   gtk_tree_store_set (store, &cell,
                       PAGE_COLUMN, -1,
@@ -1125,11 +1137,11 @@ settings_new (GlobalPanel *panel)
       }
   }
 
-  /* [4]Next to last entry is for desktop settings. */
+  /* [4 = CONFIGURATION_DESKTOP]Next to last entry is for desktop settings. */
   gtk_tree_store_append (store, &cell, NULL);
   settings_page_new (store, &cell, notebook, desktop_settings, panel);
 
-  /* [5]Last entry is for general information. */
+  /* [5 = CONFIGURATION_ABOUT]Last entry is for general information. */
   gtk_tree_store_append (store, &cell, NULL);
   settings_page_new (store, &cell, notebook, settings_about_new(), panel);
 
@@ -1290,7 +1302,6 @@ settings_menu_apply_changes (MenuEntry *item, GlobalPanel *panel)
         node->attrib = attrib;
       }
     }
-
     menueditor_.change_exec = FALSE;
   }
 } /* </settings_menu_apply_changes> */
@@ -1427,7 +1438,7 @@ settings_menu_enable (GlobalPanel *panel)
   }
 
   /* Enable save and cancel buttons. */
-  settings_save_enable (settings, TRUE);
+  settings_save_enable (settings, true);
   settings_set_agents (settings,
                        (gpointer)settings_menu_apply,
                        (gpointer)settings_menu_cancel,
@@ -1502,7 +1513,7 @@ settings_menu_cut (GtkWidget *button, GdkEventButton *ev, GlobalPanel *panel)
     GtkWidget *paste = menueditor_.paste_view;
     GtkWidget *widget;
 
-    settings_save_enable (settings, TRUE);
+    settings_save_enable (settings, true);
     gtk_widget_set_sensitive (settings->apply, FALSE);
     settings_set_agents (settings,
                          (gpointer)settings_menu_apply,

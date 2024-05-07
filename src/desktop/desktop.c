@@ -47,10 +47,8 @@ struct _DesktopEntry {
 };
 
 struct _DesktopSettings {
-  bool active;			/* settings realized */
   GlobalPanel *panel;		/* GlobalPanel instance */
   GtkWidget   *canvas;		/* icon preview pane */
-  GSList *radiogroup;		/* iconsize radiogroup */
   const char *iconpath;		/* preview icon file */
   guint8 fontsel;		/* font array index */
   gint16 iconsize;		/* 24 => 24x24, ... */
@@ -96,18 +94,9 @@ const char *DesktopFont[DesktopFontMax] = {
  ,"Sans 14"
 };
 
-DesktopSettings settings_;	/* DesktopSettings private to this module */
-
-
-/*
-* desktop_default_iconsize
-*/
-gint16
-desktop_default_iconsize(GlobalPanel *panel)
-{
-  PanelDesktop *desktop = panel->desktop;
-  return desktop->iconsize;
-} /* </desktop_default_iconsize> */
+DesktopSettings settings_;  /* private DesktopSettings to this module */
+static guint8 iconsize_maxsel = 5; // must match iconsize_selected[] array size
+static gint iconsize_selected[5] = {24, 32, 48, 64, 96};
 
 /*
 * desktop_parse_file
@@ -222,7 +211,6 @@ desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
 
   /* Dismiss the desktop->gwindow interface. */
   gtk_widget_hide (desktop->gwindow);
-  settings_.active = false;
   desktop->active = false;
 
   /* Handle the user specified action. */
@@ -245,7 +233,8 @@ desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
 			  __func__, attrib->name, attrib->value);
         attrib = attrib->next;
       }
-      killall(Program, SIGURG); // force program restart
+      saveconfig (panel);
+      gpanel_restart (panel, SIGURG);	    /* signal program restart */
     }
   }
   else if (action == DESKTOP_SHORTCUT_DELETE) {
@@ -346,7 +335,6 @@ desktop_settings_cancel(GtkWidget *button, GlobalPanel *panel)
   PanelDesktop *desktop = panel->desktop;
 
   gtk_widget_hide (desktop->gwindow);
-  settings_.active = false;
   desktop->active = false;
   return true;
 } /* </desktop_settings_cancel> */
@@ -365,17 +353,13 @@ desktop_settings_close(GtkWidget *button, GlobalPanel *panel)
 * desktop_settings_enable - register callbacks for apply and cancel
 */
 static void
-desktop_settings_enable(DesktopSettings *desktop)
+desktop_settings_enable(PanelSetting *settings)
 {
-  if (desktop->active == false) {
-    PanelSetting *master = desktop->panel->settings;
-    settings_save_enable (master, true);
-    settings_set_agents (master,
+  settings_save_enable (settings, true);
+  settings_set_agents (settings,
 			(gpointer)desktop_settings_apply,
 			(gpointer)desktop_settings_cancel,
 			(gpointer)desktop_settings_close);
-  }
-  desktop->active = true;
 } /* </desktop_settings_enable> */
 
 /*
@@ -530,7 +514,6 @@ desktop_new(GlobalPanel *panel, gint16 iconsize)
   gtk_box_pack_end (GTK_BOX(layer), button, FALSE, FALSE, 0);
   gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
 
-  /* 2023.06.07 DEBUG - child process stuck,,, desktop.c:425 */
   g_signal_connect (G_OBJECT(button), "clicked",
                      G_CALLBACK(desktop_settings_cancel), panel);
   gtk_widget_show (button);
@@ -988,7 +971,8 @@ desktop_icon_size(GtkWidget *button, gpointer scale)
   gint16 iconsize = GPOINTER_TO_INT (scale);
 
   if (settings_.iconsize != iconsize) {
-    PanelDesktop *desktop = settings_.panel->desktop;
+    GlobalPanel *panel = settings_.panel;
+    PanelDesktop *desktop = panel->desktop;
 
     desktop->action = DESKTOP_SAVECONFIG;
     settings_.iconsize = iconsize;
@@ -996,7 +980,7 @@ desktop_icon_size(GtkWidget *button, gpointer scale)
     vdebug(1, "%s iconfile => %s, iconsize => %d\n", __func__,
 			basename(settings_.iconpath), iconsize);
 
-    desktop_settings_enable (&settings_);  // register callbacks
+    desktop_settings_enable (panel->settings);  // register callbacks
   }
 } /* </desktop_icon_size> */
 
@@ -1004,13 +988,11 @@ desktop_icon_size(GtkWidget *button, gpointer scale)
 * dialog_iconsize_radio_button
 */
 GtkWidget *
-dialog_iconsize_radio_button(GSList *radiogroup, const char *selected)
+dialog_iconsize_radio_button(GSList *radiogroup, gint iconsize)
 {
   static char label[MAX_LABEL];
-  sprintf(label, "%sx%s", selected, selected);
-
+  sprintf(label, "%dx%d", iconsize, iconsize);
   GtkWidget *button = gtk_radio_button_new_with_label (radiogroup, label);
-  gint iconsize = atoi(selected);
 
   g_signal_connect (G_OBJECT(button), "clicked",
                     G_CALLBACK(desktop_icon_size),
@@ -1035,7 +1017,7 @@ desktop_icon_font(GtkComboBox *combo, GlobalPanel *panel)
     vdebug(1, "%s DesktopFont[%d] => %s\n", __func__,
 				selection, DesktopFont[selection]);
 
-    desktop_settings_enable (&settings_);
+    desktop_settings_enable (panel->settings);
   }
 } /* </desktop_icon_font> */
 
@@ -1045,17 +1027,16 @@ desktop_icon_font(GtkComboBox *combo, GlobalPanel *panel)
 Modulus *
 desktop_settings_new(GlobalPanel *panel)
 {
-  char *iconsize_selected[5] = {"24", "32", "48", "64", "96"};
-  guint8 iconsize_maxsel = 5;  // must match iconsize_selected[] array size
-  int idx;
-
   GSList *radiogroup = NULL;
-  GtkWidget *area,*button,*canvas,*combo,*frame,*glue,*label,*layer,*radio;
+  GtkWidget *area, *button, *canvas, *combo;
+  GtkWidget *frame, *glue, *label, *layer, *radio;
   GtkWidget *layout = gtk_vbox_new (FALSE, 2);
+  PanelDesktop *desktop = panel->desktop;
   GtkTextBuffer *buffer;
 
   static Modulus _applet;
   Modulus *applet = &_applet;
+  int idx;
 
   /* Modulus structure initialization. */
   applet->data  = panel;
@@ -1067,10 +1048,8 @@ desktop_settings_new(GlobalPanel *panel)
   applet->settings = layout;
 
   /* DesktopSettings initialization. */
-  settings_.active = false;
   // .fontsel and .iconsize initialized in desktop_config()
   settings_.iconpath = icon_path_finder (panel->icons, DefaultIconHome);
-  settings_.radiogroup = radiogroup;
   settings_.panel = panel;
 
   static char caption[MAX_BUFFER_SIZE];
@@ -1113,6 +1092,7 @@ desktop_settings_new(GlobalPanel *panel)
     radiogroup = g_slist_append (radiogroup, button);
     gtk_widget_show (button);
   }
+  desktop->icongroup = radiogroup;	// make availabe as protected
 
   /* Add font selection combo box. */
   glue = gtk_vbox_new (FALSE, 8);
@@ -1157,3 +1137,23 @@ desktop_settings_new(GlobalPanel *panel)
 
   return applet;
 } /* </desktop_settings_new> */
+
+/*
+* desktop_default_iconsize - (public) set iconsize according to configuration
+*/
+void
+desktop_default_iconsize(GlobalPanel *panel)
+{
+  PanelDesktop *desktop = panel->desktop;
+  GSList *iter = desktop->icongroup;
+
+  for (int idx = 0; idx < iconsize_maxsel; idx++) {
+    if (iconsize_selected[idx] == settings_.iconsize) {
+      GtkWidget *button = (GtkWidget *)iter->data;
+      gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(button), TRUE);
+      settings_save_enable (panel->settings, false);
+      break;
+    }
+    iter = iter->next;
+  }
+} /* </desktop_default_iconsize> */

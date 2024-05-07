@@ -197,7 +197,7 @@ setbg_refresh (GtkWidget *canvas, GdkEventExpose *ev, gpointer data)
         PanelSetting *settings = config->panel->settings;
 
         /* Register callbacks for apply and cancel. */
-        settings_save_enable (settings, TRUE);
+        settings_save_enable (settings, true);
         settings_set_agents (settings,
                              (gpointer)setbg_settings_apply,
                              (gpointer)setbg_settings_cancel,
@@ -266,7 +266,7 @@ setbg_origfile(GtkWidget *button, Modulus *applet)
 {
   GlobalPanel *panel = applet->data;
   setbg_settings_cancel (applet);
-  settings_save_enable (panel->settings, FALSE);
+  settings_save_enable (panel->settings, false);
   return true;
 } /* </setbg_origfile> */
 
