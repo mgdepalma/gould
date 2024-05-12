@@ -547,7 +547,8 @@ screensaver_preview_pane (void)
     screensaver_modes_t mode = config->selection;
 
     if (mode == SCREENSAVER_SINGLE || mode == SCREENSAVER_RANDOM) {
-      GdkWindow *gdkwindow = local_.preview_pane->window;
+      GdkWindow *gdkwindow = gtk_widget_get_window (local_.preview_pane);
+      //[unsafe]GdkWindow *gdkwindow = local_.preview_pane->window;
 
       if (gdkwindow != NULL) {
         const char *program = screensaver_modes_[config->index];
@@ -1214,7 +1215,8 @@ screensaver_selection (FileChooserDatum *datum)
 
         if (datum->user) {	// preview window
           ScreensaverSettings *config = datum->user;
-          GdkWindow *gdkwindow = local_.preview_pane->window;
+          //[unsafe]GdkWindow *gdkwindow = local_.preview_pane->window;
+          GdkWindow *gdkwindow = gtk_widget_get_window (local_.preview_pane);
 
           for (int idx = 0; idx < config->count; idx++) {
             if (strcmp(screensaver_modes_[idx], name) == 0) {

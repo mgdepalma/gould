@@ -216,15 +216,16 @@ GtkWidget *menu_submenu_config (ConfigurationNode *node,
 				GlobalPanel *panel,
 				gint16 iconsize);
 
-Docklet *desktop_create (GlobalPanel *panel,
-                         ConfigurationNode *node,
-                         gint16 width, gint16 height,
-                         gint16 xpos, gint16 ypos,
-                         const gchar *icon,
-                         const gchar *text,
-                         const gchar *font,
-                         GdkColor *fg,
-                         GdkColor *bg);
+Docklet *desktop_shortcut_create (GlobalPanel *panel,
+				  ConfigurationNode *node,
+				  gint16 width, gint16 height,
+				  gint16 xpos, gint16 ypos,
+				  const gchar *icon,
+				  const gchar *text,
+				  const gchar *font,
+				  GdkColor *bg,
+				  GdkColor *fg,
+				  bool shadow);
 
 int panel_loader (GlobalPanel *panel);
 void panel_config_orientation (GlobalPanel *panel);

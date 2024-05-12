@@ -22,17 +22,22 @@
 #include "gsession.h"
 #include "docklet.h"
 
-extern const char *Program, *Release;	/* see, gpanel.c */
-
 #define desktop_file_get_string(file, key) \
 	g_key_file_get_string(file, G_KEY_FILE_DESKTOP_GROUP, key, NULL)
+
+#define PREVIEW_VIEW_WIDTH  128
+#define PREVIEW_VIEW_HEIGHT 128
+
+extern const char *Program, *Release;	     /* see, gpanel.c */
 
 static gchar *ActionHintDelete = "Press the apply button to delete.";
 static gchar *ActionHintEdit   = "Click on the icon to change it.";
 
-static gchar *DefaultIconHome = "home.png";	/* default icon for shortcut */
-static gchar *DefaultIconExec = "exec.png";	/* default icon for programs */
-// static gchar *DefaultIconURL = "earth.png";	/* default icon for URLs */
+static gchar *DefaultIconHome = "home.png";  /* default icon for shortcut */
+static gchar *DefaultIconExec = "exec.png";  /* default icon for programs */
+
+static char *DefaultShortcutName = "Home";
+static char *AppletName = "desktop";
 
 /*
 * Data structures used by this module.
@@ -48,7 +53,7 @@ struct _DesktopEntry {
 
 struct _DesktopSettings {
   GlobalPanel *panel;		/* GlobalPanel instance */
-  GtkWidget   *canvas;		/* icon preview pane */
+  GtkWidget *preview;		/* shortcut preview pane */
   const char *iconpath;		/* preview icon file */
   guint8 fontsel;		/* font array index */
   gint16 iconsize;		/* 24 => 24x24, ... */
@@ -170,7 +175,6 @@ desktop_filer_cancel(GtkWidget *button, GlobalPanel *panel)
 
 /*
 * (private) desktop_filer_refresh
-* (private) desktop_filer_repaint
 */
 bool
 desktop_filer_refresh(GtkWidget *canvas,
@@ -182,6 +186,9 @@ desktop_filer_refresh(GtkWidget *canvas,
   return true;
 } /* </desktop_filer_refresh> */
 
+/*
+* (private) desktop_filer_repaint
+*/
 static bool
 desktop_filer_repaint(FileChooserDatum *datum)
 {
@@ -205,6 +212,9 @@ desktop_filer_repaint(FileChooserDatum *datum)
 static bool
 desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
 {
+  static char chain_markend[MAX_STAMP];
+  sprintf(chain_markend, "/%s", AppletName);
+
   PanelDesktop *desktop = panel->desktop;
   DesktopAction action = desktop->action;
   Docklet *docklet = desktop->shortcut;
@@ -215,7 +225,7 @@ desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
 
   /* Handle the user specified action. */
   if (action == DESKTOP_SAVECONFIG) {
-    ConfigurationNode *node = configuration_find (panel->config, "desktop");
+    ConfigurationNode *node = configuration_find (panel->config, AppletName);
 
     if (node != NULL) {		// should never happen!
       ConfigurationAttrib *attrib = node->attrib;
@@ -245,17 +255,17 @@ desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
   }
   else {
     FileChooser *chooser = desktop->chooser;
-    const gchar *iconame = gtk_entry_get_text (GTK_ENTRY(chooser->name));
-    const gchar *icopath = filechooser_get_selected_name (chooser);
+    const gchar *iconname = gtk_entry_get_text (GTK_ENTRY(chooser->name));
+    const gchar *iconpath = filechooser_get_selected_name (chooser);
 
     const gchar *text = gtk_entry_get_text (GTK_ENTRY(desktop->name));
     const gchar *run  = gtk_entry_get_text (GTK_ENTRY(desktop->exec));
 
-    ConfigurationNode *config = configuration_find (panel->config, "desktop");
+    ConfigurationNode *config = configuration_find (panel->config, AppletName);
     gchar *font = configuration_attrib (config, "font");
 
-    if (icon_path_finder (panel->icons, iconame) == NULL)
-      iconame = icopath;
+    if (icon_path_finder (panel->icons, iconname) == NULL)
+      iconname = iconpath;
 
     if (action == DESKTOP_SHORTCUT_EDIT) {
       ConfigurationNode *node = desktop->node;
@@ -271,20 +281,20 @@ desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
 
       attrib = attrib->next = g_new0 (ConfigurationAttrib, 1);
       attrib->name  = g_strdup ("icon");
-      attrib->value = g_strdup (iconame);
+      attrib->value = g_strdup (iconname);
 
       /* Deallocate and reconstruct exec->element */
       g_free (exec->element);
       exec->element = g_strdup (run);
 
-      docklet_update (docklet, icopath, text);	/* update screen display */
+      docklet_update (docklet, iconpath, text);	/* update screen display */
     }
     else if (action == DESKTOP_SHORTCUT_CREATE) {
       ConfigurationNode *item;
       ConfigurationNode *mark;
       Docklet *docklet;
 
-      gchar *spec;
+      char spec[MAX_PATHNAME];
       gint16 iconsize = desktop->iconsize;
       gint16 xpos;
       gint16 ypos;
@@ -296,30 +306,28 @@ desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
       xpos = desktop->xpos;
       ypos = desktop->ypos + desktop->step;
 
-      spec = g_strdup_printf (DesktopEntrySpec, text, iconame, run, xpos, ypos);
-      item = configuration_read (spec, NULL, TRUE);
-      mark = configuration_find (config, "/desktop");
+      sprintf(spec, DesktopEntrySpec, text, iconname, run, xpos, ypos);
+      item = configuration_read (spec, NULL, true);
+      mark = configuration_find (config, chain_markend);
 
-      if (mark == NULL) {			/* <desktop ... /> case */
+      if (mark == NULL) {	/* <desktop ... /> case */
         if ( (mark = configuration_find (config, "/")) ) {
           g_free (mark->element);
-          mark->element = g_strdup ("/desktop");
+          mark->element = g_strdup (chain_markend);
         }
         else {
-          g_free (spec);
           return false;
         }
       }
 
       configuration_insert (item, mark->back, mark->depth + 1);
-      g_free (spec);
 
-      docklet = desktop_create (panel, item,	/* new screen visual */
-                                iconsize, iconsize,
-                                xpos, ypos,
-                                icopath, text, font,
-                                NULL, NULL);
-
+      /* new screen visual (desktop shortcut) */
+      docklet = desktop_shortcut_create (panel, item,
+					 iconsize, iconsize,
+					 xpos, ypos,
+					 iconpath, text, font,
+					 NULL, NULL, false);
       gtk_widget_show (docklet->window);
     }
   }
@@ -382,10 +390,10 @@ desktop_new(GlobalPanel *panel, gint16 iconsize)
   static char desktop_dir[UNIX_PATH_MAX];
   sprintf(desktop_dir, "%s/Desktop", getenv("HOME"));
 
-  GtkWidget *window, *frame, *layout, *layer;
-  GtkWidget *button, *entry, *label, *split;
+  GtkWidget *button, *canvas, *entry, *frame, *label;
+  GtkWidget *layer, *layout, *split, *window;
 
-  ConfigurationNode *chain = configuration_find(panel->config, "desktop");
+  ConfigurationNode *chain = configuration_find(panel->config, AppletName);
   ConfigurationNode *menu  = configuration_find(chain, "menu");
 
   PanelDesktop *desktop = g_new0 (PanelDesktop, 1);
@@ -564,10 +572,10 @@ desktop_new(GlobalPanel *panel, gint16 iconsize)
   /* gtk_widget_hide (chooser->namebox); */
   gtk_widget_show (layer);
 
-  layer = desktop->canvas = gtk_drawing_area_new ();
-  gtk_widget_set_size_request (layer, iconsize, iconsize);
-  gtk_box_pack_start (GTK_BOX(layout), layer, FALSE, TRUE, 2*iconsize/3);
-  gtk_widget_show (layer);
+  canvas = desktop->canvas = gtk_drawing_area_new ();
+  gtk_widget_set_size_request (canvas, iconsize, iconsize);
+  gtk_box_pack_start (GTK_BOX(layout), canvas, FALSE, TRUE, 2*iconsize/3);
+  gtk_widget_show (canvas);
 
   g_signal_connect (G_OBJECT (layer), "expose_event",
                     G_CALLBACK (desktop_filer_refresh), panel);
@@ -669,7 +677,7 @@ desktop_shortcut_callback(DockletDatum *datum)
 * (private) desktop_settings - change the settings of desktop shortcut
 */
 void
-desktop_settings(GlobalPanel *panel, DesktopAction act)
+desktop_settings(GlobalPanel *panel, DesktopAction action)
 {
   PanelDesktop *desktop = panel->desktop;
   GtkWidget *iconview = desktop->iconview;
@@ -683,7 +691,7 @@ desktop_settings(GlobalPanel *panel, DesktopAction act)
   if (desktop->active)	/* desktop settings already active */
     return;
 
-  if (act == DESKTOP_SHORTCUT_CREATE) {
+  if (action == DESKTOP_SHORTCUT_CREATE) {
     const gchar *file = desktop->icon;
     gint16 iconsize = desktop->iconsize;
 
@@ -697,7 +705,7 @@ desktop_settings(GlobalPanel *panel, DesktopAction act)
 
     desktop->shortcut = NULL;	/* screen representation */
   }
-  else if (act == DESKTOP_SHORTCUT_DELETE) {
+  else if (action == DESKTOP_SHORTCUT_DELETE) {
     gtk_button_set_relief (GTK_BUTTON(iconview), GTK_RELIEF_NONE);
     gtk_widget_set_sensitive (GTK_WIDGET(iconview), FALSE);
 
@@ -707,7 +715,7 @@ desktop_settings(GlobalPanel *panel, DesktopAction act)
     gtk_label_set_text (GTK_LABEL(desktop->hint), _(ActionHintDelete));
   }
 
-  if (act == DESKTOP_SHORTCUT_CREATE || act == DESKTOP_SHORTCUT_EDIT) {
+  if (action == DESKTOP_SHORTCUT_CREATE || action == DESKTOP_SHORTCUT_EDIT) {
     gtk_button_set_relief (GTK_BUTTON(iconview), GTK_RELIEF_NORMAL);
     gtk_widget_set_sensitive (GTK_WIDGET(iconview), TRUE);
 
@@ -717,7 +725,7 @@ desktop_settings(GlobalPanel *panel, DesktopAction act)
     gtk_label_set_text (GTK_LABEL(desktop->hint), _(ActionHintEdit));
   }
 
-  if (act == DESKTOP_SHORTCUT_OPEN) {
+  if (action == DESKTOP_SHORTCUT_OPEN) {
     ConfigurationNode *exec = configuration_find (desktop->node, "exec");
     spawn_selected (exec, panel);
   }
@@ -727,7 +735,7 @@ desktop_settings(GlobalPanel *panel, DesktopAction act)
     desktop->active = true;
   }
 
-  desktop->action = act; /* action applied on shortcut */
+  desktop->action = action; /* action applied on shortcut */
 } /* </desktop_settings> */
 
 /*
@@ -736,8 +744,11 @@ desktop_settings(GlobalPanel *panel, DesktopAction act)
 static inline ConfigurationNode *
 desktop_change_node(ConfigurationNode *config, const char *match)
 {
-  ConfigurationNode *chain = configuration_find(config, "desktop");
-  ConfigurationNode *mark  = configuration_find (chain, "/desktop");
+  static char chain_markend[MAX_STAMP];
+  sprintf(chain_markend, "/%s", AppletName);
+
+  ConfigurationNode *chain = configuration_find(config, AppletName);
+  ConfigurationNode *mark  = configuration_find (chain, chain_markend);
   ConfigurationNode *node  = chain;
 
   gchar *name;		/* expect $HOME/Desktop/<name>.desktop */
@@ -761,7 +772,7 @@ desktop_change(GFileMonitor *monitor, GFile *file, GFile *other,
   char *filename = g_file_get_path (file);
   const char *name = basename(filename);
 
-  ConfigurationNode *chain = configuration_find(panel->config, "desktop");
+  ConfigurationNode *chain = configuration_find(panel->config, AppletName);
   ConfigurationNode *node  = desktop_change_node(panel->config, name);
 
   DesktopEntry *entry = desktop_file_parse (filename);  /* may be NULL */
@@ -804,13 +815,15 @@ desktop_change(GFileMonitor *monitor, GFile *file, GFile *other,
 void
 desktop_config(GlobalPanel *panel, bool once)
 {
-  const gchar *icon;
+  static char chain_markend[MAX_STAMP];
+  sprintf(chain_markend, "/%s", AppletName);
 
-  ConfigurationNode *node = configuration_find (panel->config, "desktop");
-  ConfigurationNode *mark = configuration_find (node, "/desktop");
+  ConfigurationNode *node = configuration_find (panel->config, AppletName);
+  ConfigurationNode *mark = configuration_find (node, chain_markend);
 
   PanelIcons *icons = panel->icons;
   guint depth = node->depth + 1;
+  const gchar *icon;
 
   //gint16 width  = gdk_screen_width();
   gint16 height = gdk_screen_height();
@@ -883,11 +896,11 @@ desktop_config(GlobalPanel *panel, bool once)
 
       /* A desktop item is a Docklet instance, create once. */
       if (once) {
-        Docklet *docklet = desktop_create (panel, node,
-                                           iconsize, iconsize,
-                                           xpos, ypos,
-                                           icon, name, font,
-                                           NULL, NULL);
+        Docklet *docklet = desktop_shortcut_create (panel, node,
+						    iconsize, iconsize,
+						    xpos, ypos,
+						    icon, name, font,
+						    NULL, NULL, false);
         gtk_widget_show (docklet->window);
 
         if ((value = configuration_attrib (node, "editable")) != NULL)
@@ -934,25 +947,26 @@ desktop_config(GlobalPanel *panel, bool once)
 } /* </desktop_config> */
 
 /*
-* desktop_create - instantiate a new desktop launcher 
+* desktop_shortcut_create - instantiate a new desktop shortcut 
 */
 Docklet *
-desktop_create(GlobalPanel *panel,
-               ConfigurationNode *node,
-               gint16 width, gint16 height,
-               gint16 xpos, gint16 ypos,
-               const gchar *icon,
-               const gchar *text,
-               const gchar *font,
-               GdkColor *fg,
-               GdkColor *bg)
+desktop_shortcut_create(GlobalPanel *panel,
+			ConfigurationNode *node,
+			gint16 width, gint16 height,
+			gint16 xpos, gint16 ypos,
+			const gchar *icon,
+			const gchar *text,
+			const gchar *font,
+			GdkColor *bg,
+			GdkColor *fg,
+                        bool shadow)
 {
   Docklet *docklet = docklet_new (GDK_WINDOW_TYPE_HINT_NORMAL,
                                   width, height, xpos, ypos,
                                   GTK_ORIENTATION_VERTICAL,
                                   GTK_VISIBILITY_NONE,
                                   icon, text, font,
-                                  fg, bg);
+                                  bg, fg, shadow);
   node->widget = docklet;
   node->data   = panel;	/* set node->data madatory */
 
@@ -960,7 +974,97 @@ desktop_create(GlobalPanel *panel,
   gtk_window_set_keep_below (GTK_WINDOW(docklet->window), TRUE);
 
   return docklet;
-} /* </desktop_create> */
+} /* </desktop_shortcut_create> */
+
+/*
+* desktop_shortcut_render - similiar to docklet_render(libgould.so)
+*/
+GdkPixbuf *
+desktop_shortcut_render (GdkPixbuf *piximg, const char *label)
+{
+  const char *font = DesktopFont[settings_.fontsel];
+
+  GtkWidget *canvas = settings_.preview;
+  GdkWindow *gdkwindow = gtk_widget_get_window (canvas);
+  GdkColormap *colormap = gdk_colormap_get_system ();
+  GdkGC *gc = gdk_gc_new (gdkwindow);
+
+  PangoFontDescription *fontdesc = pango_font_description_from_string (font);
+  PangoLayout *layout = gtk_widget_create_pango_layout (canvas, label);
+
+  GdkPixmap *pixmap;
+  GdkPixbuf *render;	/* resulting pixbuf */
+
+  GdkColor black, white;
+  GdkColor *bg = NULL;  /* transparent */
+  GdkColor *fg;
+
+  gint16 iconsize = gdk_pixbuf_get_width (piximg);
+  gint16 wrap = 3 * iconsize / 2;
+  gint width, height;
+  gint xsize, ysize;
+  gint xpos, ypos;
+
+  /* Set font according to the PangoFontDescription. */
+  pango_layout_set_font_description (layout, fontdesc);
+  pango_font_description_free (fontdesc);
+
+  /* Obtain the pixel width and height of the text. */
+  pango_layout_get_pixel_size (layout, &xsize, &ysize);
+
+  pango_layout_set_width (layout, wrap * PANGO_SCALE);
+  pango_layout_set_wrap (layout, PANGO_WRAP_WORD_CHAR);
+
+  xpos = (xsize > iconsize) ? (xsize-iconsize) / 2 : -1;
+  width = (xsize > iconsize) ? xsize : iconsize;
+  height = iconsize + ysize;
+
+  /* Create a pixmap for the drawing area. */
+  render = xpm_pixbuf_scale (ICON_BLANK, width, height, NULL);
+  gdk_pixbuf_render_pixmap_and_mask (render, &pixmap, NULL, 255);
+
+  /* Draw the image pixbuf passed. */
+  gdk_draw_pixbuf (pixmap, gc, piximg, 0, 0,
+		   xpos, 0, -1, -1, GDK_RGB_DITHER_NORMAL, 0 , 0);
+
+  /* Draw the label text passed. */
+  gdk_color_black (colormap, &black);
+  gdk_color_white (colormap, &white);
+  fg = &white;
+
+  xpos = (iconsize > xsize) ? (iconsize-xsize) / 2 : -1;
+  ypos = iconsize;
+
+  gdk_draw_layout_with_colors (pixmap, gc, xpos, ypos, layout, fg, bg);
+  //gdk_draw_layout (pixmap, gc, xpos, ypos, layout);
+
+  /* Convert drawable to a pixbuf. */
+  render = gdk_pixbuf_get_from_drawable(NULL, pixmap, colormap,
+                                        0, 0, 0, 0, -1, -1);
+  g_object_unref (pixmap);
+  g_object_unref (gc);
+
+  return render;
+} /* </desktop_shortcut_render> */
+
+/*
+* desktop_shortcut_preview
+*/
+void
+desktop_shortcut_preview(GtkWidget *canvas, GlobalPanel *panel)
+{
+  if(GDK_IS_DRAWABLE(canvas->window) == FALSE) return;
+
+  GdkPixbuf *piximg = pixbuf_new_from_file_scaled (settings_.iconpath,
+						   settings_.iconsize,
+						   settings_.iconsize);
+  if (piximg) {
+    GdkPixbuf *pixbuf = desktop_shortcut_render(piximg, _(DefaultShortcutName));
+    /* redraw_pixbuf() always clears the drawing area */
+    redraw_pixbuf (canvas, pixbuf);
+    g_object_unref (pixbuf);
+  }
+} /* </desktop_shortcut_preview> */
 
 /*
 * desktop_icon_size
@@ -980,6 +1084,7 @@ desktop_icon_size(GtkWidget *button, gpointer scale)
     vdebug(1, "%s iconfile => %s, iconsize => %d\n", __func__,
 			basename(settings_.iconpath), iconsize);
 
+    desktop_shortcut_preview (settings_.preview, panel);
     desktop_settings_enable (panel->settings);  // register callbacks
   }
 } /* </desktop_icon_size> */
@@ -1017,7 +1122,8 @@ desktop_icon_font(GtkComboBox *combo, GlobalPanel *panel)
     vdebug(1, "%s DesktopFont[%d] => %s\n", __func__,
 				selection, DesktopFont[selection]);
 
-    desktop_settings_enable (panel->settings);
+    desktop_shortcut_preview (settings_.preview, panel);
+    desktop_settings_enable (panel->settings);  // register callbacks
   }
 } /* </desktop_icon_font> */
 
@@ -1032,15 +1138,15 @@ desktop_settings_new(GlobalPanel *panel)
   GtkWidget *frame, *glue, *label, *layer, *radio;
   GtkWidget *layout = gtk_vbox_new (FALSE, 2);
   PanelDesktop *desktop = panel->desktop;
-  GtkTextBuffer *buffer;
 
   static Modulus _applet;
+  static char iconpath[UNIX_PATH_MAX];
   Modulus *applet = &_applet;
   int idx;
 
   /* Modulus structure initialization. */
   applet->data  = panel;
-  applet->name  = "desktop";
+  applet->name  = AppletName;
   applet->label = _("Desktop");
   applet->description = _("Desktop settings module.");
   applet->release  = Release;
@@ -1049,7 +1155,8 @@ desktop_settings_new(GlobalPanel *panel)
 
   /* DesktopSettings initialization. */
   // .fontsel and .iconsize initialized in desktop_config()
-  settings_.iconpath = icon_path_finder (panel->icons, DefaultIconHome);
+  sprintf(iconpath, "%s", icon_path_finder (panel->icons, DefaultIconHome));
+  settings_.iconpath = iconpath;
   settings_.panel = panel;
 
   static char caption[MAX_BUFFER_SIZE];
@@ -1123,18 +1230,14 @@ desktop_settings_new(GlobalPanel *panel)
   gtk_widget_show (label);
 
   /* Add canvas for preview area. */
-  canvas = settings_.canvas = gtk_text_view_new ();
-  gtk_text_view_set_editable (GTK_TEXT_VIEW(canvas), FALSE);
-  gtk_text_view_set_cursor_visible (GTK_TEXT_VIEW(canvas), FALSE);
-  gtk_text_view_set_justification (GTK_TEXT_VIEW(canvas), GTK_JUSTIFY_CENTER);
-  gtk_text_view_set_pixels_above_lines (GTK_TEXT_VIEW(canvas), 30);
+  canvas = settings_.preview = gtk_drawing_area_new ();
   gtk_box_pack_start (GTK_BOX(layer), canvas, FALSE, FALSE, 0);
-  gtk_widget_set_size_request (canvas, 128, 128);
+  gtk_widget_set_size_request (canvas, PREVIEW_VIEW_WIDTH, PREVIEW_VIEW_HEIGHT);
   gtk_widget_show (canvas);
 
-  buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (canvas));
-  gtk_text_buffer_set_text (buffer, "Home", -1);
-
+  /* Signals used to handle backing pixmap. */
+  g_signal_connect (G_OBJECT (canvas), "expose_event",
+                    G_CALLBACK (desktop_shortcut_preview), panel);
   return applet;
 } /* </desktop_settings_new> */
 

@@ -64,8 +64,10 @@ struct _Docklet
   const gchar *text;    /* docklet text next to image */
   const gchar *font;    /* font description (ex: "Luxi Mono 12") */
 
-  GdkColor *fg;		/* foreground color */
   GdkColor *bg;		/* background color */
+  GdkColor *fg;		/* foreground color */
+
+  bool shadow;
 };
 
 struct _DockletClass
@@ -91,8 +93,9 @@ Docklet *docklet_new (GdkWindowTypeHint hint,
                       const gchar *icon,
                       const gchar *text,
                       const gchar *font,
+                      GdkColor *bg,
                       GdkColor *fg,
-                      GdkColor *bg);
+                      bool shadow);
 
 void docklet_update (Docklet *instance, const gchar *icon, const gchar *text);
 void docklet_set_cursor (Docklet *instance, GdkCursorType cursor);

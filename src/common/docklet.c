@@ -235,9 +235,9 @@ docklet_render (Docklet *instance, GdkPixbuf *pixbuf)
   pango_layout_set_width (layout, wrap * PANGO_SCALE);
   pango_layout_set_wrap (layout, PANGO_WRAP_WORD_CHAR);
 
-  /* Draw the text with a drop shadow. */
-  gdk_draw_layout_with_colors (pixmap, gc, xpos+1, ypos+1, layout, &black, bg);
   gdk_draw_layout_with_colors (pixmap, gc, xpos, ypos, layout, fg, bg);
+  if (instance->shadow) /* Draw the text with a drop shadow. */
+    gdk_draw_layout_with_colors (pixmap, gc, xpos+1, ypos+1,layout, &black, bg);
 
   g_object_unref (layout);
   g_object_unref (gc);
@@ -299,8 +299,9 @@ docklet_new (GdkWindowTypeHint hint,
              const gchar *icon,
              const gchar *text,
              const gchar *font,
+             GdkColor *bg,
              GdkColor *fg,
-             GdkColor *bg)
+             bool shadow)
 {
   Docklet   *instance = gtk_type_new (DOCKLET_TYPE);
   GtkWidget *dispatch = gtk_event_box_new ();
@@ -343,8 +344,9 @@ docklet_new (GdkWindowTypeHint hint,
   instance->icon   = icon;
   instance->text   = text;
   instance->font   = font;
-  instance->fg     = fg;
   instance->bg     = bg;
+  instance->fg     = fg;
+  instance->shadow = shadow;
 
   /* Application window main layout. */
   instance->render = docklet_layout (instance, &xsize, &ysize);
@@ -432,7 +434,7 @@ docklet_update (Docklet *instance, const gchar *icon, const gchar *text)
   /* Shape drawable for a transparent look. */
   if (instance->visa == GTK_VISIBILITY_NONE) {
     gdk_pixbuf_render_pixmap_and_mask (pixbuf, &pixmap, &mask, 255);
-    if (mask == NULL) mask = create_mask_from_pixmap (pixmap, width, height);
+    if(mask == NULL) mask = create_mask_from_pixmap (pixmap, width, height);
     gtk_widget_shape_combine_mask (instance->window, mask, 0, 0);
   }
 
