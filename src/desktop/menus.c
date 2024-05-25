@@ -416,13 +416,13 @@ executer (GtkWidget *widget, ConfigurationNode *node)
     else if (strcmp(item, "settings") == 0)
       settings_activate (panel);
     else if (strcmp(item, "shortcut:create") == 0)
-      desktop_settings (panel, DESKTOP_SHORTCUT_CREATE);
+      desktop_settings_agent (panel, DESKTOP_SHORTCUT_CREATE);
     else if (strcmp(item, "shortcut:delete") == 0)
-      desktop_settings (panel, DESKTOP_SHORTCUT_DELETE);
+      desktop_settings_agent (panel, DESKTOP_SHORTCUT_DELETE);
     else if (strcmp(item, "shortcut:edit") == 0)
-      desktop_settings (panel, DESKTOP_SHORTCUT_EDIT);
+      desktop_settings_agent (panel, DESKTOP_SHORTCUT_EDIT);
     else if (strcmp(item, "shortcut:open") == 0)
-      desktop_settings (panel, DESKTOP_SHORTCUT_OPEN);
+      desktop_settings_agent (panel, DESKTOP_SHORTCUT_OPEN);
     else
       gpanel_dialog(100, 100, ICON_ERROR, "[%s]%s: %s.",
                  Program, item, _("unimplemented method"));

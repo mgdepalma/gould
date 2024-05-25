@@ -199,10 +199,11 @@ struct _PanelTaskbar
 void taskbar_config (GlobalPanel *panel);
 void taskbar_initialize (GlobalPanel *panel, GtkWidget *layout);
 
-void desktop_config (GlobalPanel *panel, bool once);
-void desktop_shortcut (Docklet *docklet, ConfigurationNode *node);
-void desktop_settings (GlobalPanel *panel, DesktopAction act);
 void desktop_default_iconsize (GlobalPanel *panel);
+void desktop_config (GlobalPanel *panel, bool once);
+
+void desktop_settings_agent (GlobalPanel *panel, DesktopAction act);
+void desktop_shortcut_menu (Docklet *docklet, ConfigurationNode *node);
 
 const char *icon_path_finder (PanelIcons *icons, const char *name);
 GtkWidget *interface (GlobalPanel *panel);
@@ -215,17 +216,6 @@ GtkWidget *menu_options_config (ConfigurationNode *node,
 GtkWidget *menu_submenu_config (ConfigurationNode *node,
 				GlobalPanel *panel,
 				gint16 iconsize);
-
-Docklet *desktop_shortcut_create (GlobalPanel *panel,
-				  ConfigurationNode *node,
-				  gint16 width, gint16 height,
-				  gint16 xpos, gint16 ypos,
-				  const gchar *icon,
-				  const gchar *text,
-				  const gchar *font,
-				  GdkColor *bg,
-				  GdkColor *fg,
-				  bool shadow);
 
 int panel_loader (GlobalPanel *panel);
 void panel_config_orientation (GlobalPanel *panel);

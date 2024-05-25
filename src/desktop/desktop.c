@@ -21,6 +21,9 @@
 #include "gpanel.h"
 #include "gsession.h"
 #include "docklet.h"
+#include "sha1.h"
+
+#include <libgen.h>	/* basename(3),dirname(3) declarations */
 
 #define desktop_file_get_string(file, key) \
 	g_key_file_get_string(file, G_KEY_FILE_DESKTOP_GROUP, key, NULL)
@@ -29,6 +32,7 @@
 #define PREVIEW_VIEW_HEIGHT 128
 
 extern const char *Program, *Release;	     /* see, gpanel.c */
+extern debug_t debug;			     /* .. */
 
 static gchar *ActionHintDelete = "Press the apply button to delete.";
 static gchar *ActionHintEdit   = "Click on the icon to change it.";
@@ -36,56 +40,60 @@ static gchar *ActionHintEdit   = "Click on the icon to change it.";
 static gchar *DefaultIconHome = "home.png";  /* default icon for shortcut */
 static gchar *DefaultIconExec = "exec.png";  /* default icon for programs */
 
-static char *DefaultShortcutName = "Home";
+static char *DefaultShortcutName = "Home";   /* default label for shortcut */
+static char *DesktopExtension = ".desktop";  /* ~/Desktop/{file} extension */
 static char *AppletName = "desktop";
+
+static guint8 iconsize_maxsel = 5; // must match iconsize_selected[] array size
+static gint iconsize_selected[5] = {24, 32, 48, 64, 96};
 
 /*
 * Data structures used by this module.
 */
-typedef struct _DesktopEntry DesktopEntry;
+typedef struct _DesktopItem DesktopItem;
 typedef struct _DesktopSettings DesktopSettings;
 
-struct _DesktopEntry {
-  gchar *name;
-  gchar *icon;
-  gchar *exec;
+struct _DesktopItem {
+  gchar *sha1;			/* sha1sum( {corename}.desktop ) */
+  gchar *name;			/* {corename}.desktop Name={name} */
+  gchar *comment;		/* {corename}.desktop Comment={comment} */
+  gchar *icon;			/* {corename}.desktop Icon={icon} */
+  gchar *exec;			/* {corename}.desktop Exec={exec} */
+  gint16 xpos;			/* saved desktop x-coordinate */
+  gint16 ypos;			/* saved desktop y-coordinate */
 };
 
 struct _DesktopSettings {
   GlobalPanel *panel;		/* GlobalPanel instance */
+  GHashTable *filehash;		/* GKeyFile(s) hash table */
   GtkWidget *preview;		/* shortcut preview pane */
+  const char *filepath;		/* g_file_monitor_directory(file, */
   const char *iconpath;		/* preview icon file */
-  guint8 fontsel;		/* font array index */
   gint16 iconsize;		/* 24 => 24x24, ... */
+  guint8 fontsel;		/* font array index */
+  guint monitor;		/* g_signal_connect(desktop->monitor, */
 };
 
-const char *DesktopEntrySpec =
+const char *DesktopFileSpec =
+"[Desktop Entry]\n"
+"Version=1.0\n"
+"Name=%s\n"
+"Comment=%s\n"
+"Icon=%s\n"
+"Exec=%s\n"
+"Terminal=false\n"
+"Type=Application\n"
+"Categories=;\n";
+
+const char *DesktopItemSpec =
 "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
 "<item name=\"%s\" icon=\"%s\">\n"
+" <sha1>%s</sha1>\n"
+" <comment>%s</comment>\n"
 " <exec>%s</exec>\n"
 " <xpos>%d</xpos>\n"
 " <ypos>%d</ypos>\n"
 "</item>\n";
-
-const char *DesktopFileSpec =
-"[Desktop Entry]\n\n"
-"# The version of the desktop entry specification to which this file complies\n"
-"Version=1.0\n\n"
-"# The name of the application\n"
-"Name=%s\n\n"
-"# A comment which can/will be used as a tooltip\n"
-"Comment=%s\n\n"
-"# The name of the icon that will be used to display this entry\n"
-"Icon=%s\n\n"
-"# The executable of the application, possibly with arguments.\n"
-"Exec=%s\n\n"
-"# The path to the folder in which the executable is run\n"
-"Path=/usr/bin\n\n"
-"# Describes whether this application needs to be run in a terminal or not\n"
-"Terminal=false\n\n"
-"Type=Application\n\n"
-"# Describes the categories in which this entry should be shown\n"
-"Categories=Applications;Desktop;\n";
 
 #define DesktopFontMax 8
 const char *DesktopFont[DesktopFontMax] = {
@@ -99,31 +107,49 @@ const char *DesktopFont[DesktopFontMax] = {
  ,"Sans 14"
 };
 
-DesktopSettings settings_;  /* private DesktopSettings to this module */
-static guint8 iconsize_maxsel = 5; // must match iconsize_selected[] array size
-static gint iconsize_selected[5] = {24, 32, 48, 64, 96};
+DesktopSettings settings_;	   /* private DesktopSettings to this module */
+
+/* Forward prototype declarations. */
+static void desktop_change_cb(GFileMonitor *monitor, GFile *file, GFile *other,
+			      GFileMonitorEvent event_type, GlobalPanel *panel);
+
+bool desktop_shortcut_create(GlobalPanel *panel, const char *ident);
+void desktop_shortcut_remove(ConfigurationNode *node);
+
+Docklet *desktop_shortcut_new(GlobalPanel *panel,
+			      ConfigurationNode *node,
+			      gint16 width, gint16 height,
+			      gint16 xpos, gint16 ypos,
+			      const gchar *icon,
+			      const gchar *text,
+			      const gchar *font,
+			      GdkColor *bg,
+			      GdkColor *fg,
+			      bool shadow);
 
 /*
-* desktop_parse_file
+* (private) desktop_parse_file - {name}.desktop parser
 */
-DesktopEntry *
-desktop_file_parse(const char *filename)
+static DesktopItem *
+desktop_file_parse(const char *filepath)
 {
-  DesktopEntry *entry = NULL;
-  GKeyFile *file = g_key_file_new ();
+  DesktopItem *item = NULL;
+  g_autoptr(GKeyFile) file = g_key_file_new ();
+  //GKeyFile *file = g_key_file_new ();
 
-  if (g_key_file_load_from_file (file, filename, 0, NULL)) {
-    static DesktopEntry _entry;
+  if (g_key_file_load_from_file (file, filepath, 0, NULL)) {
+    static DesktopItem entry;
 
-    _entry.exec = desktop_file_get_string (file, "Exec");
-    _entry.icon = desktop_file_get_string (file, "Icon");
-    _entry.name = desktop_file_get_string (file, "Name");
+    entry.sha1 = (char *)sha1sum (filepath);
+    entry.name = desktop_file_get_string (file, "Name");
+    entry.comment = desktop_file_get_string (file, "Comment");
+    entry.icon = desktop_file_get_string (file, "Icon");
+    entry.exec = desktop_file_get_string (file, "Exec");
 
-    entry = &_entry;
+    item = &entry;
   }
-
-  g_key_file_free (file);
-  return entry;
+  //g_key_file_free (file);
+  return item;
 } /* </desktop_file_parse> */
 
 /*
@@ -212,8 +238,8 @@ desktop_filer_repaint(FileChooserDatum *datum)
 static bool
 desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
 {
-  static char chain_markend[MAX_STAMP];
-  sprintf(chain_markend, "/%s", AppletName);
+  static char endmark[MAX_STAMP];
+  sprintf(endmark, "/%s", AppletName);
 
   PanelDesktop *desktop = panel->desktop;
   DesktopAction action = desktop->action;
@@ -227,7 +253,7 @@ desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
   if (action == DESKTOP_SAVECONFIG) {
     ConfigurationNode *node = configuration_find (panel->config, AppletName);
 
-    if (node != NULL) {		// should never happen!
+    if (node != NULL) {			    /* should never happen! */
       ConfigurationAttrib *attrib = node->attrib;
 
       while (attrib != NULL) {
@@ -244,91 +270,108 @@ desktop_settings_apply(GtkWidget *button, GlobalPanel *panel)
         attrib = attrib->next;
       }
       saveconfig (panel);
-      gpanel_restart (panel, SIGURG);	    /* signal program restart */
+      gpanel_restart (panel, SIGURG);	     /* signal program restart */
     }
   }
   else if (action == DESKTOP_SHORTCUT_DELETE) {
-    configuration_remove (desktop->node);   /* remove from configuration */
-    gtk_widget_destroy (docklet->window);   /* remove from screen display */
-    g_object_ref_sink (docklet);	    /* clean-up memory */
+    vdebug(1, "%s desktop->node => 0x%lx [widget => 0x%lx], docklet => 0x%lx\n",
+		__func__, desktop->node, desktop->node->widget, docklet);
+
+    desktop_shortcut_remove (desktop->node); /* remove from configuration */
+    if(docklet == NULL) docklet = desktop->node->widget; /* rough hack */
+
+    gtk_widget_destroy (docklet->window);    /* remove from screen display */
+    g_object_ref_sink (docklet);	     /* clean-up memory */
     g_object_unref (docklet);
+
+    saveconfig (panel);  // coup d'état
   }
   else {
     FileChooser *chooser = desktop->chooser;
     const gchar *iconname = gtk_entry_get_text (GTK_ENTRY(chooser->name));
     const gchar *iconpath = filechooser_get_selected_name (chooser);
 
-    const gchar *text = gtk_entry_get_text (GTK_ENTRY(desktop->name));
-    const gchar *run  = gtk_entry_get_text (GTK_ENTRY(desktop->exec));
+    const gchar *name = gtk_entry_get_text (GTK_ENTRY(desktop->name));
+    //const gchar *comment = gtk_entry_get_text (GTK_ENTRY(desktop->comment));
+    const gchar *program  = gtk_entry_get_text (GTK_ENTRY(desktop->exec));
 
-    ConfigurationNode *config = configuration_find (panel->config, AppletName);
-    gchar *font = configuration_attrib (config, "font");
+    const char *ident;  /* sha1sum identifier */
 
     if (icon_path_finder (panel->icons, iconname) == NULL)
       iconname = iconpath;
 
-    if (action == DESKTOP_SHORTCUT_EDIT) {
+    if (action == DESKTOP_SHORTCUT_CREATE) {
+      const char separator = ' ';
+      char comment[MAX_LABEL];
+      char *scan = strchr(program, separator);
+
+      if(scan != NULL) *scan = (char)0;
+      strcpy(comment, program);	// program without command line arguments
+      if(scan != NULL) *scan = separator;
+
+      if (settings_.filepath && access(settings_.filepath, R_OK) == 0)
+        ident = sha1sum (settings_.filepath);
+      else {
+        static char filepath[UNIX_PATH_MAX];
+        sprintf(filepath, "%s/Desktop/%s.desktop", getenv("HOME"), program);
+        settings_.filepath = filepath;
+
+        if (access(filepath, R_OK) == 0)  // avoid duplicate
+          ident = sha1sum (filepath);
+        else {
+          FILE *stream = fopen(filepath, "w");
+          g_signal_handler_disconnect (G_OBJECT (desktop->monitor),
+					     settings_.monitor);
+          if (stream) {
+            const char separator = '.';
+            scan = strrchr(iconname, separator);
+
+            if(scan) *scan = (char)0;
+            fprintf(stream, DesktopFileSpec, name, comment, iconname, program);
+            if(scan) *scan = separator;
+            fclose(stream);
+          }
+          sleep(1);  // prevent g_file_monitor_directory acting on filepath
+          settings_.monitor = g_signal_connect (desktop->monitor, "changed",
+				    G_CALLBACK(desktop_change_cb), panel);
+
+          ident = (stream) ? sha1sum (filepath) : "0";
+        }
+      }
+
+      if (g_hash_table_lookup (settings_.filehash, ident) == NULL) {
+        desktop_shortcut_create (panel, ident);
+      }
+    }
+    else if (action == DESKTOP_SHORTCUT_EDIT) {
       ConfigurationNode *node = desktop->node;
       ConfigurationAttrib *attrib = node->attrib;
+      //ConfigurationNode *sha1 = configuration_find (node, "sha1");
       ConfigurationNode *exec = configuration_find (node, "exec");
 
       /* Deallocate and reconstruct attrib link list. */
       configuration_attrib_remove (attrib);
 
       attrib = node->attrib = g_new0 (ConfigurationAttrib, 1);
-      attrib->name  = g_strdup ("name");
-      attrib->value = g_strdup (text);
+      attrib->name  = "name";
+      //attrib->name  = g_strdup ("name");
+      attrib->value = g_strdup (name);
 
       attrib = attrib->next = g_new0 (ConfigurationAttrib, 1);
-      attrib->name  = g_strdup ("icon");
+      attrib->name  = "icon";
+      //attrib->name  = g_strdup ("icon");
       attrib->value = g_strdup (iconname);
+
+      /* Deallocate and reconstruct sha1->element
+      g_free (sha1->element);
+      sha1->element = g_strdup (sha1sum);
+      */
 
       /* Deallocate and reconstruct exec->element */
       g_free (exec->element);
-      exec->element = g_strdup (run);
+      exec->element = g_strdup (program);
 
-      docklet_update (docklet, iconpath, text);	/* update screen display */
-    }
-    else if (action == DESKTOP_SHORTCUT_CREATE) {
-      ConfigurationNode *item;
-      ConfigurationNode *mark;
-      Docklet *docklet;
-
-      char spec[MAX_PATHNAME];
-      gint16 iconsize = desktop->iconsize;
-      gint16 xpos;
-      gint16 ypos;
-
-
-      /* Calculate where to place and form the XML. */
-      desktop_config (panel, false);
-
-      xpos = desktop->xpos;
-      ypos = desktop->ypos + desktop->step;
-
-      sprintf(spec, DesktopEntrySpec, text, iconname, run, xpos, ypos);
-      item = configuration_read (spec, NULL, true);
-      mark = configuration_find (config, chain_markend);
-
-      if (mark == NULL) {	/* <desktop ... /> case */
-        if ( (mark = configuration_find (config, "/")) ) {
-          g_free (mark->element);
-          mark->element = g_strdup (chain_markend);
-        }
-        else {
-          return false;
-        }
-      }
-
-      configuration_insert (item, mark->back, mark->depth + 1);
-
-      /* new screen visual (desktop shortcut) */
-      docklet = desktop_shortcut_create (panel, item,
-					 iconsize, iconsize,
-					 xpos, ypos,
-					 iconpath, text, font,
-					 NULL, NULL, false);
-      gtk_widget_show (docklet->window);
+      docklet_update (docklet, iconpath, name);	/* update screen display */
     }
   }
   return true;
@@ -382,10 +425,10 @@ desktop_setting_iconview(GtkWidget *button, GlobalPanel *panel)
 } /* </desktop_setting_iconview> */
 
 /*
-* desktop_new - object for creating and editing desktop shortcuts
+* desktop_panel_new - object for creating and editing desktop shortcuts
 */
 PanelDesktop *
-desktop_new(GlobalPanel *panel, gint16 iconsize)
+desktop_panel_new(GlobalPanel *panel, gint16 iconsize)
 {
   static char desktop_dir[UNIX_PATH_MAX];
   sprintf(desktop_dir, "%s/Desktop", getenv("HOME"));
@@ -607,29 +650,30 @@ desktop_new(GlobalPanel *panel, gint16 iconsize)
   gtk_widget_show (label);
 
   return desktop;
-} /* desktop_new */
+} /* desktop_panel_new */
 
 /*
-* (private) desktop_shortcut - present menu of desktop shortcut
+* desktop_shortcut_menu - present menu of desktop shortcut
 */
 void
-desktop_shortcut(Docklet *docklet, ConfigurationNode *node)
+desktop_shortcut_menu(Docklet *docklet, ConfigurationNode *node)
 {
   GlobalPanel *panel = node->data;	 /* cannot be NULL */
   PanelDesktop *desktop = panel->desktop;
 
   GtkWidget *menu = desktop->menu;
   GList *list = gtk_container_get_children (GTK_CONTAINER(menu));
-  GList *item;
 
   ConfigurationNode *exec = configuration_find (node, "exec");
-  const gchar *icon = configuration_attrib (node, "icon");
-
   gchar *name = configuration_attrib (node, "name");
+
+  const gchar *icon = configuration_attrib (node, "icon");
   const gchar *file = icon_path_finder (panel->icons, icon);
   gint16 iconsize = desktop->iconsize;
 
-  vdebug(2, "[desktop]%s.icon %s %dx%d\n", name, file, iconsize, iconsize);
+  vdebug(2, "%s node => 0x%lx, docklet => 0x%lx\n", __func__, node, docklet);
+  vdebug(2, "%s icon => %s [%dx%d], name => %s, exec => %s\n",
+		__func__, file, iconsize, iconsize, name, exec->element);
 
   desktop->render = pixbuf_new_from_file_scaled (file, iconsize, iconsize);
   gtk_button_set_image (GTK_BUTTON(desktop->iconview),
@@ -642,11 +686,11 @@ desktop_shortcut(Docklet *docklet, ConfigurationNode *node)
   desktop->node = node;		/* configuration node data */
   desktop->shortcut = docklet;	/* screen representation */
 
-  for (item = list->next; item != NULL; item = item->next) {
+  for (GList *item = list->next; item != NULL; item = item->next) {
     gtk_widget_set_sensitive(GTK_WIDGET(item->data), docklet->editable);
   } 
   gtk_menu_popup (GTK_MENU(menu), NULL, NULL, NULL, NULL, 0, 0);
-} /* </desktop_shortcut> */
+} /* </desktop_shortcut_menu> */
 
 /*
 * (private) desktop_shortcut_callback - callback agent for Docklet events
@@ -664,7 +708,7 @@ desktop_shortcut_callback(DockletDatum *datum)
     if (mouse->button == 1)
       executer (docklet->window, node);
     else if (mouse->button == 3)
-      desktop_shortcut (docklet, node);
+      desktop_shortcut_menu (docklet, node);
   }
   else if (event->type == GDK_CONFIGURE) {
     GdkEventConfigure *box = (GdkEventConfigure *)event;
@@ -674,10 +718,10 @@ desktop_shortcut_callback(DockletDatum *datum)
 } /* </desktop_shortcut_callback> */
 
 /*
-* (private) desktop_settings - change the settings of desktop shortcut
+* desktop_settings_agent - change the settings of desktop shortcut
 */
 void
-desktop_settings(GlobalPanel *panel, DesktopAction action)
+desktop_settings_agent(GlobalPanel *panel, DesktopAction action)
 {
   PanelDesktop *desktop = panel->desktop;
   GtkWidget *iconview = desktop->iconview;
@@ -735,79 +779,169 @@ desktop_settings(GlobalPanel *panel, DesktopAction action)
     desktop->active = true;
   }
 
-  desktop->action = action; /* action applied on shortcut */
-} /* </desktop_settings> */
+  desktop->action = action;   /* action applied on shortcut */
+} /* </desktop_settings_agent> */
 
 /*
-* desktop_change - GFileMonitor callback for $HOME/Desktop changes
+* desktop_find_deleted_node - locate deleted node by sha1sum
 */
-static inline ConfigurationNode *
-desktop_change_node(ConfigurationNode *config, const char *match)
+static ConfigurationNode *
+desktop_find_deleted_node(const char *desktopdir, const char *filepath)
 {
-  static char chain_markend[MAX_STAMP];
-  sprintf(chain_markend, "/%s", AppletName);
+  struct dirent **names;
+  char desktopfile[UNIX_PATH_MAX];
+  int count = scandir(desktopdir, &names, NULL, alphasort);
+  size_t bytes = strlen(desktopdir) + 2;  /* '/' and null characters */
+  const char *sha1;
+  char *name;
 
-  ConfigurationNode *chain = configuration_find(config, AppletName);
-  ConfigurationNode *mark  = configuration_find (chain, chain_markend);
-  ConfigurationNode *node  = chain;
+  ConfigurationNode *node = NULL;
+  GHashTable *filehash = g_hash_table_new (g_str_hash, g_str_equal);
+  GHashTableIter iter;
+  gpointer key, value;
 
-  gchar *name;		/* expect $HOME/Desktop/<name>.desktop */
 
-  for (; node != mark && node != NULL; node = node->next) {
-    if (strcmp(node->element, "item") != 0)	/* not a desktop shortcut */
-      continue;
+  /* iterate settings_.filehash to populate local filehash */
+  g_hash_table_iter_init (&iter, settings_.filehash);
 
-    name = configuration_attrib (node, "name"); /* cannot be null */
-
-    if (name && strncmp(match, name, strlen(name)) == 0)
-      break;
+  while (g_hash_table_iter_next (&iter, &key, &value)) {
+    vdebug(3, "%s key => %s, value => 0x%lx\n", __func__, key, value);
+    g_hash_table_insert (filehash, key, value);
   }
-  return (node != mark) ? node : NULL;
-}
 
-static void
-desktop_change(GFileMonitor *monitor, GFile *file, GFile *other,
-	       GFileMonitorEvent event_type, GlobalPanel *panel)
+  for (int idx = 0; idx < count; idx++) {
+    name = names[idx]->d_name;
+    if(name[0] == '.' || strstr(name, DesktopExtension) == NULL) continue;
+
+    snprintf(desktopfile, bytes+strlen(name), "%s/%s", desktopdir, name);
+    sha1 = sha1sum (desktopfile);
+
+    /* iterate filehash to find missing node */
+    g_hash_table_iter_init (&iter, filehash);
+
+    while (g_hash_table_iter_next (&iter, &key, &value)) {
+      if (strcmp(sha1, key) == 0) {
+        vdebug(2, "%s %s %s [node => 0x%lx]\n", __func__, sha1, name, value);
+        g_hash_table_remove (filehash, key);
+        break;
+      }
+    }
+  }
+
+  /* only filepath entry left in filehash */
+  g_hash_table_iter_init (&iter, filehash);
+  g_hash_table_iter_next (&iter, &key, &value);
+
+  if (key != NULL) {
+    vdebug(2, "%s key => %s, node => 0x%lx\n", __func__, key, value);
+    node = (ConfigurationNode *)value;
+
+    g_free (key);  // free memory allocated for (sha1)key
+    g_hash_table_destroy (filehash);
+
+    if (access(filepath, R_OK) == 0) {
+      if (unlink(filepath) == 0)
+        vdebug(2, "%s %s: deleted.\n", __func__, filepath);
+      else
+        vdebug(2, "%s %s: not found.\n", __func__, filepath);
+    }
+  }
+  return node;
+} /* </desktop_find_deleted_node> */
+
+/*
+* desktop_change_agent - workhorse of adding/changing/deleting a .desktop file
+*/
+void
+desktop_change_agent(const char *filepath, GFileMonitorEvent event_type,
+						GlobalPanel *panel)
 {
-  char *filename = g_file_get_path (file);
-  const char *name = basename(filename);
+  static char iconame[MAX_LABEL];
 
   ConfigurationNode *chain = configuration_find(panel->config, AppletName);
-  ConfigurationNode *node  = desktop_change_node(panel->config, name);
+  DesktopItem *entry = desktop_file_parse (filepath);
 
-  DesktopEntry *entry = desktop_file_parse (filename);  /* may be NULL */
+  PanelDesktop *desktop = panel->desktop;
+  FileChooser  *chooser = desktop->chooser;
+
+  settings_.filepath = filepath;	// global within module
+
 
   switch (event_type) {
+    case G_FILE_MONITOR_EVENT_ATTRIBUTE_CHANGED:
+      break;
+
     case G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT:
-      vdebug(1, "Name => %s, Icon => %s, Exec => %s\n",
-		entry->name, entry->icon, entry->exec);
+      vdebug(2, "%s G_FILE_MONITOR_EVENT_CHANGES_DONE_HINT %s\n",
+				__func__, filepath);
       break;
 
     case G_FILE_MONITOR_EVENT_CREATED:
-      vdebug(1, "%s %s created\n", __func__, filename);
-      configuration_write (chain, "<%s>\n", stdout);
-      vdebug(1, "Name => %s, Icon => %s, Exec => %s\n",
-		entry->name, entry->icon, entry->exec);
+      if(debug > 1) configuration_write (chain, "<%s>\n", stdout);
+      vdebug(1, "%s filepath => %s\n", __func__, filepath);
+
+      strcpy(iconame, basename(entry->icon));
+      if (strrchr(iconame, '.') == NULL)   // .png file default
+        sprintf(iconame, "%s.png", basename(entry->icon));
+
+      gtk_entry_set_text(GTK_ENTRY(chooser->name), iconame);
+      gtk_entry_set_text(GTK_ENTRY(desktop->name), entry->name);
+      gtk_entry_set_text(GTK_ENTRY(desktop->exec), entry->exec);
+
+      desktop->action = DESKTOP_SHORTCUT_CREATE;
+      desktop_settings_apply (NULL, panel);
+
+      if(debug > 1) configuration_write (chain, "<%s>\n", stdout);
+      saveconfig (panel);  // coup d'état
       break;
 
     case G_FILE_MONITOR_EVENT_DELETED:
-      vdebug(1, "%s %s deleted\n", __func__, filename);
-      configuration_write (chain, "<%s>\n", stdout);
-      vdebug(1, ">>> %s will be deleted from $HOME/.config/panel\n", name);
-      configuration_remove(node);
+      if(debug > 1) configuration_write (chain, "<%s>\n", stdout);
+      vdebug(1, "%s %s deleted\n", __func__, filepath);
 
-      panel->desktop->shortcut = node->widget;
-      panel->desktop->action = DESKTOP_SHORTCUT_DELETE;
+      /* locate deleted node by sha1sum */
+      desktop->node = desktop_find_deleted_node (desktop->folder, filepath);
 
-      desktop_settings_apply (NULL, panel);
-      configuration_write (chain, "<%s>\n", stdout);
+      if (desktop->node != NULL) {
+        desktop->action = DESKTOP_SHORTCUT_DELETE;
+        desktop_settings_apply (NULL, panel);
+
+        if(debug > 1) configuration_write (chain, "<%s>\n", stdout);
+        saveconfig (panel);  // coup d'état
+      }
       break;
 
     default:
       break;
   }
-  g_free (filename);
-} /* </desktop_change> */
+} /* </desktop_change_agent> */
+
+/*
+* desktop_change_cb - GFileMonitor callback for $HOME/Desktop changes
+*/
+static void
+desktop_change_cb(GFileMonitor *monitor, GFile *file, GFile *other,
+		  GFileMonitorEvent event_type, GlobalPanel *panel)
+{
+  static char endmark[MAX_STAMP];
+  sprintf(endmark, "/%s", AppletName);
+
+  static char filepath[UNIX_PATH_MAX];
+  char *scan = g_file_get_path (file);
+  strcpy(filepath, scan);
+  g_free (scan);
+
+  /* only monitor $HOME/Desktop/{name}.desktop files */
+  scan = strrchr(basename(filepath), '.');
+
+  if (scan && strcmp(scan, DesktopExtension) == 0) {
+    vdebug(2, "%s filepath => %s, event_type => %d\n",
+			__func__, filepath, event_type);
+    desktop_change_agent (filepath, event_type, panel);
+  }
+  else
+    return;
+} /* </desktop_change_cb> */
 
 /*
 * desktop_config - add gtk_event_box_new() to the interface layout
@@ -815,11 +949,12 @@ desktop_change(GFileMonitor *monitor, GFile *file, GFile *other,
 void
 desktop_config(GlobalPanel *panel, bool once)
 {
-  static char chain_markend[MAX_STAMP];
-  sprintf(chain_markend, "/%s", AppletName);
+  static char endmark[MAX_STAMP];
+  sprintf(endmark, "/%s", AppletName);
 
   ConfigurationNode *node = configuration_find (panel->config, AppletName);
-  ConfigurationNode *mark = configuration_find (node, chain_markend);
+  ConfigurationNode *mark = configuration_find (node, endmark);
+  ConfigurationNode *item;
 
   PanelIcons *icons = panel->icons;
   guint depth = node->depth + 1;
@@ -835,7 +970,10 @@ desktop_config(GlobalPanel *panel, bool once)
   gint16 xorg = 5;	/* position for a new shortcut */
   gint16 yorg = 5;
 
-  gchar *font, *name;
+  gchar *font;
+  gchar *name;
+  gchar *sha1;
+
   gchar *init  = configuration_attrib(node, "init");
   gchar *value = configuration_attrib(node, "iconsize");
 
@@ -846,10 +984,14 @@ desktop_config(GlobalPanel *panel, bool once)
   if ((font = configuration_attrib(node, "font")) == NULL)
     font = "Times 12";
 
+  if (once) {
+    settings_.filehash = g_hash_table_new (g_str_hash, g_str_equal);
+    vdebug(2, "%s g_hash_table_new => 0x%lx\n", __func__, settings_.filehash); 
+  }
+
   for (; node != mark && node != NULL; node = node->next) {
     if (node->depth == depth && node->type != XML_READER_TYPE_END_ELEMENT) {
       unsigned short editable = 15;	/* priv | open | customize | remove */
-      ConfigurationNode *item;
 
       if (strcmp(node->element, "item") != 0)	/* not a desktop shortcut */
         continue;
@@ -896,24 +1038,35 @@ desktop_config(GlobalPanel *panel, bool once)
 
       /* A desktop item is a Docklet instance, create once. */
       if (once) {
-        Docklet *docklet = desktop_shortcut_create (panel, node,
-						    iconsize, iconsize,
-						    xpos, ypos,
-						    icon, name, font,
-						    NULL, NULL, false);
+        vdebug(1, "%s name => %s, icon => %s, xpos => %d, ypos => %d\n",
+		__func__, name, icon, xpos, ypos);
+
+        Docklet *docklet = desktop_shortcut_new (panel, node,
+						 iconsize, iconsize,
+						 xpos, ypos,
+						 icon, name, font,
+						 NULL, NULL, false);
         gtk_widget_show (docklet->window);
 
         if ((value = configuration_attrib (node, "editable")) != NULL)
           editable = atoi(value);
 
-        docklet->editable = (editable & 3);
+        //docklet->editable = (editable & 3);	/* mask accordingly */
+        docklet->editable = editable;		/* mask accordingly */
+
+        /* Add [sha1, ConfigurationNode*] to settings_.filehash */
+        if ((item = configuration_find(node, "sha1")) != NULL) {
+          sha1 = item->element;
+          g_hash_table_insert (settings_.filehash, sha1, node);
+          vdebug(1, "%s sha1 => %s, node => 0x%lx\n", __func__, sha1, node);
+        }
       }
     }
   }
 
   /* Construct panel->desktop for creating and editing desktop shortcuts. */
   if (once) {
-    PanelDesktop *desktop = desktop_new (panel, iconsize);
+    PanelDesktop *desktop = desktop_panel_new (panel, iconsize);
 
     GFile *file = g_file_new_for_path (desktop->folder);
     GFileMonitorFlags flags = G_FILE_MONITOR_SEND_MOVED;
@@ -924,8 +1077,8 @@ desktop_config(GlobalPanel *panel, bool once)
     }
 
     desktop->monitor = g_file_monitor_directory (file, flags, NULL, NULL);
-    g_signal_connect (desktop->monitor, "changed",
-			G_CALLBACK(desktop_change), panel);
+    settings_.monitor = g_signal_connect (desktop->monitor, "changed",
+				G_CALLBACK(desktop_change_cb), panel);
     g_object_unref (file);
 
     desktop->step  = step;	/* used to position next shortcut */
@@ -947,19 +1100,19 @@ desktop_config(GlobalPanel *panel, bool once)
 } /* </desktop_config> */
 
 /*
-* desktop_shortcut_create - instantiate a new desktop shortcut 
+* desktop_shortcut_new - new desktop shortcut docklet
 */
 Docklet *
-desktop_shortcut_create(GlobalPanel *panel,
-			ConfigurationNode *node,
-			gint16 width, gint16 height,
-			gint16 xpos, gint16 ypos,
-			const gchar *icon,
-			const gchar *text,
-			const gchar *font,
-			GdkColor *bg,
-			GdkColor *fg,
-                        bool shadow)
+desktop_shortcut_new(GlobalPanel *panel,
+		     ConfigurationNode *node,
+		     gint16 width, gint16 height,
+		     gint16 xpos, gint16 ypos,
+		     const gchar *icon,
+		     const gchar *text,
+		     const gchar *font,
+		     GdkColor *bg,
+		     GdkColor *fg,
+		     bool shadow)
 {
   Docklet *docklet = docklet_new (GDK_WINDOW_TYPE_HINT_NORMAL,
                                   width, height, xpos, ypos,
@@ -967,14 +1120,105 @@ desktop_shortcut_create(GlobalPanel *panel,
                                   GTK_VISIBILITY_NONE,
                                   icon, text, font,
                                   bg, fg, shadow);
+
+  node->data   = panel;		/* set node->data madatory */
   node->widget = docklet;
-  node->data   = panel;	/* set node->data madatory */
 
   docklet_set_callback (docklet, (gpointer)desktop_shortcut_callback, node);
   gtk_window_set_keep_below (GTK_WINDOW(docklet->window), TRUE);
 
   return docklet;
+} /* </desktop_shortcut_new> */
+
+/*
+* desktop_shortcut_create - instantiate a new desktop shortcut 
+*/
+bool
+desktop_shortcut_create(GlobalPanel *panel, const char *ident)
+{
+  static char endmark[MAX_STAMP];
+  sprintf(endmark, "/%s", AppletName);
+
+  PanelDesktop *desktop = panel->desktop;
+  FileChooser *chooser = desktop->chooser;
+
+  ConfigurationNode *chain = configuration_find (panel->config, AppletName);
+  ConfigurationNode *mark;
+  ConfigurationNode *item;
+
+  const gchar *iconname = gtk_entry_get_text (GTK_ENTRY(chooser->name));
+  const gchar *iconpath = filechooser_get_selected_name (chooser);
+  const gchar *font = configuration_attrib (chain, "font");
+
+  const gchar *name = gtk_entry_get_text (GTK_ENTRY(desktop->name));
+  //const gchar *program  = gtk_entry_get_text (GTK_ENTRY(desktop->comment));
+  const gchar *program  = gtk_entry_get_text (GTK_ENTRY(desktop->exec));
+
+  const char separator = ' ';
+  char comment[MAX_LABEL];
+  char *scan = strchr(program, separator);
+
+  if(scan != NULL) *scan = (char)0;
+  strcpy(comment, program);	// program without command line arguments
+  if(scan != NULL) *scan = separator;
+
+  char spec[MAX_PATHNAME];
+
+  gint16 xpos;
+  gint16 ypos;
+
+
+
+  /* Calculate where to place and form the XML. */
+  desktop_config (panel, false);
+
+  xpos = desktop->xpos;
+  ypos = desktop->ypos + desktop->step;
+
+  sprintf(spec, DesktopItemSpec, name, iconname,
+		ident, comment, program, xpos, ypos);
+
+  item = configuration_read (spec, NULL, true);
+  mark = configuration_find (chain, endmark);
+
+  vdebug(1, "%s %s 0x%lx\n", __func__, ident, item);
+
+  if (mark == NULL) {	/* <desktop ... /> case */
+    if ( (mark = configuration_find (chain, "/")) ) {
+      g_free (mark->element);
+      mark->element = g_strdup (endmark);
+    }
+    else {
+      return false;
+    }
+  }
+  configuration_insert (item, mark->back, mark->depth + 1);
+  g_hash_table_insert (settings_.filehash, g_strdup(ident), item);
+
+  /* new screen visual (desktop shortcut) */
+  gint16 iconsize = desktop->iconsize;
+  Docklet *docklet = desktop_shortcut_new (panel, item,
+					   iconsize, iconsize,
+					   xpos, ypos,
+					   iconpath, name, font,
+					   NULL, NULL, false);
+  gtk_widget_show (docklet->window);
+
+  return true;
 } /* </desktop_shortcut_create> */
+
+/*
+* desktop_shortcut_remove
+*/
+void
+desktop_shortcut_remove(ConfigurationNode *node)
+{
+  ConfigurationNode *sha1 = configuration_find (node, "sha1");
+  vdebug(1, "%s sha1 => %s, node => 0x%lx\n", __func__, sha1->element, node);
+
+  g_hash_table_remove (settings_.filehash, sha1->element);
+  configuration_remove (node);  /* remove from configuration */
+} /* </desktop_shortcut_remove> */
 
 /*
 * desktop_shortcut_render - similiar to docklet_render(libgould.so)
@@ -1082,7 +1326,7 @@ desktop_icon_size(GtkWidget *button, gpointer scale)
     settings_.iconsize = iconsize;
 
     vdebug(1, "%s iconfile => %s, iconsize => %d\n", __func__,
-			basename(settings_.iconpath), iconsize);
+		basename((char *)settings_.iconpath), iconsize);
 
     desktop_shortcut_preview (settings_.preview, panel);
     desktop_settings_enable (panel->settings);  // register callbacks

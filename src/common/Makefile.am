@@ -24,6 +24,7 @@ include_HEADERS = \
 	module.h \
 	print.h \
 	tasklist.h \
+	sha1.h \
 	systray.h \
 	xmlconfig.h \
 	xpmglyphs.h \
@@ -43,6 +44,7 @@ libgould_SOURCES = \
 	green.c \
 	pager.c \
 	print.c \
+	sha1.c \
 	systray.c \
 	tasklist.c \
 	xmlconfig.c \

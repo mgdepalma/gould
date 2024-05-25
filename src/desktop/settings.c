@@ -143,13 +143,15 @@ static PanelSettings current_;		/* singleton for panel settings */
 
 
 /*
-* intervene gtk_widget_show() unresponsive
+* settings_activate_timeout - intervene gtk_widget_show() unresponsive
 */
 void
-settings_stubborn (int signum)
+settings_activate_timeout (int signum)
 {
+  vdebug(1, "%s alarm(%d) expired.. SIGKILL %s\n", __func__,
+			_SIGALRM_GRACETIME, _GSESSION_TASKBAR);
   killall (_GSESSION_TASKBAR, SIGKILL);
-} /* </settings_stubborn> */
+} /* </settings_activate_timeout> */
 
 /*
 * activate popup window for editing configuration settings
@@ -160,7 +162,7 @@ settings_activate (GlobalPanel *panel)
   PanelDesktop *desktop = panel->desktop;
   PanelSetting *settings = panel->settings;
 
-  signal (SIGALRM, settings_stubborn);
+  signal (SIGALRM, settings_activate_timeout);
   alarm (_SIGALRM_GRACETIME);
   gtk_widget_show (settings->window);
   gtk_window_stick (settings->window);

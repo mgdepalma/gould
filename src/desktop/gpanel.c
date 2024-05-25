@@ -177,14 +177,17 @@ start_menu_open(Modulus *applet)
 } /* </start_menu_open> */
 
 /*
+* GtkFunction {aka 'int (*)(void *)'}
 * active_workspace_changed - supplemental callback on workspace change
 */
-static void
-active_workspace_changed(GlobalPanel *panel)
+static int
+active_workspace_changed(void *gpointer)
 {
+  GlobalPanel *panel = (GlobalPanel *)gpointer;
   vdebug(2, "%s panel->gwindow => 0x%lx\n", __func__, panel->gwindow);
   gtk_widget_show (panel->gwindow);
-  gtk_window_stick (panel->gwindow);
+  gtk_window_stick (GTK_WINDOW (panel->gwindow));
+  return 0;
 } /* </workspace_changed> */
 
 /*
@@ -603,6 +606,19 @@ applets_loadable(GlobalPanel *panel, guint space)
 } /* </applets_loadable> */
 
 /*
+* dispatch_timeout - intervene gtk_widget_show() unresponsive
+*/
+const char *_command;	/* dispatch command */
+
+void
+dispatch_timeout (int signum)
+{
+  vdebug(1, "%s alarm(%d) expired.. SIGKILL %s\n", __func__,
+			_SIGALRM_GRACETIME, _GSESSION_TASKBAR);
+  spawn (_command);
+} /* </dispatch_timeout> */
+
+/*
 * dispatch - dispatch request using session socket stream
 */
 pid_t
@@ -617,12 +633,14 @@ dispatch(int stream, const char *command)
     int  nbytes;
     char reply[UNIX_PATH_MAX];
 
+    _command = command;
+    signal (SIGALRM, dispatch_timeout);
     alarm (_SIGALRM_GRACETIME);
     write(stream, command, strlen(command));
     nbytes = read(stream, reply, UNIX_PATH_MAX);
     reply[nbytes] = 0;
     pid = atoi(reply);
-    alarm(0);
+    alarm (0);	/* disarm alarm() */
   }
   return pid;
 } /* </dispatch> */
@@ -788,8 +806,12 @@ gpanel_initialize(GlobalPanel *panel)
   if (scan != NULL) {
     *scan = (char)0;
     /* create parent directory as needed */
-    if(access(dirname, F_OK) != 0) mkdir(dirname, 0755);
+    if(access(dirname, F_OK) != 0) mkdir(dirname, 0700);
   }
+
+  /* create $HOME/Desktop as needed */
+  sprintf(dirname, "%s/Desktop", home);
+  if(access(dirname, F_OK) != 0) mkdir(dirname, 0755);
 
   /* read and cache system wide configuration file */
   panel->sysconfig = configuration_new (NULL);
@@ -952,7 +974,7 @@ signal_responder(int signum)
       break;
 
     case SIGUSR2:		/* create new shortcut */
-      desktop_settings (gpanel_, DESKTOP_SHORTCUT_CREATE);
+      desktop_settings_agent (gpanel_, DESKTOP_SHORTCUT_CREATE);
       break;
 
     case SIGALRM:
@@ -1024,7 +1046,7 @@ session_signal_responder(int signum, siginfo_t *siginfo, void *context)
       alarm (_SIGALRM_GRACETIME);	// acknowledgement timeout
       if (gpanel_->gwindow) {
         gtk_widget_show (gpanel_->gwindow);
-        gtk_window_stick (gpanel_->gwindow);
+        gtk_window_stick (GTK_WINDOW (gpanel_->gwindow));
       }
       kill (sender, SIGUSR3);		// acknowledge `sender'
       alarm (0);			// disarm alarm()

@@ -3,11 +3,39 @@
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
 
 <menu id="root-menu" label="Openbox 3">
-  <item label="Control Panel">
-    <action name="Execute"><command>gpanel</command></action>
+  <item icon="/usr/share/gould/pixmaps/style.png" label="Apperance">
+   <action name="Execute">
+    <command>obconf</command>
+   </action>
   </item>
-  <item label="Terminal">
-    <action name="Execute"><command>xterm</command></action>
+  <item icon="/usr/share/gould/pixmaps/launch.png" label="Add Launcher">
+   <action name="Execute">
+    <command>gpanel -n</command>
+   </action>
+  </item>
+  <item icon="/usr/share/gould/pixmaps/preferences.png" label="Control Panel">
+   <action name="Execute">
+    <command>gpanel</command>
+   </action>
+  </item>
+  <item icon="/usr/share/gould/pixmaps/cabinet.png" label="File Manager">
+   <action name="Execute">
+    <command>marlin</command>
+   </action>
+  </item>
+  <item icon="/usr/share/gould/pixmaps/terminal.png" label="Terminal">
+   <action name="Execute">
+    <command>terminal</command>
+    <startupnotify>
+     <enabled>yes</enabled>
+    </startupnotify>
+   </action>
+  </item>
+  <separator />
+  <item icon="/usr/share/gould/pixmaps/exec.png" label="Run">
+   <action name="Execute">
+    <command>grun</command>
+   </action>
   </item>
 </menu>
 
