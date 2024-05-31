@@ -99,6 +99,8 @@ ConfigurationNode *configuration_read (const gchar *data,
 void configuration_replace (ConfigurationNode *config, gchar *data,
                             const char *header, const char *section,
                             const char *ident);
+void
+configuration_update (ConfigurationNode *node, const char *key, gchar *value);
 
 int configuration_write (ConfigurationNode *config,
                          const char *header,

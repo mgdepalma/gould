@@ -378,7 +378,7 @@ spawn_selected (ConfigurationNode *node, GlobalPanel *panel)
 
   if (cmdline != NULL) {
     vdebug(2, "%s: cmdline => %s\n", __func__, cmdline);
-    pid = dispatch (panel->session, cmdline);
+    pid = gpanel_dispatch (panel->session, cmdline);
   }
   else
     gpanel_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",

@@ -405,7 +405,7 @@ panel_quicklaunch(GtkWidget *widget, Modulus *applet)
 
   if (command) {
     vdebug(2, "%s: command => %s\n", __func__, command);
-    dispatch (panel->session, command);
+    gpanel_dispatch (panel->session, command);
   }
   else
     gpanel_dialog(100, 100, ICON_WARNING, "[%s]%s: %s.",
@@ -611,18 +611,18 @@ applets_loadable(GlobalPanel *panel, guint space)
 const char *_command;	/* dispatch command */
 
 void
-dispatch_timeout (int signum)
+gpanel_dispatch_timeout (int signum)
 {
   vdebug(1, "%s alarm(%d) expired.. SIGKILL %s\n", __func__,
 			_SIGALRM_GRACETIME, _GSESSION_TASKBAR);
   spawn (_command);
-} /* </dispatch_timeout> */
+} /* </gpanel_dispatch_timeout> */
 
 /*
-* dispatch - dispatch request using session socket stream
+* gpanel_dispatch - dispatch request using session socket stream
 */
 pid_t
-dispatch(int stream, const char *command)
+gpanel_dispatch(int stream, const char *command)
 {
   pid_t pid;
   vdebug(2, "%s: stream => %d, command => %s\n", __func__, stream, command);
@@ -634,7 +634,7 @@ dispatch(int stream, const char *command)
     char reply[UNIX_PATH_MAX];
 
     _command = command;
-    signal (SIGALRM, dispatch_timeout);
+    signal (SIGALRM, gpanel_dispatch_timeout);
     alarm (_SIGALRM_GRACETIME);
     write(stream, command, strlen(command));
     nbytes = read(stream, reply, UNIX_PATH_MAX);
@@ -643,10 +643,10 @@ dispatch(int stream, const char *command)
     alarm (0);	/* disarm alarm() */
   }
   return pid;
-} /* </dispatch> */
+} /* </gpanel_dispatch> */
 
 /*
-* gpanel_respawn - dispatch(_self_ silently[-s command line option])
+* gpanel_respawn - gpanel_dispatch(_self_ silently[-s command line option])
 */
 pid_t
 gpanel_respawn(int stream, int seconds)
@@ -654,7 +654,7 @@ gpanel_respawn(int stream, int seconds)
   static char command[UNIX_PATH_MAX];
   sprintf(command, "%s -s", path_finder(gpanel_->path, Program));
   vdebug(2, "%s: command => %s\n", __func__, command);
-  pid_t instance = dispatch (stream, command);
+  pid_t instance = gpanel_dispatch (stream, command);
   if(seconds > 0) sleep(seconds);
 
   return instance;
@@ -696,10 +696,10 @@ settings_initialize(GlobalPanel *panel)
 } /* </settings_initialize> */
 
 /*
-* interface - construct user interface
+* gpanel_interface - construct user interface
 */
 GtkWidget *
-interface(GlobalPanel *panel)
+gpanel_interface(GlobalPanel *panel)
 {
   static bool once = true;	/* one time initialization */
 
@@ -733,7 +733,7 @@ interface(GlobalPanel *panel)
   taskbar_initialize (panel, layout);
 
   return layout;
-} /* </interface> */
+} /* </gpanel_interface> */
 
 /*
 * selfexclude - WindowFilter to exclude self from GREEN window lists
@@ -868,7 +868,7 @@ panel_constructor(GlobalPanel *panel)
   gtk_widget_show (frame);
 
   /* Contruct the user interface. */
-  layout = interface (panel);
+  layout = gpanel_interface (panel);
   gtk_container_add (GTK_CONTAINER(frame), layout);
   gtk_widget_show (layout);
 
@@ -920,7 +920,7 @@ gpanel_instance(GlobalPanel *panel)
   }
 
   if (debug > 1) {
-    pid_t pid = dispatch (panel->session, _GET_SESSION_PID);
+    pid_t pid = gpanel_dispatch (panel->session, _GET_SESSION_PID);
     vdebug(debug, "system manager pid => %d (_GET_SESSION_PID => %d)\n",
 		get_process_id (_GSESSION_MANAGER), pid);
   }

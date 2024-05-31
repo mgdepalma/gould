@@ -146,6 +146,7 @@ struct _PanelDesktop
   GtkWidget *canvas;		/* icon preview drawing area */
   GtkWidget *name;		/* name text entry field */
   GtkWidget *exec;		/* exec text entry field */
+  GtkWidget *comment;		/* exec text entry field */
   GtkWidget *hint;		/* action hints */
 
   GSList *icongroup;		/* desktop iconsize group */
@@ -206,7 +207,7 @@ void desktop_settings_agent (GlobalPanel *panel, DesktopAction act);
 void desktop_shortcut_menu (Docklet *docklet, ConfigurationNode *node);
 
 const char *icon_path_finder (PanelIcons *icons, const char *name);
-GtkWidget *interface (GlobalPanel *panel);
+GtkWidget *gpanel_interface (GlobalPanel *panel);
 
 GtkWidget *menu_config (Modulus *applet, GlobalPanel *panel);
 GtkWidget *menu_options_config (ConfigurationNode *node,
@@ -255,7 +256,7 @@ void startmenu (GtkMenu *menu, gint *x, gint *y, bool *pushin, gpointer data);
 
 pid_t session_request (int stream, const char *command);
 pid_t spawn_selected (ConfigurationNode *node, GlobalPanel *panel);
-pid_t dispatch (int stream, const char *command);
+pid_t gpanel_dispatch (int stream, const char *command);
 
 void gpanel_dialog(gint xpos, gint ypos, IconIndex icon, const gchar* fmt, ...);
 gint spawn_dialog(gint xpos, gint ypos, IconIndex icon, const gchar* fmt, ...);

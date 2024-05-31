@@ -558,7 +558,6 @@ configuration_replace (ConfigurationNode *config, gchar *data,
       configuration_remove (item);  /* remove original configuration item */
       break;
     }
-
     chain = configuration_find_next (chain, section);
   }
 
@@ -573,6 +572,19 @@ configuration_replace (ConfigurationNode *config, gchar *data,
 
   g_free (trailer);
 } /* </configuration_replace> */
+
+/*
+ * configuration_update
+ */
+void
+configuration_update (ConfigurationNode *node, const char *key, gchar *value)
+{
+  ConfigurationNode *item = configuration_find (node, key);
+  if (item != NULL) {
+    g_free (item->element);
+    item->element = g_strdup (value);
+  }
+} /* </configuration_update> */
 
 /*
  * configuration_write
