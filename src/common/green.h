@@ -25,8 +25,9 @@
 #include <X11/Xutil.h>
 
 #include <glib-object.h>
-#include <gdk/gdkpixbuf.h>
-#include <gdk/gdkscreen.h>
+//#include <gdk/gdkpixbuf.h>  gtk-3.0 verboten
+//#include <gdk/gdkscreen.h>  gtk-3.0 verboten
+#include <gdk/gdk.h>
 
 #include "xutil.h"
 

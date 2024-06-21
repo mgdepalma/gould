@@ -26,13 +26,12 @@
 #include <gdk/gdkx.h>
 #include <gdk/gdk.h>
 
-#define X_MAXBYTES 65536  // XGetWindowProperty long_length parameter
+#define X_MAXBYTES 65536  /* XGetWindowProperty long_length parameter */
 
 G_BEGIN_DECLS
-
-/**
- * Data structures declaration.
- */
+/*
+* Data structures declaration.
+*/
 typedef bool (*WindowFilter)(Window xid, int desktop);
 
 typedef struct _XWindowState XWindowState;
@@ -76,16 +75,15 @@ _x_error_trap_pop (const char *format, ...)
   error = gdk_error_trap_pop ();
 
   if (error && format) {
-    gchar *message;
     va_list args;
-
     va_start (args, format);
-    message = g_strdup_vprintf (format, args);
+
+    gchar *message = g_strdup_vprintf (format, args);
     vdebug (1, "Xlib error code %d at %s\n", error, message);
     g_free (message);
+
     va_end (args);
   }
-
   return error;
 } /* </_x_error_trap_pop> */
 
