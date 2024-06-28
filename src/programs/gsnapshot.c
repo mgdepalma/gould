@@ -1,21 +1,24 @@
 /**
- * Copyright (C) Generations Linux <bugs@softcraft.org>
- * All Rights Reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+* Copyright (C) Generations Linux <bugs@softcraft.org>
+* All Rights Reserved.
+*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software Foundation,
+* Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
+#include <gtk/gtkunixprint.h>
+#include <MagickWand/MagickWand.h>
 
 #include "gould.h"	/* common package declarations */
 #include "gsnapshot.h"
@@ -38,18 +41,19 @@ debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 
 
 /*
- * (private) about
- */
+* (private) about
+*/
 static gboolean
 about(GtkWidget *widget, GtkWidget *parent)
 {
-  notice(parent, ICON_SNAPSHOT, NULL, 0, "\n%s %s %s", Program, Release, Information);
+  notice(parent, ICON_SNAPSHOT, NULL, 0, "\n%s %s %s",
+			Program, Release, Information);
   return FALSE;
 } /* </about> */
 
 /*
- * clean application exit
- */
+* clean application exit
+*/
 static gboolean
 finis(GtkWidget *widget, gpointer data)
 {
@@ -58,8 +62,8 @@ finis(GtkWidget *widget, gpointer data)
 } /* </finis> */
 
 /*
- * refresh view of the canvas area
- */
+* refresh view of the canvas area
+*/
 static void
 refresh(GtkWidget *canvas, gpointer data)
 {
@@ -71,15 +75,16 @@ refresh(GtkWidget *canvas, gpointer data)
 } /* </refresh> */
 
 /*
- * callback to print image
- */
+* callback to print image
+*/
+#if 0
 static gboolean
-printimage (gpointer data)
+printimage(gpointer data)
 {
-  FILE *out;		/* either a file or pipe to print->command */
+  FILE *out; /* either a file or pipe to print->command */
   PrintDialog *print = (PrintDialog *)data;
-  gboolean status = TRUE;
   gchar message[MAX_BUFFER_SIZE];
+  gboolean status = TRUE;
 
   if (print->device == PRINT_FILE) {
     const gchar *outfile = filechooser_get_selected_name (print->chooser);
@@ -95,14 +100,14 @@ printimage (gpointer data)
       fclose(out);
 
       sprintf(message, "%s: PostScript", outfile);
-      notice(print->dialog, ICON_SNAPSHOT, NULL, 0, message);
+      notice (print->dialog, ICON_SNAPSHOT, NULL, 0, message);
     }
   }
   else {
     const gchar *command = gtk_entry_get_text (GTK_ENTRY(print->command));
 
     if (strlen(command) < 2 || strncmp(command, "lp", 2) != 0) {
-      notice(print->dialog, ICON_ERROR, NULL, 0, _("Invalid print command"));
+      notice (print->dialog, ICON_ERROR, NULL, 0, _("Invalid print command"));
     }
     else {
       out = popen(command, "w");
@@ -110,15 +115,16 @@ printimage (gpointer data)
       pclose(out);
 
       sprintf(message, "%s: %s", _("Job sent to the printer"), command);
-      notice(print->dialog, ICON_INFO, NULL, 0, message);
+      notice (print->dialog, ICON_INFO, NULL, 0, message);
     }
   }
   return status;
 } /* </printimage> */
+#endif
 
 /*
- * write out snapshot to a file (bmp, jpeg, png)
- */
+* write out snapshot to a file (bmp, jpeg, png)
+*/
 static gboolean
 savefile(gpointer data)
 {
@@ -129,10 +135,10 @@ savefile(gpointer data)
   const gchar *filename = filechooser_get_selected_name (save->chooser);
 
   if (access(filename, F_OK) != 0)  /* file does not exist */
-    gdk_pixbuf_save(global->image, filename, format, NULL, NULL);
+    gdk_pixbuf_save (global->image, filename, format, NULL, NULL);
   else {
     if (overwrite(save->dialog, filename) == GTK_RESPONSE_OK)
-      gdk_pixbuf_save(global->image, filename, format, NULL, NULL);
+      gdk_pixbuf_save (global->image, filename, format, NULL, NULL);
     else
       status = FALSE;
   }
@@ -140,8 +146,8 @@ savefile(gpointer data)
 } /* </savefile> */
 
 /*
- * screenshot callback
- */
+* screenshot callback
+*/
 static void
 screenshot(GtkWidget *widget, gpointer data)
 {
@@ -169,8 +175,8 @@ screenshot(GtkWidget *widget, gpointer data)
 } /* </screenshot> */
 
 /*
- * save_as callback
- */
+* save_as callback
+*/
 static void
 save_as(GtkWidget *widget, gpointer data)
 {
@@ -179,20 +185,104 @@ save_as(GtkWidget *widget, gpointer data)
 } /* </save_as> */
 
 /*
- * print to file callback
- */
-static void printofile(GtkWidget *widget, gpointer data)
+* gsnapshot_pdf_save
+*/
+static gchar *
+gsnapshot_pdf_save(void)
 {
-  PrintDialog *print = global->print;
-  gtk_widget_show (print->dialog);
+  const gchar *_save_format = "jpeg";
+  const gchar *_save_jpg_file = "/tmp/gsnapshot.jpg";
+  const gchar *_save_pdf_file = "/tmp/gsnapshot.pdf";
+
+  MagickBooleanType status;
+  MagickWand *magick_wand;
+
+  MagickWandGenesis();
+  magick_wand = NewMagickWand();  
+
+  gdk_pixbuf_save (global->image, _save_jpg_file, _save_format, NULL, NULL);
+
+  status = MagickReadImage(magick_wand, _save_jpg_file);
+  if(status == MagickFalse) fprintf(stderr, "%s: read bad magick\n", __func__);
+
+  status = MagickWriteImages(magick_wand, _save_pdf_file, MagickTrue);
+  if(status == MagickFalse) fprintf(stderr, "%s: write bad magick\n", __func__);
+  unlink (_save_jpg_file);
+
+  magick_wand = DestroyMagickWand(magick_wand);
+  MagickWandTerminus();
+
+  return (gchar *)_save_pdf_file;
+} /* </gsnapshot_pdf_save> */
+
+/*
+* gsnapshot_print_end
+*/
+static void
+gsnapshot_print_end(GtkPrintJob *print_job, gpointer user_data, GError *err)
+{
+  if (err != NULL) {
+    fprintf (stderr, "%s: %s\n", __func__, err->message);
+    g_error_free (err);
+    err = NULL;
+  }
+  g_assert(err == NULL);
+} /* </gsnapshot_print_end> */
+
+/*
+* gsnapshot_print_dialog
+*/
+static void
+gsnapshot_print_dialog(GtkWidget *dialog, gpointer data)
+{
+  GError *err = NULL;
+  GtkPrinter *printer;
+  GtkPrintJob *print_job;
+  GtkPrintSettings *settings;
+  GtkPrintUnixDialog *nixdialog = GTK_PRINT_UNIX_DIALOG(dialog);
+  GtkPageSetup *page_setup;
+  gboolean status;
+
+  printer = gtk_print_unix_dialog_get_selected_printer (nixdialog);
+  settings = gtk_print_unix_dialog_get_settings (nixdialog);
+  page_setup = gtk_print_unix_dialog_get_page_setup (nixdialog);
+  print_job = gtk_print_job_new (Program, printer, settings, page_setup);
+
+  char *filename = gsnapshot_pdf_save();
+  status = gtk_print_job_set_source_file (print_job, filename, &err);
+
+  if (err == NULL)
+    gtk_print_job_send (print_job, gsnapshot_print_end, NULL, NULL);
+  else {
+    g_assert (status != FALSE);
+    fprintf (stderr, "%s: %s\n", __func__, err->message);
+    g_error_free (err);
+  }
+  unlink (filename);
+} /* </gsnapshot_print_dialog> */
+
+/*
+* print to file callback
+*/
+static void
+printofile(GtkWidget *widget, gpointer data)
+{
+  GtkWidget *dialog = gtk_print_unix_dialog_new (NULL,
+					GTK_WINDOW (global->window));
+
+  if (gtk_dialog_run (GTK_DIALOG (dialog)) != GTK_RESPONSE_CANCEL) {
+    gsnapshot_print_dialog(dialog, NULL);
+  }
+  gtk_widget_destroy (dialog);
 } /* </printofile> */
 
 /* 
- * (private) set_snapshot_delay
- * (private) set_window_decorations
- * (private) set_application_hide
- */
-static void set_snapshot_delay(GtkAdjustment *adjust)
+* (private) set_snapshot_delay
+* (private) set_window_decorations
+* (private) set_application_hide
+*/
+static void
+set_snapshot_delay(GtkAdjustment *adjust)
 {
   global->delay = (unsigned int)adjust->value;
 } /* </set_snapshot_delay> */
@@ -210,8 +300,8 @@ set_application_hide(GtkToggleButton *button)
 } /* </set_application_hide> */
 
 /*
- * construct_viewer - construct view and control area
- */
+* construct_viewer - construct view and control area
+*/
 static void
 construct_viewer(GtkWidget *layout, GtkWidget *window)
 {
@@ -272,8 +362,8 @@ construct_viewer(GtkWidget *layout, GtkWidget *window)
 } /* </construct_viewer> */
 
 /*
- * construct_modes - construct modes area
- */
+* construct_modes - construct modes area
+*/
 static void
 construct_modes(GtkWidget *layout, GtkWidget *window)
 {
@@ -283,14 +373,12 @@ construct_modes(GtkWidget *layout, GtkWidget *window)
   GtkWidget *box, *button, *label, *options, *scale;
 
 
-  /* Assemble container
-  */
+  /* Assemble container */
   nobs = gtk_vbox_new (FALSE, 0);
   gtk_box_pack_start (GTK_BOX (layout), nobs, FALSE, TRUE, 0);
   gtk_widget_show (nobs);
 
-  /* Assemble options menu for capture mode
-  */
+  /* Assemble options menu for capture mode */
   box = gtk_hbox_new (FALSE, BORDER_WIDTH);
   gtk_container_set_border_width (GTK_CONTAINER (box), BORDER_WIDTH);
   gtk_box_pack_start (GTK_BOX (nobs), box, FALSE, TRUE, 0);
@@ -310,8 +398,7 @@ construct_modes(GtkWidget *layout, GtkWidget *window)
   gtk_combo_box_set_active(GTK_COMBO_BOX(options), GRAB_SCREEN);
   gtk_widget_show (options);
 
-  /* Assemble slider to control snapshot delay
-  */
+  /* Assemble slider to control snapshot delay */
   box = gtk_hbox_new (FALSE, 0);
   gtk_container_set_border_width (GTK_CONTAINER (box), 0);
   gtk_box_pack_start (GTK_BOX (nobs), box, FALSE, TRUE, 0);
@@ -358,8 +445,8 @@ construct_modes(GtkWidget *layout, GtkWidget *window)
 } /* </construct_modes> */
 
 /*
- * (private) construct_trail - construct trail area
- */
+* (private) construct_trail - construct trail area
+*/
 static void
 construct_trail(GtkWidget *layout, GtkWidget *window)
 {
@@ -391,10 +478,10 @@ construct_trail(GtkWidget *layout, GtkWidget *window)
 } /* </construct_trail> */
 
 /*
- * interface - construct user interface
- */
+* gsnapshot_interface - construct user interface
+*/
 GtkWidget *
-interface(GtkWidget *window)
+gsnapshot_interface(GtkWidget *window)
 {
   GtkWidget *layout;                   /* Interface main layout */
 
@@ -404,22 +491,22 @@ interface(GtkWidget *window)
 
   /* Assemble viewer area */
   construct_viewer(layout, window);
-  add_vertical_space(layout, BOX_SPACING);
-  add_horizontal_separator(layout);
+  add_vertical_space (layout, BOX_SPACING);
+  add_horizontal_separator (layout);
 
   /* Assemble modes area */
-  construct_modes(layout, window);
+  construct_modes (layout, window);
   add_horizontal_separator(layout);
 
   /* Assemble trail area */
-  construct_trail(layout, window);
+  construct_trail (layout, window);
 
   return layout;
-} /* </interface> */
+} /* </gsnapshot_interface> */
 
 /*
- * main - main program implementation
- */
+* main - main program implementation
+*/
 int
 main(int argc, char *argv[])
 {
@@ -427,7 +514,7 @@ main(int argc, char *argv[])
   struct _GlobalSnapshot memory;
 
   Program = basename(argv[0]);
-  Release = "1.0.2";
+  Release = "2.0";
 
 #ifdef GETTEXT_PACKAGE
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
@@ -450,10 +537,9 @@ main(int argc, char *argv[])
   global->delay       = 0;
   global->hide        = TRUE;
   global->image       = NULL;
-  global->window      = window;
-  global->layout      = interface (window);
-  global->print       = printdialog_new (window, printimage);
+  global->layout      = gsnapshot_interface (window);
   global->save        = savedialog_new (window, savefile);
+  global->window      = window;
 
   /* Set title and border width of the main window */
   gtk_window_set_title (GTK_WINDOW (window), Program);
@@ -467,7 +553,7 @@ main(int argc, char *argv[])
   g_signal_connect (G_OBJECT(window), "delete_event", G_CALLBACK(finis), NULL);
 
   /* Realize the visual components */
-  screenshot(window, NULL);  /* Initialize global->image with screenshot */
+  screenshot (window, NULL);  /* Initialize global->image with screenshot */
   gtk_widget_show (window);
 
   /* Main event loop */
