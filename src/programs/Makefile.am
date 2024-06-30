@@ -24,10 +24,11 @@ gdisplay_SOURCES  = gdisplay.h gdisplay.c
 grdesktop_SOURCES = grdesktop.h grdesktop.c
 gsnapshot_SOURCES = gsnapshot.h gsnapshot.c
 
-gsnapshot_CFLAGS = $(AM_CFLAGS)
-gsnapshot_CFLAGS += `pkg-config --cflags gtk+-unix-print-2.0 MagickWand`
+gsnapshot_CFLAGS = $(AM_CFLAGS) `pkg-config --cflags gtk+-unix-print-2.0`
+gsnapshot_LDFLAGS = $(AM_LDFLAGS) `pkg-config --libs  gtk+-unix-print-2.0`
 
-gsnapshot_LDFLAGS = $(AM_LDFLAGS)
-gsnapshot_LDFLAGS += `pkg-config --libs  gtk+-unix-print-2.0 MagickWand`
+gsnapshot_LDADD = jpeg2pdf.o
 
+jpeg2pdf.o: ../common/jpeg2pdf.c ../common/jpeg2pdf.h
+	$(CC) $(AM_CFLAGS) -c ../common/jpeg2pdf.c -o $@
 #/

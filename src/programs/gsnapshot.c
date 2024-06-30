@@ -18,11 +18,15 @@
 */
 
 #include <gtk/gtkunixprint.h>
-#include <MagickWand/MagickWand.h>
 
-#include "gould.h"	/* common package declarations */
+#include "gould.h"		/* common package declarations */
 #include "gsnapshot.h"
+#include "jpeg2pdf.h"
 #include "util.h"
+
+#define LetterWidth      215.9
+#define LetterHeight     279.4     
+#define Pixel2Millimeter 0.26458333
 
 static GlobalSnapshot *global;	/* (protected) encapsulated program data */
 
@@ -185,34 +189,232 @@ save_as(GtkWidget *widget, gpointer data)
 } /* </save_as> */
 
 /*
+* get_jpeg_size - Gets the JPEG size from the array of data passed
+*                 to the function, file reference:
+*
+*                 http://www.obrador.com/essentialjpeg/headerinfo.htm
+*/
+static bool
+get_jpeg_size(unsigned char* data, unsigned int data_size,
+                unsigned short *width, unsigned short *height,
+                unsigned char *colors, double* dpiX, double* dpiY)
+{
+  /* Check for valid JPEG image */
+  int pos = 0;   // Keeps track of the position within the file
+
+  if (data[pos] == 0xFF && data[pos+1] == 0xD8 && data[pos+2] == 0xFF ) {
+    pos += 4;
+    /* Check for valid JPEG header (null terminated JFIF)
+    if (data[pos+2] == 'J' && data[pos+3] == 'F' && data[pos+4] == 'I'
+                           && data[pos+5] == 'F' && data[pos+6] == 0x00) {
+    */
+      // Retrieve dpi:
+      /* It is also possible to retrieve "rational" dpi
+      *  from EXIF data -- in that case it'll be really double.
+      */
+      /* Should we prefer EXIF data when present? */
+      guint8 units = data[pos+9];
+
+      if (units == 1) {      // pixels per inch
+        *dpiX = data[pos+10] * 256+data[pos+11]; // Xdensity
+        *dpiY = data[pos+12] * 256+data[pos+13]; // Ydensity
+      }
+      else if (units == 2) { // pixels per cm
+        *dpiX = (data[pos+10] * 256+data[pos+11]) * 2.54; // Xdensity --> dpiX
+        *dpiY = (data[pos+12] * 256+data[pos+13]) * 2.54; // Ydensity --> dpiY
+      }
+      else { // units==0, fallback to 300dpi? Here EXIF data would be useful.
+        *dpiX = *dpiY = 300;
+      }
+      /*
+      * Retrieve the block length of the first block since
+      * the first block will not contain the size of file.
+      */
+      unsigned short block_length = data[pos] * 256 + data[pos+1];
+      while (pos < (int)data_size) {
+        pos += block_length; // Increase the file index to get to the next block
+
+        // Check to protect against segmentation faults
+        if(pos >= (int)data_size) return false;
+
+        // Check that we are truly at the start of another block
+        if(data[pos] != 0xFF) return false;
+
+        if (data[pos+1] >= 0xC0 && data[pos+1] <= 0xC2) {
+          /*
+          * 0xFFC0 is the "Start of frame" marker which contains the file size
+          * The structure of the 0xFFC0 block is quite simple
+          * [0xFFC0][ushort length][uchar precision][ushort x][ushort y]
+          */
+          *height = data[pos+5]*256 + data[pos+6];
+          *width = data[pos+7]*256 + data[pos+8];
+          *colors = data[pos+9];
+          return true;
+        }
+        else {
+          pos += 2;  // Skip the block marker
+          block_length = data[pos] * 256 + data[pos+1]; // Go to the next block
+        }
+      }
+      return false; // If this point is reached then no size was found
+     //} else { return false; } // Not a valid JFIF string
+  } else { return false; } // Not a valid SOI header
+} /* </get_jpeg_size> */
+
+/*
+* scale_override_consult
+*/
+static ScaleMethod
+scale_override_consult(const char *word)
+{
+  ScaleMethod scale;
+
+  if (strcasecmp(word, "None") == 0)
+    scale = ScaleNone;
+  else if (strcasecmp(word, "Fit") == 0)
+    scale = ScaleFit;
+  else if (strcasecmp(word, "FitWidth") == 0)
+    scale = ScaleFitWidth;
+  else if (strcasecmp(word, "FitHeight") == 0)
+    scale = ScaleFitHeight;
+  else if (strcasecmp(word, "Reduce") == 0)
+    scale = ScaleReduce;
+  else if (strcasecmp(word, "ReduceWidth") == 0)
+    scale = ScaleReduceWidth;
+  else if (strcasecmp(word, "ReduceHeight") == 0)
+    scale = ScaleReduceHeight;
+  else
+    scale = ScaleAuto;
+
+  return scale;
+} /* </scale_override_consult> */
+
+/*
+* insertJPEGFile
+*/
+void
+insertJPEGFile(const char *jpegfile, int fileSize, jpeg2pdf_ptr_t pdfId,
+                PageOrientation pageOrientation, ScaleMethod mogrify,
+                        bool cropWidth, bool cropHeight)
+{
+  static bool once = true;
+  static ScaleMethod maugre = ScaleAuto;
+
+  unsigned char colors;
+  unsigned char *jpegBuf = malloc(fileSize);
+  unsigned short jpegImgW, jpegImgH;
+  double dpiX, dpiY;
+  int readInSize;
+  FILE  *fp;
+
+  if (jpegBuf == NULL) {
+    fprintf(stderr, "%s Memory allocation error.\n", __func__);
+    _exit(EXIT_FAILURE);
+  }
+
+  if ((fp = fopen(jpegfile, "rb")) == NULL) {
+    fprintf(stderr, "%s Can't open file '%s'. Aborted.\n", __func__, jpegfile);
+    _exit(EXIT_FAILURE);
+  }
+  readInSize = fread(jpegBuf, sizeof(guint8), fileSize, fp);
+  fclose(fp);
+
+  if (readInSize != fileSize)
+    fprintf(stderr, "%s Warning: %s should be %d bytes.. only read in %d bytes.\n", __func__, jpegfile, fileSize, readInSize);
+
+  if (get_jpeg_size(jpegBuf, readInSize, &jpegImgW, &jpegImgH,
+                                                &colors, &dpiX, &dpiY)) {
+    if (once) { /* consult GSNAPSHOT_SCALE to override `mogrify' */
+      const char *word = getenv("GSNAPSHOT_SCALE");
+      if(word != NULL) maugre = scale_override_consult (word);
+      once = false;
+    }
+    ScaleMethod scale = (maugre != ScaleAuto) ? maugre : mogrify;
+
+    if (scale == ScaleAuto) {
+      //scale = ((jpegImgW * Pixel2Millimeter > LetterWidth) ||
+      // (jpegImgH * Pixel2Millimeter > LetterHeight)) ? ScaleReduce : ScaleFit;
+      scale = ScaleFit;
+    }
+
+    /* Add JPEG File into PDF */
+    jpeg2pdf_construct(pdfId, jpegImgW, jpegImgH, readInSize, jpegBuf,
+       (3==colors), pageOrientation, dpiX, dpiY, scale, cropHeight, cropWidth);
+  }
+  else {
+    printf("Can't obtain image dimension from '%s'. Aborted.\n", jpegfile);
+    _exit(EXIT_FAILURE);
+  }
+  free(jpegBuf);
+} /* </insertJPEGFile> */
+/*
 * gsnapshot_pdf_save
 */
-static gchar *
-gsnapshot_pdf_save(void)
+void
+gsnapshot_pdf_save(const char *jpegfile, const char *outfile)
 {
-  const gchar *_save_format = "jpeg";
-  const gchar *_save_jpg_file = "/tmp/gsnapshot.jpg";
-  const gchar *_save_pdf_file = "/tmp/gsnapshot.pdf";
+  static char timestamp[MAX_STAMP];  /* ISO8601 timestamp */
 
-  MagickBooleanType status;
-  MagickWand *magick_wand;
+  const char *author = "Generations Linux";
+  const char *subject = "Generated from JPEG images";
+  const char *keywords = basename(jpegfile);
+  const char *title = basename(outfile);
+  const char *creator = Program;
 
-  MagickWandGenesis();
-  magick_wand = NewMagickWand();  
+  /* Initialize the PDF Object with Page Size Information */
+  double pageWidth = 8.27, pageHeight = 11.69, pageMargins = 0;
+  struct stat sb;
 
-  gdk_pixbuf_save (global->image, _save_jpg_file, _save_format, NULL, NULL);
+  bool cropWidth = true;
+  bool cropHeight = true;
+  jpeg2pdf_ptr_t pdfId;
+  guint32 pdfSize;
+  guint8  *pdfBuf;
+  FILE *fp;
 
-  status = MagickReadImage(magick_wand, _save_jpg_file);
-  if(status == MagickFalse) fprintf(stderr, "%s: read bad magick\n", __func__);
+  if (stat(jpegfile, &sb) == -1) {
+    printf("%s, cannot stat '%s' jpeg file\n", __func__, jpegfile);
+    _exit(errno);
+  }
 
-  status = MagickWriteImages(magick_wand, _save_pdf_file, MagickTrue);
-  if(status == MagickFalse) fprintf(stderr, "%s: write bad magick\n", __func__);
-  unlink (_save_jpg_file);
+  /* Initialize the PDF Object with Page Size Information */
+  pdfId = jpeg2pdf_initialize(pageWidth, pageHeight, pageMargins);
+  /* Letter is 8.5x11 inch */
 
-  magick_wand = DestroyMagickWand(magick_wand);
-  MagickWandTerminus();
+  if (pdfId < 0) {
+    printf("%s (DEBUG)jpeg2pdf_initialize failed!\n", __func__);
+    _exit(EXIT_FAILURE);
+  }
+  insertJPEGFile (jpegfile, sb.st_size, pdfId, PageOrientationAuto,
+				ScaleAuto, cropWidth, cropHeight);
+  time_t clock = time(NULL);
+  struct tm* tinfo = localtime(&clock);
+  strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S%z", tinfo);
 
-  return (gchar *)_save_pdf_file;
+  /* Finalize the PDF and get the PDF Size */
+  pdfSize = jpeg2pdf_metadata (pdfId, timestamp, title, author,
+					keywords, subject, creator);
+
+  /* Prepare the PDF Data Buffer based on the PDF Size */
+  pdfBuf = (guint8 *)malloc(pdfSize);
+  if ((gpointer)pdfBuf == NULL) {
+    printf("%s, Memory allocation error.\n", __func__);
+    _exit(EXIT_FAILURE);
+  }
+
+  /* Get the PDF into the Data Buffer and do the cleanup */
+  jpeg2pdf_finalize (pdfId, pdfBuf, &pdfSize);
+
+  /* Output the PDF Data Buffer to file */
+  if ((fp = fopen(outfile, "wb")) == NULL) {
+    printf("%s Can't open file '%s'. Aborted.\n", __func__, outfile);
+    _exit(EXIT_FAILURE);
+  }
+  if (fwrite((const void *)pdfBuf, sizeof(guint8), pdfSize, fp) != pdfSize) {
+    printf("%s, Write error, %s. Aborted.\n", __func__, outfile);
+    _exit(EXIT_FAILURE);
+  }
+  fclose(fp);
 } /* </gsnapshot_pdf_save> */
 
 /*
@@ -235,30 +437,33 @@ gsnapshot_print_end(GtkPrintJob *print_job, gpointer user_data, GError *err)
 static void
 gsnapshot_print_dialog(GtkWidget *dialog, gpointer data)
 {
+  const char *_format = "jpeg";
+  const char *_jpg_file = "/tmp/gsnapshot.jpg";
+  const char *_pdf_file = "/tmp/gsnapshot.pdf";
+
   GError *err = NULL;
   GtkPrinter *printer;
   GtkPrintJob *print_job;
   GtkPrintSettings *settings;
   GtkPrintUnixDialog *nixdialog = GTK_PRINT_UNIX_DIALOG(dialog);
   GtkPageSetup *page_setup;
-  gboolean status;
 
   printer = gtk_print_unix_dialog_get_selected_printer (nixdialog);
   settings = gtk_print_unix_dialog_get_settings (nixdialog);
   page_setup = gtk_print_unix_dialog_get_page_setup (nixdialog);
   print_job = gtk_print_job_new (Program, printer, settings, page_setup);
 
-  char *filename = gsnapshot_pdf_save();
-  status = gtk_print_job_set_source_file (print_job, filename, &err);
+  gdk_pixbuf_save (global->image, _jpg_file, _format, NULL, NULL);
+  gsnapshot_pdf_save (_jpg_file, _pdf_file);
 
-  if (err == NULL)
+  if (gtk_print_job_set_source_file (print_job, _pdf_file, &err))
     gtk_print_job_send (print_job, gsnapshot_print_end, NULL, NULL);
   else {
-    g_assert (status != FALSE);
     fprintf (stderr, "%s: %s\n", __func__, err->message);
     g_error_free (err);
   }
-  unlink (filename);
+  unlink(_jpg_file);
+  unlink(_pdf_file);
 } /* </gsnapshot_print_dialog> */
 
 /*
