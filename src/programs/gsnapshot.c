@@ -18,6 +18,7 @@
 */
 
 #include <gtk/gtkunixprint.h>
+#include <sysexits.h>
 
 #include "gould.h"		/* common package declarations */
 #include "gsnapshot.h"
@@ -32,13 +33,20 @@ static GlobalSnapshot *global;	/* (protected) encapsulated program data */
 
 const char *Program;		/* (public) published program name */
 const char *Release;		/* (public) published program version */
-const char *Information =
+const char *Description =
 "is a gtk-based utility which captures screen contents.\n"
 "One can select to capture the entire screen, a window or a rectangle.\n"
 "The snapshot can be saved to a file and/or printed.\n"
 "\n"
 "The program is developed for Generations Linux and distributed\n"
 "under the terms and condition of the GNU Public License.\n";
+
+const char *Usage =
+"usage: %s [-v | -h]\n"
+"\n"
+"\t-v print version information\n"
+"\t-h print help usage (what you are reading)\n"
+"\n";
 
 debug_t debug = 0;	/* debug verbosity (0 => none) {must be declared} */
 
@@ -51,7 +59,7 @@ static gboolean
 about(GtkWidget *widget, GtkWidget *parent)
 {
   notice(parent, ICON_SNAPSHOT, NULL, 0, "\n%s %s %s",
-			Program, Release, Information);
+			Program, Release, Description);
   return FALSE;
 } /* </about> */
 
@@ -189,79 +197,6 @@ save_as(GtkWidget *widget, gpointer data)
 } /* </save_as> */
 
 /*
-* get_jpeg_size - Gets the JPEG size from the array of data passed
-*                 to the function, file reference:
-*
-*                 http://www.obrador.com/essentialjpeg/headerinfo.htm
-*/
-static bool
-get_jpeg_size(unsigned char* data, unsigned int data_size,
-                unsigned short *width, unsigned short *height,
-                unsigned char *colors, double* dpiX, double* dpiY)
-{
-  /* Check for valid JPEG image */
-  int pos = 0;   // Keeps track of the position within the file
-
-  if (data[pos] == 0xFF && data[pos+1] == 0xD8 && data[pos+2] == 0xFF ) {
-    pos += 4;
-    /* Check for valid JPEG header (null terminated JFIF)
-    if (data[pos+2] == 'J' && data[pos+3] == 'F' && data[pos+4] == 'I'
-                           && data[pos+5] == 'F' && data[pos+6] == 0x00) {
-    */
-      // Retrieve dpi:
-      /* It is also possible to retrieve "rational" dpi
-      *  from EXIF data -- in that case it'll be really double.
-      */
-      /* Should we prefer EXIF data when present? */
-      guint8 units = data[pos+9];
-
-      if (units == 1) {      // pixels per inch
-        *dpiX = data[pos+10] * 256+data[pos+11]; // Xdensity
-        *dpiY = data[pos+12] * 256+data[pos+13]; // Ydensity
-      }
-      else if (units == 2) { // pixels per cm
-        *dpiX = (data[pos+10] * 256+data[pos+11]) * 2.54; // Xdensity --> dpiX
-        *dpiY = (data[pos+12] * 256+data[pos+13]) * 2.54; // Ydensity --> dpiY
-      }
-      else { // units==0, fallback to 300dpi? Here EXIF data would be useful.
-        *dpiX = *dpiY = 300;
-      }
-      /*
-      * Retrieve the block length of the first block since
-      * the first block will not contain the size of file.
-      */
-      unsigned short block_length = data[pos] * 256 + data[pos+1];
-      while (pos < (int)data_size) {
-        pos += block_length; // Increase the file index to get to the next block
-
-        // Check to protect against segmentation faults
-        if(pos >= (int)data_size) return false;
-
-        // Check that we are truly at the start of another block
-        if(data[pos] != 0xFF) return false;
-
-        if (data[pos+1] >= 0xC0 && data[pos+1] <= 0xC2) {
-          /*
-          * 0xFFC0 is the "Start of frame" marker which contains the file size
-          * The structure of the 0xFFC0 block is quite simple
-          * [0xFFC0][ushort length][uchar precision][ushort x][ushort y]
-          */
-          *height = data[pos+5]*256 + data[pos+6];
-          *width = data[pos+7]*256 + data[pos+8];
-          *colors = data[pos+9];
-          return true;
-        }
-        else {
-          pos += 2;  // Skip the block marker
-          block_length = data[pos] * 256 + data[pos+1]; // Go to the next block
-        }
-      }
-      return false; // If this point is reached then no size was found
-     //} else { return false; } // Not a valid JFIF string
-  } else { return false; } // Not a valid SOI header
-} /* </get_jpeg_size> */
-
-/*
 * scale_override_consult
 */
 static ScaleMethod
@@ -308,19 +243,20 @@ insertJPEGFile(const char *jpegfile, int fileSize, jpeg2pdf_ptr_t pdfId,
   FILE  *fp;
 
   if (jpegBuf == NULL) {
-    fprintf(stderr, "%s Memory allocation error.\n", __func__);
+    fprintf(stderr, "%s, Memory allocation error.\n", __func__);
     _exit(EXIT_FAILURE);
   }
 
   if ((fp = fopen(jpegfile, "rb")) == NULL) {
-    fprintf(stderr, "%s Can't open file '%s'. Aborted.\n", __func__, jpegfile);
+    printf("%s, Can't open file '%s'. Aborted.\n", __func__, jpegfile);
     _exit(EXIT_FAILURE);
   }
   readInSize = fread(jpegBuf, sizeof(guint8), fileSize, fp);
   fclose(fp);
 
   if (readInSize != fileSize)
-    fprintf(stderr, "%s Warning: %s should be %d bytes.. only read in %d bytes.\n", __func__, jpegfile, fileSize, readInSize);
+    printf("%s, Warning: %s should be %d bytes.. only read in %d bytes.\n",
+				__func__, jpegfile, fileSize, readInSize);
 
   if (get_jpeg_size(jpegBuf, readInSize, &jpegImgW, &jpegImgH,
                                                 &colors, &dpiX, &dpiY)) {
@@ -329,17 +265,18 @@ insertJPEGFile(const char *jpegfile, int fileSize, jpeg2pdf_ptr_t pdfId,
       if(word != NULL) maugre = scale_override_consult (word);
       once = false;
     }
+    vdebug(2,"%s jpegImgW => %d, jpegImgH => %d\n",__func__,jpegImgW,jpegImgH);
     ScaleMethod scale = (maugre != ScaleAuto) ? maugre : mogrify;
 
     if (scale == ScaleAuto) {
-      //scale = ((jpegImgW * Pixel2Millimeter > LetterWidth) ||
-      // (jpegImgH * Pixel2Millimeter > LetterHeight)) ? ScaleReduce : ScaleFit;
-      scale = ScaleFit;
+      scale = (jpegImgW < LetterWidth || jpegImgH < LetterHeight)
+						? ScaleNone : ScaleFit;
+      //scale = ScaleFit;
     }
 
     /* Add JPEG File into PDF */
     jpeg2pdf_construct(pdfId, jpegImgW, jpegImgH, readInSize, jpegBuf,
-       (3==colors), pageOrientation, dpiX, dpiY, scale, cropHeight, cropWidth);
+       (3==colors), pageOrientation, scale, dpiX, dpiY, cropHeight, cropWidth);
   }
   else {
     printf("Can't obtain image dimension from '%s'. Aborted.\n", jpegfile);
@@ -347,6 +284,7 @@ insertJPEGFile(const char *jpegfile, int fileSize, jpeg2pdf_ptr_t pdfId,
   }
   free(jpegBuf);
 } /* </insertJPEGFile> */
+
 /*
 * gsnapshot_pdf_save
 */
@@ -361,7 +299,7 @@ gsnapshot_pdf_save(const char *jpegfile, const char *outfile)
   const char *title = basename(outfile);
   const char *creator = Program;
 
-  /* Initialize the PDF Object with Page Size Information */
+  /* Initialize the PDF Object with Page Size Description */
   double pageWidth = 8.27, pageHeight = 11.69, pageMargins = 0;
   struct stat sb;
 
@@ -377,7 +315,7 @@ gsnapshot_pdf_save(const char *jpegfile, const char *outfile)
     _exit(errno);
   }
 
-  /* Initialize the PDF Object with Page Size Information */
+  /* Initialize the PDF Object with Page Size Description */
   pdfId = jpeg2pdf_initialize(pageWidth, pageHeight, pageMargins);
   /* Letter is 8.5x11 inch */
 
@@ -577,7 +515,6 @@ construct_modes(GtkWidget *layout, GtkWidget *window)
   GtkObject *adjust;
   GtkWidget *box, *button, *label, *options, *scale;
 
-
   /* Assemble container */
   nobs = gtk_vbox_new (FALSE, 0);
   gtk_box_pack_start (GTK_BOX (layout), nobs, FALSE, TRUE, 0);
@@ -664,7 +601,7 @@ construct_trail(GtkWidget *layout, GtkWidget *window)
   gtk_widget_show (trail);
 
   /* Add the about program icon button. */
-  info = xpm_button(ICON_HELP, NULL, 0, _("Information"));
+  info = xpm_button(ICON_HELP, NULL, 0, _("Description"));
   gtk_box_pack_start (GTK_BOX (trail), info, FALSE, FALSE, 5);
   gtk_button_set_relief (GTK_BUTTON (info), GTK_RELIEF_NONE);
   g_signal_connect (G_OBJECT(info), "clicked", G_CALLBACK(about), window);
@@ -718,8 +655,32 @@ main(int argc, char *argv[])
   GtkWidget *window;        /* GtkWidget is the storage type for widgets */
   struct _GlobalSnapshot memory;
 
+  int opt;
+  opterr = 0;	/* disable invalid option messages */
+
   Program = basename(argv[0]);
   Release = "2.0";
+
+  while ((opt = getopt (argc, argv, "d:hv")) != -1) {
+    switch (opt) {
+      case 'd':
+        debug = atoi(optarg);
+        putenv("DEBUG=1");
+        break;
+
+      case 'h':
+        printf(Usage, Program);
+        _exit (EX_OK);
+
+      case 'v':
+        printf("<!-- %s %s %s\n -->\n", Program, Release, Description);
+        _exit (EX_OK);
+
+      default:
+        printf("%s: invalid option, use -h for help usage.\n", Program);
+        _exit (EX_USAGE);
+    }
+  }
 
 #ifdef GETTEXT_PACKAGE
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
