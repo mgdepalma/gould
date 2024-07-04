@@ -1,6 +1,6 @@
 /*
 * jpeg2pdf.c - adopted from https://jpeg2pdf.sf.net
-* 2024-06-30 Generations Linux <bugs@softcraft.org>
+* 2024-07-04 Generations Linux <bugs@softcraft.org>
 */
 
 #include <stdio.h>
@@ -22,9 +22,9 @@ jpeg2pdf_setxref(jpeg2pdf_ptr_t pPDF, int index, int offset, char c)
   if(INDEX_USE_PPDF == index) index = pPDF->pdfObj;
 
   if ('f' == c) //space on tail required
-    sprintf(pPDF->pdfXREF[index], "%010d 65535 f \n", offset);
+    sprintf((char *)pPDF->pdfXREF[index], "%010d 65535 f \n", offset);
   else
-    sprintf(pPDF->pdfXREF[index], "%010d 00000 %c \n", offset, c);
+    sprintf((char *)pPDF->pdfXREF[index], "%010d 00000 %c \n", offset, c);
 } /* </jpeg2pdf_setxref> */
 
 /*
@@ -38,8 +38,8 @@ jpeg2pdf_initialize(double pdfW, double pdfH, double margin)
 
   if (pPDF) {
     memset(pPDF, 0, sizeof(jpeg2pdf_t));
-    pPDF->pageW = (guint32)(pdfW * PDF_DOT_PER_INCH);
-    pPDF->pageH = (guint32)(pdfH * PDF_DOT_PER_INCH);
+    pPDF->pageW = (uint32_t)(pdfW * PDF_DOT_PER_INCH);
+    pPDF->pageH = (uint32_t)(pdfH * PDF_DOT_PER_INCH);
     pPDF->margin = margin;
 
     /* Maximum image size without margins */
@@ -49,7 +49,7 @@ jpeg2pdf_initialize(double pdfW, double pdfH, double margin)
     pPDF->currentOffSet = 0;
     jpeg2pdf_setxref(pPDF, 0, pPDF->currentOffSet, 'f');
 
-    pPDF->currentOffSet += sprintf(pPDF->pdfHeader,
+    pPDF->currentOffSet += sprintf((char *)pPDF->pdfHeader,
 					"%%PDF-1.4\n%%%c%c\n", 0xFF, 0xFF);
     pPDF->imgObj = 0;
     pPDF->pdfObj = 2;  /* 0 & 1 was reserved for xref & document Root */
@@ -61,8 +61,8 @@ jpeg2pdf_initialize(double pdfW, double pdfH, double margin)
 * jpeg2pdf_construct
 */
 int
-jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, guint32 imgW, guint32 imgH,
-		   guint32 fileSize, guint8 *pJpeg, guint8 colors,
+jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, uint32_t imgW, uint32_t imgH,
+		   uint32_t fileSize, uint8_t *pJpeg, uint8_t colors,
 		   PageOrientation pageOrientation, ScaleMethod scale,
 		   double dpiX, double dpiY, bool cropHeight, bool cropWidth)
 {
@@ -78,13 +78,13 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, guint32 imgW, guint32 imgH,
     pNode = (jpeg2pdf_node_ptr_t)malloc(sizeof(jpeg2pdf_node_t));
 
     if (pNode != NULL) {
-      guint32 nChars, currentImageObject;
-      char *pFormat, lenStr[MAX_PDF_PREFORMAT_SIZE];
+      uint32_t nChars, currentImageObject;
+      uint8_t *pFormat, lenStr[MAX_PDF_PREFORMAT_SIZE];
 
       pNode->jpegW = imgW;
       pNode->jpegH = imgH;
       pNode->jpegSize = fileSize;
-      pNode->pJpeg = (guint8 *)malloc(pNode->jpegSize);
+      pNode->pJpeg = (uint8_t *)malloc(pNode->jpegSize);
       pNode->pNext = NULL;
 			
       if (pNode->pJpeg != NULL) {
@@ -97,7 +97,7 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, guint32 imgW, guint32 imgH,
         // jpeg dimensions (accounting for dpiX, dpiY, PDF_DOT_PER_INCH),
         // in PDF units */
 	double jpegWidth, jpegHeight;
-	Fit fit;
+	FitMethod fit;
 
 	memcpy(pNode->pJpeg, pJpeg, pNode->jpegSize);
 				
@@ -105,12 +105,12 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, guint32 imgW, guint32 imgH,
 	jpeg2pdf_setxref(pPDF, INDEX_USE_PPDF, pPDF->currentOffSet, 'n');
 	currentImageObject = pPDF->pdfObj;
 
-	pPDF->currentOffSet += sprintf(pNode->preFormat, "\n%d 0 obj\n<<\n/Type /XObject\n/Subtype /Image\n/Filter /DCTDecode\n/BitsPerComponent 8\n/ColorSpace /%s\n/Width %d\n/Height %d\n/Length %d\n>>\nstream\n", pPDF->pdfObj, ((colors) ? "DeviceRGB" : "DeviceGray"), pNode->jpegW, pNode->jpegH, pNode->jpegSize);
+	pPDF->currentOffSet += sprintf((char *)pNode->preFormat, "\n%d 0 obj\n<<\n/Type /XObject\n/Subtype /Image\n/Filter /DCTDecode\n/BitsPerComponent 8\n/ColorSpace /%s\n/Width %d\n/Height %d\n/Length %d\n>>\nstream\n", pPDF->pdfObj, ((colors) ? "DeviceRGB" : "DeviceGray"), pNode->jpegW, pNode->jpegH, pNode->jpegSize);
 				
 	vdebug(1, "%s....\n", pNode->preFormat);
         pPDF->currentOffSet += pNode->jpegSize;
 	pFormat = pNode->pstFormat;
-	nChars = sprintf(pFormat, "\nendstream\nendobj\n");
+	nChars = sprintf((char *)pFormat, "\nendstream\nendobj\n");
 	pPDF->currentOffSet += nChars;
         pFormat += nChars;
 	pPDF->pdfObj++;
@@ -141,12 +141,13 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, guint32 imgW, guint32 imgH,
 	  }
 	}
         else {
-	  pagePortrait=(pageOrientation==Portrait) ? true : false;
+	  pagePortrait = (pageOrientation == Portrait) ? true : false;
 	}
+
 	maxImgWidth = (pagePortrait) ? pPDF->maxImgW : pPDF->maxImgH;
 	maxImgHeight = (pagePortrait) ? pPDF->maxImgH : pPDF->maxImgW;
 
-	/* Determine scaling method: */
+	// Determine scaling method:
 	if (scale == ScaleFit || (scale == ScaleReduce &&
 		(jpegWidth > maxImgWidth || jpegHeight > maxImgHeight))) {
           /* fit jpeg to available area */
@@ -161,14 +162,14 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, guint32 imgW, guint32 imgH,
 	}
         else if (scale == ScaleFitWidth || (scale == ScaleReduceWidth
 					    && jpegWidth > maxImgWidth)) {
-          fit = FitWidth;
+	  fit = FitWidth;
 	}
         else if (scale == ScaleFitHeight || (scale == ScaleReduceHeight
 					     && jpegHeight > maxImgHeight)) {
-          fit = FitHeight;
+	  fit = FitHeight;
 	}
         else { // don't fit, keep original dpi
-          fit = FitNone;
+	  fit = FitNone;
 	}
 
 	// Scale image:
@@ -176,32 +177,31 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, guint32 imgW, guint32 imgH,
 	  newImgW = maxImgWidth;
 	  newImgH = maxImgWidth / imgAspect;
 	}
-        else if (fit == FitHeight) {
+	else if (fit == FitHeight) {
 	  newImgW = maxImgHeight * imgAspect;
 	  newImgH = maxImgHeight;
 	}
-        else {  // fit == FitNone
+	else { // don't fit, keep original dpi
 	  newImgW = jpegWidth;
 	  newImgH = jpegHeight;
 	}
-	vdebug(1, "%s fit => %d\n", __func__, fit);
 
 	// Set paper size from image size (possibly fitted/reduced to specific
-        /* paper size) or properly rotate the page: */
+        // paper size or properly rotate the page:
 	pageWidth = cropWidth ? (newImgW+pPDF->margin) :
 			 (pagePortrait ? pPDF->pageW : pPDF->pageH) ;
 			   pageHeight=cropHeight ? (newImgH+pPDF->margin) :
 			    (pagePortrait ? pPDF->pageH : pPDF->pageW);
 
-         if (scale == ScaleNone) {  /* hard override (DEBUG why it's needed) */
-	   pageWidth = newImgW = imgW;
-	   pageHeight = newImgH = imgH;
-         }
+	if (scale == ScaleNone) {  /* hard override (DEBUG why it's needed) */
+	  pageWidth = newImgW = imgW;
+	  pageHeight = newImgH = imgH;
+	}
 
 	/* Page Object */
 	jpeg2pdf_setxref(pPDF, INDEX_USE_PPDF, pPDF->currentOffSet, 'n');
 	pNode->PageObj = pPDF->pdfObj;
-	nChars = sprintf(pFormat, "%d 0 obj\n<<\n/Type /Page\n/Parent 1 0 R\n/MediaBox [0 0 %.2f %.2f]\n/Contents %d 0 R\n/Resources %d 0 R\n>>\nendobj\n", pPDF->pdfObj, pageWidth, pageHeight, pPDF->pdfObj + 1, pPDF->pdfObj + 3);
+	nChars = sprintf((char *)pFormat, "%d 0 obj\n<<\n/Type /Page\n/Parent 1 0 R\n/MediaBox [0 0 %.2f %.2f]\n/Contents %d 0 R\n/Resources %d 0 R\n>>\nendobj\n", pPDF->pdfObj, pageWidth, pageHeight, pPDF->pdfObj + 1, pPDF->pdfObj + 3);
 
 	vdebug(1, "%s", pFormat);
 	pPDF->currentOffSet += nChars;
@@ -212,9 +212,9 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, guint32 imgW, guint32 imgH,
 	jpeg2pdf_setxref(pPDF, INDEX_USE_PPDF, pPDF->currentOffSet, 'n');
 
 	/* center image */
-	sprintf(lenStr, "q\n1 0 0 1 %.2f %.2f cm\n%.2f 0 0 %.2f 0 0 cm\n/I%d Do\nQ", (pageWidth-newImgW) / 2, (pageHeight-newImgH) / 2, newImgW, newImgH, pPDF->imgObj);
+	sprintf((char *)lenStr, "q\n1 0 0 1 %.2f %.2f cm\n%.2f 0 0 %.2f 0 0 cm\n/Im%d Do\nQ", (pageWidth-newImgW) / 2, (pageHeight-newImgH) / 2, newImgW, newImgH, pPDF->imgObj);
 
-	nChars = sprintf(pFormat, "%d 0 obj\n<<\n/Length %d 0 R\n>>\nstream\n%s\nendstream\nendobj\n", pPDF->pdfObj, pPDF->pdfObj + 1, lenStr);
+	nChars = sprintf((char *)pFormat, "%d 0 obj\n<<\n/Length %d 0 R\n>>\nstream\n%s\nendstream\nendobj\n", pPDF->pdfObj, pPDF->pdfObj + 1, lenStr);
 
 	vdebug(1, "%s\n", pFormat);
 	pPDF->currentOffSet += nChars;
@@ -223,14 +223,14 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, guint32 imgW, guint32 imgH,
 
 	/* Length Object in Contents Object */
 	jpeg2pdf_setxref(pPDF, INDEX_USE_PPDF, pPDF->currentOffSet, 'n');
-	nChars = sprintf(pFormat, "%d 0 obj\n%ld\nendobj\n", pPDF->pdfObj, strlen(lenStr));
+	nChars = sprintf((char *)pFormat, "%d 0 obj\n%ld\nendobj\n", pPDF->pdfObj, strlen((char *)lenStr));
 	pPDF->currentOffSet += nChars;
         pFormat += nChars;
 	pPDF->pdfObj++;
 				
 	/* Resources Object in Page Object */
 	jpeg2pdf_setxref(pPDF, INDEX_USE_PPDF, pPDF->currentOffSet, 'n');
-	nChars = sprintf(pFormat, "%d 0 obj\n<<\n/ProcSet [/PDF /%s]\n/XObject <</I%d %d 0 R>>\n>>\nendobj\n", pPDF->pdfObj, ((colors) ? "ImageC" : "ImageB"), pPDF->imgObj, currentImageObject);
+	nChars = sprintf((char *)pFormat, "%d 0 obj\n<<\n/ProcSet [/PDF /%s]\n/XObject << /Im%d %d 0 R >>\n>>\nendobj\n", pPDF->pdfObj, ((colors) ? "ImageC" : "ImageB"), pPDF->imgObj, currentImageObject);
 
 	pPDF->currentOffSet += nChars;	pFormat += nChars;
 	pPDF->pdfObj++;
@@ -257,18 +257,18 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, guint32 imgW, guint32 imgH,
 /*
 * jpeg2pdf_metadata
 */
-guint32
+uint32_t
 jpeg2pdf_metadata(jpeg2pdf_ptr_t pPDF, char *timestamp, const char *title,
 		  const char *author, const char *keywords,
 		  const char *subject, const char *creator)
 {
-  guint32 headerSize, tailerSize, pdfSize = 0;
+  uint32_t headerSize, tailerSize, pdfSize = 0;
   char *producer = "Generations Linux";
   char *XMPmetadata;
 
   if (pPDF != NULL) {
-    char strKids[MAX_PDF_PAGES * MAX_KIDS_STRLEN], *pTail = pPDF->pdfTailer;
-    guint32 i, nChars, xrefOffSet, metadataObj, infoObj;
+    uint8_t strKids[MAX_PDF_PAGES * MAX_KIDS_STRLEN], *pTail = pPDF->pdfTailer;
+    uint32_t i, nChars, xrefOffSet, metadataObj, infoObj;
     jpeg2pdf_node_ptr_t pNode;
 
     XMPmetadata = (char *)malloc(2048 + strlen(title) + strlen(author) +
@@ -302,7 +302,7 @@ jpeg2pdf_metadata(jpeg2pdf_ptr_t pPDF, char *timestamp, const char *title,
     /* Metadata Object with XMP */
     metadataObj = pPDF->pdfObj;
     jpeg2pdf_setxref(pPDF, INDEX_USE_PPDF, pPDF->currentOffSet, 'n');
-    nChars = sprintf(pTail, "%d 0 obj\n<<\n/Type /Metadata\n/Subtype /XML\n/Length %d\n>>\nstream\n%sendstream\nendobj\n", pPDF->pdfObj, nChars, XMPmetadata);
+    nChars = sprintf((char *)pTail, "%d 0 obj\n<<\n/Type /Metadata\n/Subtype /XML\n/Length %d\n>>\nstream\n%sendstream\nendobj\n", pPDF->pdfObj, nChars, XMPmetadata);
 
     free(XMPmetadata);
     pPDF->currentOffSet += nChars;
@@ -333,7 +333,7 @@ jpeg2pdf_metadata(jpeg2pdf_ptr_t pPDF, char *timestamp, const char *title,
     infoObj = pPDF->pdfObj;
     jpeg2pdf_setxref(pPDF, INDEX_USE_PPDF, pPDF->currentOffSet, 'n');
 
-    nChars = sprintf(pTail, "%d 0 obj\n<<\n/Title (%s)\n/Author (%s)\n/Keywords (%s)\n/Subject (%s)\n/Producer (%s)\n/Creator (%s)\n/CreationDate (D:%s)\n/ModDate (D:%s)\n>>\nendobj\n", pPDF->pdfObj, title, author, keywords, subject, producer, creator, timestamp, timestamp);
+    nChars = sprintf((char *)pTail, "%d 0 obj\n<<\n/Title (%s)\n/Author (%s)\n/Keywords (%s)\n/Subject (%s)\n/Producer (%s)\n/Creator (%s)\n/CreationDate (D:%s)\n/ModDate (D:%s)\n>>\nendobj\n", pPDF->pdfObj, title, author, keywords, subject, producer, creator, timestamp, timestamp);
 
     pPDF->currentOffSet += nChars;
     pTail += nChars;
@@ -341,7 +341,7 @@ jpeg2pdf_metadata(jpeg2pdf_ptr_t pPDF, char *timestamp, const char *title,
 
     /* Catalog Object. This is the Last Object */
     jpeg2pdf_setxref(pPDF, INDEX_USE_PPDF, pPDF->currentOffSet, 'n');
-    nChars = sprintf(pTail, "%d 0 obj\n<</Type/Catalog /Pages 1 0 R /Metadata %d 0 R>>\nendobj\n", pPDF->pdfObj, metadataObj);
+    nChars = sprintf((char *)pTail, "%d 0 obj\n<<\n/Type /Catalog\n/Pages 1 0 R\n/Metadata %d 0 R\n>>\nendobj\n", pPDF->pdfObj, metadataObj);
 
     pPDF->currentOffSet += nChars;
     pTail += nChars;
@@ -355,40 +355,43 @@ jpeg2pdf_metadata(jpeg2pdf_ptr_t pPDF, char *timestamp, const char *title,
     while (pNode != NULL) {
       char curStr[9];
       sprintf(curStr, "%d 0 R ", pNode->PageObj);
-      strcat(strKids, curStr);
+      strcat((char *)strKids, curStr);
       pNode = pNode->pNext;
     }
 
-    if(strlen(strKids) > 1 && strKids[strlen(strKids) - 1] == ' ') strKids[strlen(strKids) - 1] = 0;
+    if (strlen((const char *)strKids) > 1
+        && strKids[strlen((const char *)strKids) - 1] == ' ') {
+      strKids[strlen((const char *)strKids) - 1] = 0;
+    }
 		
-    nChars = sprintf(pTail, "1 0 obj\n<</Type/Pages /Kids [%s] /Count %d>>\nendobj\n", strKids, pPDF->nodeCount);
+    nChars = sprintf((char *)pTail, "1 0 obj\n<<\n/Type /Pages\n/Kids [ %s ]\n/Count %d\n>>\nendobj\n", strKids, pPDF->nodeCount);
 
     pPDF->currentOffSet += nChars;
     pTail += nChars;
 
     /* The xref & the rest of the tail */
     xrefOffSet = pPDF->currentOffSet;
-    nChars = sprintf(pTail, "xref\n0 %d\n", pPDF->pdfObj+1);
+    nChars = sprintf((char *)pTail, "xref\n0 %d\n", pPDF->pdfObj+1);
     pPDF->currentOffSet += nChars;
     pTail += nChars;
 
     for (i = 0; i <= pPDF->pdfObj; i++) {
-      nChars = sprintf(pTail, "%s", pPDF->pdfXREF[i]);
+      nChars = sprintf((char *)pTail, "%s", pPDF->pdfXREF[i]);
       pPDF->currentOffSet += nChars;
       pTail += nChars;
     }
 
     /* write trailer */
-    nChars = sprintf(pTail, "trailer\n<<\n/Root %d 0 R\n/Info %d 0 R\n/Size %d\n>>\n", pPDF->pdfObj, infoObj, pPDF->pdfObj+1);
+    nChars = sprintf((char *)pTail, "trailer\n<<\n/Root %d 0 R\n/Info %d 0 R\n/Size %d\n>>\n", pPDF->pdfObj, infoObj, pPDF->pdfObj+1);
 
     pPDF->currentOffSet += nChars;
     pTail += nChars;
-    nChars = sprintf(pTail, "startxref\n%d\n%%%%EOF\n", xrefOffSet);
+    nChars = sprintf((char *)pTail, "startxref\n%d\n%%%%EOF\n", xrefOffSet);
     pPDF->currentOffSet += nChars;
     pTail += nChars;
   }
-  headerSize = strlen(pPDF->pdfHeader);
-  tailerSize = strlen(pPDF->pdfTailer);
+  headerSize = strlen((const char *)pPDF->pdfHeader);
+  tailerSize = strlen((const char *)pPDF->pdfTailer);
 
   if (headerSize && tailerSize &&
 	(pPDF->currentOffSet > headerSize + tailerSize)) {
@@ -401,7 +404,7 @@ jpeg2pdf_metadata(jpeg2pdf_ptr_t pPDF, char *timestamp, const char *title,
 * jpeg2pdf_finalize
 */
 int
-jpeg2pdf_finalize(jpeg2pdf_ptr_t pPDF, guint8 *outPDF, guint32 *outPDFSize)
+jpeg2pdf_finalize(jpeg2pdf_ptr_t pPDF, uint8_t *outPDF, uint32_t *outPDFSize)
 {
   int result = Error;
 
@@ -409,8 +412,8 @@ jpeg2pdf_finalize(jpeg2pdf_ptr_t pPDF, guint8 *outPDF, guint32 *outPDFSize)
     jpeg2pdf_node_ptr_t pNode, pFreeCurrent;
 
     if (outPDF && (*outPDFSize >= pPDF->currentOffSet)) {
-      guint32 nBytes, nBytesOut = 0;
-      guint8 *pOut = outPDF;
+      uint32_t nBytes, nBytesOut = 0;
+      uint8_t *pOut = outPDF;
 
       nBytes = strlen((char *)pPDF->pdfHeader);
       memcpy(pOut, pPDF->pdfHeader, nBytes);
@@ -419,15 +422,17 @@ jpeg2pdf_finalize(jpeg2pdf_ptr_t pPDF, guint8 *outPDF, guint32 *outPDFSize)
       pNode = (jpeg2pdf_node_ptr_t)pPDF->pFirstNode;
 
       while(pNode != NULL) {
-	nBytes = strlen(pNode->preFormat);
+	nBytes = strlen((const char *)pNode->preFormat);
 	memcpy(pOut, pNode->preFormat, nBytes);
-	nBytesOut += nBytes; pOut += nBytes;
+	nBytesOut += nBytes;
+	pOut += nBytes;
 
 	nBytes = pNode->jpegSize;
 	memcpy(pOut, pNode->pJpeg, nBytes);
-	nBytesOut += nBytes; pOut += nBytes;
+	nBytesOut += nBytes;
+	pOut += nBytes;
 
-	nBytes = strlen((char *)pNode->pstFormat);
+	nBytes = strlen((const char *)pNode->pstFormat);
 	memcpy(pOut, pNode->pstFormat, nBytes);
 	nBytesOut += nBytes; pOut += nBytes;
 
@@ -465,9 +470,9 @@ jpeg2pdf_finalize(jpeg2pdf_ptr_t pPDF, guint8 *outPDF, guint32 *outPDFSize)
 *                 http://www.obrador.com/essentialjpeg/headerinfo.htm
 */
 bool
-get_jpeg_size(unsigned char *data, unsigned int data_size,
-              unsigned short *width, unsigned short *height,
-              unsigned char *colors, double *dpiX, double *dpiY)
+get_jpeg_size(uint8_t *data, uint32_t data_size,
+              uint32_t *width, uint32_t *height,
+              uint8_t *colors, double *dpiX, double *dpiY)
 {
   int pos = 0;   // Keeps track of the position within the file
 
@@ -483,7 +488,7 @@ get_jpeg_size(unsigned char *data, unsigned int data_size,
       *  from EXIF data -- in that case it'll be really double.
       */
       /* Should we prefer EXIF data when present? */
-      guint8 units = data[pos+9];
+      uint8_t units = data[pos+9];
 
       if (units == 1) {      // pixels per inch
         *dpiX = data[pos+10] * 256+data[pos+11]; // Xdensity
@@ -500,7 +505,7 @@ get_jpeg_size(unsigned char *data, unsigned int data_size,
       * Retrieve the block length of the first block since
       * the first block will not contain the size of file.
       */
-      unsigned short block_length = data[pos] * 256 + data[pos+1];
+      uint32_t block_length = data[pos] * 256 + data[pos+1];
       while (pos < (int)data_size) {
         pos += block_length; // Increase the file index to get to the next block
 

@@ -228,16 +228,16 @@ scale_override_consult(const char *word)
 * insertJPEGFile
 */
 void
-insertJPEGFile(const char *jpegfile, int fileSize, jpeg2pdf_ptr_t pdfId,
+insertJPEGFile(const char *jpegfile, uint32_t fileSize, jpeg2pdf_ptr_t pdfId,
                 PageOrientation pageOrientation, ScaleMethod mogrify,
                         bool cropWidth, bool cropHeight)
 {
   static bool once = true;
   static ScaleMethod maugre = ScaleAuto;
 
-  unsigned char colors;
-  unsigned char *jpegBuf = malloc(fileSize);
-  unsigned short jpegImgW, jpegImgH;
+  uint8_t  colors;
+  uint8_t  *jpegBuf = malloc(fileSize);
+  uint32_t jpegImgW, jpegImgH;
   double dpiX, dpiY;
   int readInSize;
   FILE  *fp;
@@ -269,9 +269,8 @@ insertJPEGFile(const char *jpegfile, int fileSize, jpeg2pdf_ptr_t pdfId,
     ScaleMethod scale = (maugre != ScaleAuto) ? maugre : mogrify;
 
     if (scale == ScaleAuto) {
-      scale = (jpegImgW < LetterWidth || jpegImgH < LetterHeight)
-						? ScaleNone : ScaleFit;
-      //scale = ScaleFit;
+      scale = ((jpegImgW * Pixel2Millimeter < LetterWidth) ||
+	(jpegImgH * Pixel2Millimeter < LetterHeight)) ? ScaleNone : ScaleFit;
     }
 
     /* Add JPEG File into PDF */
