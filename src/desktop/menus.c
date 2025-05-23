@@ -27,6 +27,8 @@
 
 #include <X11/Xatom.h>
 
+#define DEFAULT_ICON_SIZE 22
+
 extern const char *Program;				/* see, gpanel.c */
 extern const char *Release;				/* ... */
 extern const char *Description;				/* ... */
@@ -35,7 +37,7 @@ extern const char *ConfigurationHeader, *Schema;        /* ... */
 /* Needed forward function declarations. */
 static void exit_cancel (GtkWidget *button, GlobalPanel *panel);
 
-#ifdef NEVER
+#if 0
 /*
 * (private) shortcut_cb
 */
@@ -318,7 +320,8 @@ activate (GtkWidget *button, GdkEventButton *event, GlobalPanel *panel)
   PanelTaskbar *menu = panel->taskbar;
 
   if (event->button == 1)
-    gtk_menu_popup (GTK_MENU (menu->options), NULL, NULL, startmenu, panel,
+    gtk_menu_popup (GTK_MENU (menu->options), NULL, NULL,
+		    (GtkMenuPositionFunc)startmenu, panel,
                       event->button, event->time);
 } /* </activate> */
 
@@ -651,44 +654,54 @@ menu_header_config (ConfigurationNode *config, GlobalPanel *panel)
     const gchar *icon = configuration_attrib (node, "icon");
     const gchar *size = configuration_attrib (node, "iconsize");
 
-    guint iconsize = (size) ? atoi(size) : 24;   /* default 24x24 icon size */
+    /* "%u" => user name, %r => real name */
+    const gchar *label = (strcmp(name, "%u") == 0 || strcmp(name, "%r") == 0)
+                          ? get_username (strcmp(name, "%r") == 0) : name;
 
-    /* defaul to font = if not specified */
-    if (font == NULL)
-      font = "Sans bold 14";
+    guint iconsize = (size != NULL) ? atoi(size) : DEFAULT_ICON_SIZE;
 
-#ifdef NEVER /* may need a NEW menu class to have custom font menuitem labels */
+    /* Built-in default icon spec, unless specified */
+    if(icon == NULL) icon = (getuid() == 0) ? "administrator.png" : "user.png";
+
+    /* Built-in default font spec, unless specified. */
+    if(font == NULL) font = "Sans bold 14";
+
+#if 0 /* may need a NEW menu class to have custom font menuitem labels */
     PangoFontDescription *fontdesc;
     PangoLayout *layout;
 
-    item = gtk_image_menu_item_new ();
+    item = gtk_image_menu_item_new_with_label (label);
 
     /* setup font for text */
     fontdesc = pango_font_description_from_string (font);
     layout = gtk_widget_create_pango_layout (item, "alien");
     pango_layout_set_font_description (layout, fontdesc);
     pango_font_description_free (fontdesc);
+#else
+    item = gtk_image_menu_item_new_with_label (label);
 #endif
 
-    /* "%u" => user name, %r => real name */
-    if (strcmp(name, "%u") == 0 || strcmp(name, "%r") == 0)
-      item = gtk_image_menu_item_new_with_label (
-                     get_username (strcmp(name, "%r") == 0)
-                                                );
-    else
-      item = gtk_image_menu_item_new_with_label (_(name));
+    if ((name = icon_path_finder (icons, icon)) != NULL) {
+      //gint width, height;
+      //GtkWidget *image = gtk_image_new_from_file (name);
+      GtkWidget *image = image_new_from_file_scaled (name, iconsize,iconsize);
+      vdebug (3, "%s: icon => %s\n", __func__, name);
 
-    /* Built-in default for missing icon attribute. */
-    if (icon == NULL)
-      icon = (getuid() == 0) ? "administrator.png" : "user.png";
+#if 0
+      gtk_icon_size_lookup_for_settings (gtk_widget_get_settings (image),
+                                         GTK_ICON_SIZE_MENU, &width, &height);
 
-    if (icon != NULL)
-      if ((name = icon_path_finder (icons, icon)) != NULL) {
-        GtkWidget *image = image_new_from_file_scaled (name, iconsize,iconsize);
-        gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (item), image);
-      }
+      gtk_widget_set_size_request (image, width, height);
+      vdebug (3, "%s: image => 0x%lx (size: %dx%d)\n", __func__,
+					image, width, height);
+#endif
+
+      gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (item), image);
+      gtk_image_menu_item_set_always_show_image (GTK_IMAGE_MENU_ITEM (item),
+								TRUE);
+      gtk_widget_show_all (item);
+    }
   }
-
   return item;
 } /* </menu_header_config> */
 
@@ -714,12 +727,16 @@ menu_item_config (ConfigurationNode *config, GlobalPanel *panel, gint iconsize)
   g_signal_connect (item, "activate", G_CALLBACK (executer), config);
   config->data = panel;	/* pass global program attributes */
 
-  if (icon != NULL)
+  if (icon != NULL) {
     if ((name = icon_path_finder (icons, icon)) != NULL) {
       image = image_new_from_file_scaled (name, iconsize, iconsize);
-      gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (item), image);
-    }
 
+      gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (item), image);
+      gtk_image_menu_item_set_always_show_image (GTK_IMAGE_MENU_ITEM (item),
+                                                                TRUE);
+      gtk_widget_show_all (item);
+    }
+  }
   return item;
 } /* </menu_item_config> */
 
@@ -753,12 +770,16 @@ menu_element_config (ConfigurationNode *node, GlobalPanel *panel, gint iconsize)
     name = configuration_attrib (node, "name");
     item = gtk_image_menu_item_new_with_label (_(name));
 
-    if ((icon = configuration_attrib (node, "icon")) != NULL)
+    if ((icon = configuration_attrib (node, "icon")) != NULL) {
       if ((name = icon_path_finder (icons, icon)) != NULL) {
         image = image_new_from_file_scaled (name, iconsize, iconsize);
-        gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (item), image);
-      }
 
+        gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (item), image);
+        gtk_image_menu_item_set_always_show_image (GTK_IMAGE_MENU_ITEM (item),
+                                                                TRUE);
+        gtk_widget_show_all (item);
+      }
+    }
     submenu = menu_submenu_config (node, panel, iconsize);
     gtk_menu_item_set_submenu (GTK_MENU_ITEM (item), submenu);
   }

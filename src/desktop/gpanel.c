@@ -672,8 +672,6 @@ settings_initialize(GlobalPanel *panel)
   PanelIcons   *icons   = panel->icons;
   PanelLogout  *logout  = panel->logout  = &_logout;
   PanelTaskbar *taskbar = panel->taskbar = &_taskbar;
-  //PanelLogout  *logout  = panel->logout  = g_new0 (PanelLogout, 1);
-  //PanelTaskbar *taskbar = panel->taskbar = g_new0 (PanelTaskbar, 1);
 
   ConfigurationNode *node = configuration_find (panel->config, "menu");
   const gchar *value = configuration_attrib (node, "iconsize");

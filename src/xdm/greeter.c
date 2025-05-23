@@ -181,6 +181,7 @@ on_entry_activate(GtkEntry *entry, gpointer data)
 /*
  * on_user_activate
  */
+void
 on_user_activate(GtkWidget *button, UserInfo *info)
 {
   /* FIXME
@@ -738,6 +739,7 @@ int
 main(int arc, char *arg[])
 {
   char* theme;
+  char* virtres = getenv("XDM_VIRTUAL_RESOLUTION");
   int status;
 
 #ifdef GETTEXT_PACKAGE
@@ -775,8 +777,16 @@ main(int arc, char *arg[])
 
   if (status == EXIT_SUCCESS) {
     listen_stdin();
+
     /* buffered stdout for inter-process-communcation of single-line-commands */
     setvbuf(stdout, NULL, _IOLBF, 0);
+
+    if (virtres != NULL) {
+      char *cmd = g_strdup_printf("xrandr -s %s", virtres);
+      g_debug("XDM_VIRTUAL_RESOLUTION => %s", virtres);
+      system(cmd);
+      g_free(cmd);
+    }
     gtk_main();               /* main event loop */
   }
 

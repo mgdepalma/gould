@@ -112,7 +112,7 @@ finis(GtkWidget *instance, gpointer data)
 /*
 * selfexclude - WindowFiler to exclude self from GREEN window list
 */
-static gboolean
+static bool
 selfexclude (Window xid, int desktop)
 {
   const gchar *wname = get_window_name (xid);

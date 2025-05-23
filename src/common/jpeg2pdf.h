@@ -1,6 +1,6 @@
 /*
 * jpeg2pdf.h - adopted from https://jpeg2pdf.sf.net
-* 2024-07-04 Generations Linux <bugs@softcraft.org>
+* 2024-07-05 Generations Linux <bugs@softcraft.org>
 */
 #ifndef _JPEG2PDF_H_
 #define _JPEG2PDF_H_
@@ -27,7 +27,7 @@
 #define MAX_KIDS_STRLEN	 10
 
 #define MAX_PDF_XREF	(MAX_PDF_PAGES * OBJNUM_PER_IMAGE + OBJNUM_EXTRA)
-#define MAX_PDF_HEADER	64	/* PDF Header, Usually less than 40 Bytes */
+#define MAX_PDF_HEADER	128	/* PDF Header, Usually less than 40 Bytes */
 #define MAX_PDF_TAILER	( ( MAX_PDF_PAGES * (MAX_KIDS_STRLEN + (OBJNUM_PER_IMAGE * XREF_ENTRY_LEN)) ) + (OBJNUM_EXTRA * XREF_ENTRY_LEN) + 256 )
 
 /* page orientation and scale */
@@ -58,7 +58,7 @@ struct _jpeg2pdf {
   double   margin;
   double   maxImgW, maxImgH;
   uint8_t  pdfHeader[MAX_PDF_HEADER];
-  uint8_t  pdfTailer[MAX_PDF_TAILER];		    /* 28K Bytes */
+  uint8_t  pdfTailer[MAX_PDF_TAILER];		      /* 28K Bytes */
   uint8_t  pdfXREF[MAX_PDF_XREF][XREF_ENTRY_LEN + 1]; /* 27K Bytes */
   uint32_t pageW, pageH, pdfObj, currentOffSet, imgObj;
 };

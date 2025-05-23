@@ -251,6 +251,8 @@ GtkWidget *setbg_settings_new (Modulus *applet, GlobalPanel *panel);
 GtkWidget *screensaver_settings_new (Modulus *applet, GlobalPanel *panel);
 GtkWidget *shutdown_dialog_new (GlobalPanel *panel);
 
+Modulus *desktop_settings_new (GlobalPanel *panel);
+
 void executer (GtkWidget *widget, ConfigurationNode *node);
 void startmenu (GtkMenu *menu, gint *x, gint *y, bool *pushin, gpointer data);
 

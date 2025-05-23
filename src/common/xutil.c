@@ -470,7 +470,7 @@ get_atom_property (const char *name)
     initialize_ = false;
   }
 
-  atom = g_hash_table_lookup (atoms_, name);
+  atom = (Atom)g_hash_table_lookup (atoms_, name);
   prop = (prop != NULL) ? prop : xintern (gdk_display, name);
 
   return prop;
@@ -1069,7 +1069,7 @@ get_xprop_name (Window xid, const char *name)
   //Window xroot = DefaultRootWindow (gdk_display);
 
   if (WindowValidate (xid)) {
-    atom = g_hash_table_lookup (atoms_, name);
+    atom = (Atom)g_hash_table_lookup (atoms_, name);
     prop = (atom != NULL) ? atom : xintern (gdk_display, name);
 
     gdk_error_trap_push ();

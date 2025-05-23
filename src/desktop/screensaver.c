@@ -123,7 +123,7 @@ void screensaver_settings_close (Modulus *applet);
 void
 gtk_window_close (GtkWindow* gwindow)
 {
-  gtk_widget_hide (gwindow);
+  gtk_widget_hide ((GtkWidget *)gwindow);
   killproc (&local_.screenview, SIGTERM);
 } /* </gtk_window_close> */
 #endif
@@ -898,7 +898,7 @@ screensaver_lockout_toggle(GtkWidget *widget, ScreensaverSettings *config)
 {
   screensaver_refresh (local_.preview_pane, NULL, NULL);
   config->lock = !config->lock;
-} /* </screensaver_lockout_toggle>
+} /* </screensaver_lockout_toggle> */
 
 /*
 * (private) screensaver_lockout_moretime - increase local_.config->lockout
@@ -960,10 +960,10 @@ screensaver_settings_grid(ScreensaverSettings *config)
   GtkWidget *button, *combo, *entry, *label;
   GtkWidget *layout = gtk_table_new(3, 3, FALSE);
 
-  const _height = 22;
-  const _entry_max = 3;
-  const _entry_width = 36;
-  const _button_width = 24;
+  const int _height = 22;
+  const int _entry_max = 3;
+  const int _entry_width = 36;
+  const int _button_width = 24;
 
   char stamp[MAX_STAMP];
 
@@ -1493,7 +1493,8 @@ screensaver_settings_new (Modulus *applet, GlobalPanel *panel)
   ScreensaverSettings *_config = local_.config;
   char *caption = "";
 
-  filechooser_set_callback (chooser, screensaver_selection, _config);
+  filechooser_set_callback (chooser, (GtkFunction)screensaver_selection,
+					_config);
   local_.selector_pane = chooser->viewer;
 
   /* major reflection variables */

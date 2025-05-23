@@ -111,6 +111,8 @@ FileChooser *filechooser_new (const gchar *dirname, ...);
 
 GtkWidget   *filechooser_layout (FileChooser *obj);
 
+const char  *filechooser_iconbox_selection(const char *name, FileChooser *self);
+
 gchar       *filechooser_get_selected_name (FileChooser *obj);
 
 int          filechooser_get_index (FileChooser *obj, const gchar *name);

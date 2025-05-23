@@ -1,6 +1,6 @@
 /*
 * jpeg2pdf.c - adopted from https://jpeg2pdf.sf.net
-* 2024-07-04 Generations Linux <bugs@softcraft.org>
+* 2024-07-07 Generations Linux <bugs@softcraft.org>
 */
 
 #include <stdio.h>
@@ -28,32 +28,40 @@ jpeg2pdf_setxref(jpeg2pdf_ptr_t pPDF, int index, int offset, char c)
 } /* </jpeg2pdf_setxref> */
 
 /*
-* jpeg2pdf_initialize
-* width and height in default (portrait) orientation
+* jpeg2pdf_initialize - width and height in default (portrait) orientation
 */
 jpeg2pdf_ptr_t
 jpeg2pdf_initialize(double pdfW, double pdfH, double margin)
 {
-  jpeg2pdf_ptr_t pPDF = (jpeg2pdf_ptr_t)malloc(sizeof(jpeg2pdf_t));
+  static jpeg2pdf_t _PDF;
+  jpeg2pdf_ptr_t pPDF = &_PDF;
 
-  if (pPDF) {
-    memset(pPDF, 0, sizeof(jpeg2pdf_t));
-    pPDF->pageW = (uint32_t)(pdfW * PDF_DOT_PER_INCH);
-    pPDF->pageH = (uint32_t)(pdfH * PDF_DOT_PER_INCH);
-    pPDF->margin = margin;
+  /* note: hardcoded /Count 1, will not work with multiple pages */
+  const char *strKids = "1 0 obj\n<<\n/Type /Pages\n/Kids [ 3 0 R ]\n/Count 1\n>>\nendobj";
 
-    /* Maximum image size without margins */
-    pPDF->maxImgW = (double) pPDF->pageW - (2 * margin * PDF_DOT_PER_INCH);
-    pPDF->maxImgH = (double) pPDF->pageH - (2 * margin * PDF_DOT_PER_INCH);
+  memset(pPDF, 0, sizeof(jpeg2pdf_t));
+  pPDF->pageW  = (uint32_t)(pdfW * PDF_DOT_PER_INCH);
+  pPDF->pageH  = (uint32_t)(pdfH * PDF_DOT_PER_INCH);
+  pPDF->margin = margin;
 
-    pPDF->currentOffSet = 0;
-    jpeg2pdf_setxref(pPDF, 0, pPDF->currentOffSet, 'f');
+  /* Maximum image size without margins */
+  pPDF->maxImgW = (double)pPDF->pageW - (2 * margin * PDF_DOT_PER_INCH);
+  pPDF->maxImgH = (double)pPDF->pageH - (2 * margin * PDF_DOT_PER_INCH);
 
-    pPDF->currentOffSet += sprintf((char *)pPDF->pdfHeader,
-					"%%PDF-1.4\n%%%c%c\n", 0xFF, 0xFF);
-    pPDF->imgObj = 0;
-    pPDF->pdfObj = 2;  /* 0 & 1 was reserved for xref & document Root */
-  }
+  pPDF->currentOffSet = 0;
+  jpeg2pdf_setxref(pPDF, 0, pPDF->currentOffSet, 'f');
+
+  /* PDF header ("%PDF-<version>\r<4 hexadecimals>") + "1 0 0bj" string */
+  pPDF->currentOffSet += sprintf((char *)pPDF->pdfHeader,
+	"%%PDF-1.4\r%%%c%c%c%c\n%s\n", 0xc2, 0xa9, 0xc2, 0xa9, strKids);
+    /*
+    * %PDF-1.4\r<e2><e3><cf><d3> appears in many documents
+    "%%PDF-1.4\r%%%c%c%c%c\n%s\n", 0xe2, 0xe3, 0xcf, 0xd3, strKids);
+    */
+
+  pPDF->imgObj = 0;
+  pPDF->pdfObj = 2;  /* 0 & 1 reserved for xref & document Root */
+
   return pPDF;
 } /* </jpeg2pdf_initialize> */
 
@@ -105,8 +113,7 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, uint32_t imgW, uint32_t imgH,
 	jpeg2pdf_setxref(pPDF, INDEX_USE_PPDF, pPDF->currentOffSet, 'n');
 	currentImageObject = pPDF->pdfObj;
 
-	pPDF->currentOffSet += sprintf((char *)pNode->preFormat, "\n%d 0 obj\n<<\n/Type /XObject\n/Subtype /Image\n/Filter /DCTDecode\n/BitsPerComponent 8\n/ColorSpace /%s\n/Width %d\n/Height %d\n/Length %d\n>>\nstream\n", pPDF->pdfObj, ((colors) ? "DeviceRGB" : "DeviceGray"), pNode->jpegW, pNode->jpegH, pNode->jpegSize);
-				
+	pPDF->currentOffSet += sprintf((char *)pNode->preFormat, "%d 0 obj\n<<\n/Type /XObject\n/Subtype /Image\n/Filter /DCTDecode\n/BitsPerComponent 8\n/ColorSpace /%s\n/Width %d\n/Height %d\n/Length %d\n>>\nstream\n", pPDF->pdfObj, ((colors) ? "DeviceRGB" : "DeviceGray"), pNode->jpegW, pNode->jpegH, pNode->jpegSize);
 	vdebug(1, "%s....\n", pNode->preFormat);
         pPDF->currentOffSet += pNode->jpegSize;
 	pFormat = pNode->pstFormat;
@@ -238,6 +245,7 @@ jpeg2pdf_construct(jpeg2pdf_ptr_t pPDF, uint32_t imgW, uint32_t imgH,
 
 	/* Update the Link List */
 	pPDF->nodeCount++;
+
 	if (1 == pPDF->nodeCount) {
 	  pPDF->pFirstNode = pNode;
 	}
@@ -263,16 +271,14 @@ jpeg2pdf_metadata(jpeg2pdf_ptr_t pPDF, char *timestamp, const char *title,
 		  const char *subject, const char *creator)
 {
   uint32_t headerSize, tailerSize, pdfSize = 0;
-  char *producer = "Generations Linux";
-  char *XMPmetadata;
 
   if (pPDF != NULL) {
-    uint8_t strKids[MAX_PDF_PAGES * MAX_KIDS_STRLEN], *pTail = pPDF->pdfTailer;
+    uint8_t *pTail = pPDF->pdfTailer;
     uint32_t i, nChars, xrefOffSet, metadataObj, infoObj;
-    jpeg2pdf_node_ptr_t pNode;
 
-    XMPmetadata = (char *)malloc(2048 + strlen(title) + strlen(author) +
-			strlen(keywords) + strlen(subject) + strlen(creator));
+    const char *producer = creator;
+    char *XMPmetadata = (char *)malloc(2048 + strlen(title) + strlen(author) +
+			 strlen(keywords) + strlen(subject) + strlen(creator));
 
     nChars = sprintf(XMPmetadata,"<?xpacket begin=\"\xef\xbb\xbf\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n" \
 	"<x:xmpmeta xmlns:x=\"adobe:ns:meta/\">\n" \
@@ -324,8 +330,8 @@ jpeg2pdf_metadata(jpeg2pdf_ptr_t pPDF, char *timestamp, const char *title,
     timestamp[15] = timestamp[20];
     timestamp[16] = timestamp[21];
     timestamp[17] = '\'';
-    timestamp[18] = timestamp[23];
-    timestamp[19] = timestamp[24];
+    timestamp[18] = timestamp[22];
+    timestamp[19] = timestamp[23];
     timestamp[20] = '\'';
     timestamp[21] = '\0';
 
@@ -349,29 +355,9 @@ jpeg2pdf_metadata(jpeg2pdf_ptr_t pPDF, char *timestamp, const char *title,
     /* Pages Object. It's always the Object 1 */
     jpeg2pdf_setxref(pPDF, 1, pPDF->currentOffSet, 'n');
 
-    strKids[0] = 0;
-    pNode = pPDF->pFirstNode;
-
-    while (pNode != NULL) {
-      char curStr[9];
-      sprintf(curStr, "%d 0 R ", pNode->PageObj);
-      strcat((char *)strKids, curStr);
-      pNode = pNode->pNext;
-    }
-
-    if (strlen((const char *)strKids) > 1
-        && strKids[strlen((const char *)strKids) - 1] == ' ') {
-      strKids[strlen((const char *)strKids) - 1] = 0;
-    }
-		
-    nChars = sprintf((char *)pTail, "1 0 obj\n<<\n/Type /Pages\n/Kids [ %s ]\n/Count %d\n>>\nendobj\n", strKids, pPDF->nodeCount);
-
-    pPDF->currentOffSet += nChars;
-    pTail += nChars;
-
     /* The xref & the rest of the tail */
     xrefOffSet = pPDF->currentOffSet;
-    nChars = sprintf((char *)pTail, "xref\n0 %d\n", pPDF->pdfObj+1);
+    nChars = sprintf((char *)pTail, "xref\n");
     pPDF->currentOffSet += nChars;
     pTail += nChars;
 
@@ -454,11 +440,12 @@ jpeg2pdf_finalize(jpeg2pdf_ptr_t pPDF, uint8_t *outPDF, uint32_t *outPDFSize)
       pNode = pNode->pNext;
       free(pFreeCurrent);
     }
-
+#if 0
     if (pPDF != NULL) {
       free(pPDF);
       pPDF = NULL;
     }
+#endif
   }
   return result;
 } /* </jpeg2pdf_finalize> */

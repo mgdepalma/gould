@@ -165,7 +165,7 @@ settings_activate (GlobalPanel *panel)
   signal (SIGALRM, settings_activate_timeout);
   alarm (_SIGALRM_GRACETIME);
   gtk_widget_show (settings->window);
-  gtk_window_stick (settings->window);
+  gtk_window_stick ((GtkWindow *)settings->window);
   desktop_default_iconsize (panel);
   desktop->active = false;
   alarm (0);	/* disarm alarm() */

@@ -290,13 +290,13 @@ insertJPEGFile(const char *jpegfile, uint32_t fileSize, jpeg2pdf_ptr_t pdfId,
 void
 gsnapshot_pdf_save(const char *jpegfile, const char *outfile)
 {
+  static char creator[MAX_STAMP];
   static char timestamp[MAX_STAMP];  /* ISO8601 timestamp */
 
   const char *author = "Generations Linux";
   const char *subject = "Generated from JPEG images";
   const char *keywords = basename(jpegfile);
   const char *title = basename(outfile);
-  const char *creator = Program;
 
   /* Initialize the PDF Object with Page Size Description */
   double pageWidth = 8.27, pageHeight = 11.69, pageMargins = 0;
@@ -329,6 +329,7 @@ gsnapshot_pdf_save(const char *jpegfile, const char *outfile)
   strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%S%z", tinfo);
 
   /* Finalize the PDF and get the PDF Size */
+  sprintf(creator, "%s %s", Program, Release);
   pdfSize = jpeg2pdf_metadata (pdfId, timestamp, title, author,
 					keywords, subject, creator);
 
@@ -664,7 +665,6 @@ main(int argc, char *argv[])
     switch (opt) {
       case 'd':
         debug = atoi(optarg);
-        putenv("DEBUG=1");
         break;
 
       case 'h':

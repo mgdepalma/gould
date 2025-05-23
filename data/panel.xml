@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<panel version="2.0">
+<panel version="2.0.1">
 
  <!-- Automatically generated ~/.config/panel, please DO NOT edit. Manual
    changes made will be lost when the program using this file exits.  -->
@@ -14,7 +14,6 @@
   <path>$HOME/.config/pixmaps</path>
   <path>/usr/share/gould/pixmaps</path>
   <path>/usr/share/pixmaps</path>
-  <size>22</size>
  </icons>
 
  <menu name="" icon="applications.png" iconsize="22">
@@ -35,12 +34,12 @@
      <exec>gedit</exec>
     </item>
    </submenu>
-   <submenu name="Database" icon="database.png" check="ODBCConfig">
-    <item name="ODBC Browser" icon="network.png">
-     <exec>ODBCBrowser</exec>
+   <submenu name="Database" icon="unixODBC.png" check="ODBCManageDataSourcesQ5">
+    <item name="ODBC Administrator" icon="database.png">
+     <exec>ODBCManageDataSourcesQ5</exec>
     </item>
-    <item name="ODBC Administrator" icon="unixODBC.png">
-     <exec>ODBCConfig</exec>
+    <item name="Create Data Source Name Wizard" icon="wizard.png">
+     <exec>ODBCCreateDataSourceQ5</exec>
     </item>
     <item name="Open System Architect" icon="star.png" check="OpenSystemArchitect">
      <exec>OpenSystemArchitect</exec>
@@ -98,8 +97,8 @@
     <item name="Media Player" icon="mediaplayer.png">
      <exec>mediaplayer</exec>
     </item>
-    <item name="Media Writer" icon="graveman.png">
-     <exec>graveman</exec>
+    <item name="Media Writer" icon="brasero.png">
+     <exec>brasero</exec>
     </item>
     <item name="Video Transcoder" icon="handbrake.png" check="/usr/bin/ghb">
      <exec>ghb</exec>
@@ -109,6 +108,9 @@
     </item>
    </submenu>
    <submenu name="Office" icon="openoffice.png">
+    <item name="Finance Manager" icon="financial.png" check="/usr/bin/mmex">
+     <exec>mmex</exec>
+    </item>
     <item name="Document Writer" icon="writer.png">
      <exec>writer</exec>
     </item>
@@ -120,9 +122,6 @@
     </item>
     <item name="Drawings" icon="libreoffice-draw.png" check="/usr/bin/soffice">
      <exec>soffice --draw</exec>
-    </item>
-    <item name="Finance Manager" icon="financial.png" check="/usr/bin/mmex">
-     <exec>mmex</exec>
     </item>
    </submenu>
    <submenu name="System" icon="system.png">
@@ -166,7 +165,7 @@
    <settings expire="10" font="Sans Bold 20" fg="blue" />
   </applet>
   <applet name="pager" icon="workspace.png" place="END">
-   <settings workspaces="2" rows="1" />
+   <settings workspaces="3" rows="1" />
   </applet>
   <applet name="tasklist" icon="tasklist.png">
    <settings allspaces="0" grouping="0" />
@@ -178,13 +177,13 @@
    <settings volume="30" />
   </applet>
   <applet name="battery" icon="battery.png">
-   <settings critical="10" interval="60" />
+   <settings interval="5" command="" critical="10" warning="0" />
   </applet>
   <applet name="clock" icon="clock.png">
    <settings format="%H:%M" />
   </applet>
   <applet name="screensaver" icon="exit.png" mode="blank">
-   <settings timeout="10" cycle="10" lock="5" program="qix" />
+   <settings timeout="10" cycle="10" lock="5" program="droste" />
   </applet>
  </modules>
 
@@ -200,7 +199,7 @@
   </item>
  </quicklaunch>
 
- <desktop iconsize="48" font="Times 9">
+ <desktop iconsize="48" font="Arial 10">
   <menu name="desktop-item-edit" iconsize="22">
    <item name="Open" icon="launch.png">
     <exec type="method">shortcut:open</exec>

@@ -880,8 +880,8 @@ tasklist_item_actions_menu(TasklistItem *item)
   tasklist_item_activate_menu (NULL, item);  /* enable/disable actions */
 
   gtk_menu_popup (GTK_MENU (item->menu), NULL, NULL,
-                  tasklist_item_position_menu, item->button,
-                  1, gtk_get_current_event_time ());
+                  (GtkMenuPositionFunc)tasklist_item_position_menu,
+		  item->button, 1, gtk_get_current_event_time ());
 
   gtk_widget_show (item->menu);
 } /* </tasklist_item_actions_menu> */
@@ -940,8 +940,8 @@ tasklist_item_members_menu(TasklistItem *item)
   }
 
   gtk_menu_popup (GTK_MENU (menu), NULL, NULL,
-                  tasklist_item_position_menu, item->button,
-                  1, gtk_get_current_event_time ());
+                  (GtkMenuPositionFunc)tasklist_item_position_menu,
+		  item->button, 1, gtk_get_current_event_time ());
 
   gtk_widget_show (menu);
 } /* </tasklist_item_members_menu> */
@@ -1341,7 +1341,7 @@ tasklist_widget_expose(GtkWidget *widget, GdkEventExpose *event)
 */
 static void
 tasklist_container_forall(GtkContainer *container,
-                          bool         internals,
+                          gboolean     internals,
                           GtkCallback  callback,
                           gpointer     data)
 {

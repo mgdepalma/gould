@@ -24,7 +24,7 @@ extern char *get_current_dir_name(void);
 #endif
 
 const char *Program = "gdisplay"; /* (public) published program name */
-const char *Release = "1.2";	  /* (public) published program version */
+const char *Release = "2.0";	  /* (public) published program version */
 
 const char *Description =
 "is a gtk-based simple image viewing utility.\n"
@@ -37,22 +37,25 @@ const char *Description =
 "  part of gould (http://www.softcraft.org/gould).";
 
 const char *Usage =
-"usage: %s [-v | -h]\n"
+"usage: %s [-v | -h] <image>\n"
 "\n"
 "\t-v print version information\n"
 "\t-h print help usage (what you are reading)\n"
+"\n"
+"\t   an initial <image> to display is optional.\n" 
 "\n";
 
 static GlobalDisplay *global;	  /* (protected) encapsulated program data */
-gboolean debug = FALSE;		  /* (protected) must be present */
+debug_t debug = 0;		  /* (protected) must be present */
 
 /*
 * (private) about
 */
 static gboolean
-about (GtkWidget *instance, GtkWidget *parent)
+about(GtkWidget *instance, GtkWidget *parent)
 {
-  notice(parent, ICON_SNAPSHOT, NULL, 0, "\n%s %s %s", Program, Release, Description);
+  notice (parent, ICON_SNAPSHOT, NULL, 0, "\n%s %s %s",
+				Program, Release, Description);
   return FALSE;
 } /* </about> */
 
@@ -60,7 +63,7 @@ about (GtkWidget *instance, GtkWidget *parent)
 * clean application exit
 */
 static void
-finis (GtkWidget *instance, gpointer data)
+finis(GtkWidget *instance, gpointer data)
 {
   gtk_main_quit();
 } /* </finis> */
@@ -69,7 +72,7 @@ finis (GtkWidget *instance, gpointer data)
 * refresh view of the canvas area
 */
 static void
-refresh (GtkWidget *canvas, gpointer data)
+refresh(GtkWidget *canvas, gpointer data)
 {
   GError    *error = NULL;
   GdkPixbuf *image = NULL;
@@ -96,13 +99,13 @@ refresh (GtkWidget *canvas, gpointer data)
 * (private) agent callback function
 */
 static gboolean
-agent (FileChooserDatum *datum)
+agent(FileChooserDatum *datum)
 {
   const gchar *file = datum->file;
   struct stat info;
 
   if (lstat(file, &info) == 0 && S_ISREG(info.st_mode))
-    refresh(global->canvas, NULL);
+    refresh (global->canvas, NULL);
 
   return TRUE;
 } /* </agent> */
@@ -155,7 +158,7 @@ prevfile(GtkWidget *button, FileChooser *chooser)
 
   if (index > 0) {
     filechooser_set_cursor (chooser, --index);
-    refresh(global->canvas, NULL);
+    refresh (global->canvas, NULL);
   }
   return TRUE;
 } /* </prevfile> */
@@ -168,7 +171,7 @@ nextfile(GtkWidget *button, FileChooser *chooser)
 
   if (index < count) {
     filechooser_set_cursor (chooser, ++index);
-    refresh(global->canvas, NULL);
+    refresh (global->canvas, NULL);
   }
   return TRUE;
 } /* </nextfile> */
@@ -231,7 +234,7 @@ configsave(GtkWidget *widget, gpointer data)
 * (private) set background callback
 */
 static gboolean
-setbg (GtkWidget *widget, gpointer data)
+setbg(GtkWidget *widget, gpointer data)
 {
   gchar *pathname = filechooser_get_selected_name (global->chooser);
   gboolean result = FALSE;
@@ -251,7 +254,7 @@ setbg (GtkWidget *widget, gpointer data)
 * (private) update_chooser
 */
 static gboolean
-update_chooser (GlobalDisplay *display)
+update_chooser(GlobalDisplay *display)
 {
   FileChooser *chooser = display->chooser;
   const gchar *curdir = gtk_label_get_text (GTK_LABEL(chooser->path));
@@ -265,67 +268,67 @@ update_chooser (GlobalDisplay *display)
 * interface - construct user interface
 */
 static GtkWidget*
-interface (GtkWidget *window)
+interface(GtkWidget *window)
 {
-  FileChooser *chooser = global->chooser;
-
-  GtkWidget *layout = gtk_vbox_new (FALSE, 0);
+  GtkWidget *layout = gtk_vbox_new(FALSE, 0);
   GtkWidget *area, *box, *button, *field, *inset;
   GtkWidget *canvas, *frame, *scroll, *split;
+
+  FileChooser *chooser = global->chooser;
 
 
   /* Split view: file chooser on the left and preview on the right. */
   split = gtk_hbox_new(FALSE, 1);
-  gtk_box_pack_start(GTK_BOX (layout), split, TRUE, TRUE, 0);
-  gtk_widget_show(split);
+  gtk_box_pack_start (GTK_BOX(layout), split, TRUE, TRUE, 0);
+  gtk_widget_show (split);
 
   /* Assemble scrollable file chooser. */
   area = global->browser = gtk_vbox_new(FALSE, 1);
-  gtk_box_pack_start(GTK_BOX (split), area, TRUE, TRUE, 0);
-  gtk_widget_show(area);
+  gtk_box_pack_start (GTK_BOX(split), area, TRUE, TRUE, 0);
+  gtk_widget_show (area);
 
   /* Assemble box containing navigation and current directory. */
   box = chooser->dirbox;
-  gtk_box_pack_start(GTK_BOX (area), box, FALSE, FALSE, 2);
-  gtk_widget_show(box);
+  gtk_box_pack_start (GTK_BOX(area), box, FALSE, FALSE, 2);
+  gtk_widget_show (box);
 
   /* Assemble file selector. */
-  scroll = gtk_scrolled_window_new(NULL, NULL);
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
+  scroll = gtk_scrolled_window_new (NULL, NULL);
+  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW(scroll),
                                  GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-  gtk_box_pack_start(GTK_BOX (area), scroll, TRUE, TRUE, 5);
-  gtk_widget_show(scroll);
+  gtk_box_pack_start (GTK_BOX (area), scroll, TRUE, TRUE, 5);
+  gtk_widget_show (scroll);
 
   area = chooser->viewer;
   gtk_container_add (GTK_CONTAINER(scroll), area);
-  gtk_widget_show(area);
+  gtk_widget_show (area);
 
   /* Neutral zone between global->browser and image viewer */
   inset = gtk_label_new ("");
-  gtk_box_pack_start(GTK_BOX (split), inset, FALSE, FALSE, 4);
-  gtk_widget_show(inset);
+  gtk_box_pack_start (GTK_BOX(split), inset, FALSE, FALSE, 4);
+  gtk_widget_show (inset);
 
   /* Assemble display canvas area. */
   area = global->viewer = gtk_vbox_new(FALSE, 1);
-  gtk_box_pack_start(GTK_BOX (split), area, TRUE, TRUE, 0);
-  gtk_widget_show(area);
+  gtk_box_pack_start (GTK_BOX(split), area, TRUE, TRUE, 0);
+  gtk_widget_show (area);
 
   /* Previous and next selection navigation. */
-  box = gtk_hbox_new(FALSE, 0);
-  gtk_box_pack_start(GTK_BOX (area), box, FALSE, TRUE, 0);
-  gtk_widget_show(box);
+  box = gtk_hbox_new (FALSE, 0);
+  gtk_box_pack_start (GTK_BOX(area), box, FALSE, TRUE, 0);
+  gtk_widget_show (box);
 
   button = global->backward = xpm_button(ICON_BACK, NULL, 0, NULL);
-  gtk_box_pack_start(GTK_BOX (box), button, FALSE, TRUE, 0);
-  gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
-  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(prevfile), chooser);
-  gtk_widget_show(button);
+  gtk_box_pack_start (GTK_BOX(box), button, FALSE, TRUE, 0);
+  gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
+  g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(prevfile), chooser);
+  gtk_widget_show (button);
 
   button = global->forward = xpm_button(ICON_FORWARD, NULL, 0, NULL);
-  gtk_box_pack_start(GTK_BOX (box), button, FALSE, TRUE, 0);
-  gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
-  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(nextfile), chooser);
-  gtk_widget_show(button);
+  gtk_box_pack_start (GTK_BOX(box), button, FALSE, TRUE, 0);
+  gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
+  g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(nextfile), chooser);
+  gtk_widget_show (button);
 
   /* Program information (about) button. */
   button = xpm_button(ICON_HELP, NULL, 0, _("Information"));
@@ -349,42 +352,42 @@ interface (GtkWidget *window)
 
   /* Bottom layout area: display file name and control buttons */
   area = chooser->namebox;
-  gtk_box_pack_start(GTK_BOX(layout), area, FALSE, TRUE, 0);
-  gtk_widget_show(area);
+  gtk_box_pack_start (GTK_BOX(layout), area, FALSE, TRUE, 0);
+  gtk_widget_show (area);
 
   /* Neutral zone between global->browser and global->window right border */
   inset = gtk_label_new ("");
-  gtk_box_pack_start(GTK_BOX (split), inset, FALSE, FALSE, 4);
-  gtk_widget_show(inset);
+  gtk_box_pack_start (GTK_BOX(split), inset, FALSE, FALSE, 4);
+  gtk_widget_show (inset);
 
   /* (global->chooser)->actuator to open and close global->browser */
   button = chooser->actuator;
   gtk_button_set_image (GTK_BUTTON(button), xpm_image(ICON_CHOOSER));
-  g_signal_connect(G_OBJECT (button), "clicked", G_CALLBACK(changemode), NULL);
+  g_signal_connect (G_OBJECT (button), "clicked", G_CALLBACK(changemode), NULL);
 
   /* (global->chooser)->name readonly entry to display file name */
   field = chooser->name;
   gtk_entry_set_editable (GTK_ENTRY(field), FALSE);
-  gtk_widget_set_usize(GTK_WIDGET(field), global->width/3, 0);
+  gtk_widget_set_usize (GTK_WIDGET(field), global->width/3, 0);
 
   /* command bar */
   box = gtk_hbox_new (FALSE, 0);
-  gtk_box_pack_end(GTK_BOX (area), box, FALSE, FALSE, 0);
-  gtk_widget_show(box);
+  gtk_box_pack_end (GTK_BOX(area), box, FALSE, FALSE, 0);
+  gtk_widget_show (box);
 
   /* Set as background button. */
   button = xpm_button(ICON_WALLPAPER, NULL, 0, _("Set as background"));
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(setbg), NULL);
-  gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
+  gtk_button_set_relief (GTK_BUTTON(button), GTK_RELIEF_NONE);
   gtk_box_pack_start (GTK_BOX(box), button, FALSE, TRUE, 20);
-  gtk_widget_show(button);
+  gtk_widget_show (button);
 
   /* CLOSE button */
   button = xpm_button(ICON_CLOSE, NULL, 0, _("Close"));
   g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(finis), NULL);
   gtk_button_set_relief (GTK_BUTTON (button), GTK_RELIEF_NONE);
-  gtk_box_pack_start(GTK_BOX (box), button, FALSE, FALSE, 0);
-  gtk_widget_show(button);
+  gtk_box_pack_start (GTK_BOX (box), button, FALSE, FALSE, 0);
+  gtk_widget_show (button);
 
   return layout;
 } /* </interface> */
@@ -393,7 +396,7 @@ interface (GtkWidget *window)
 * initialize
 */
 static void
-initialize (GlobalDisplay *display, char *pathname)
+initialize(GlobalDisplay *display, char *pathname)
 {
   static char path[FILENAME_MAX];  /* dirname(1) of the BACKGROUND resource */
 
@@ -493,11 +496,14 @@ main(int argc, char *argv[])
   GtkWidget *layout;		/* user interface  */
 
   int opt;
-  /* disable invalid option messages */
-  opterr = 0;
+  opterr = 0;	/* disable invalid option messages */
 
-  while ((opt = getopt (argc, argv, "hv")) != -1) {
+  while ((opt = getopt (argc, argv, "d:hv")) != -1) {
     switch (opt) {
+      case 'd':
+        debug = atoi(optarg);
+        break;
+
       case 'h':
         printf(Usage, Program);
         return EX_OK;
@@ -536,8 +542,8 @@ main(int argc, char *argv[])
   gtk_widget_set_usize (window, global->width, global->height);
 
   //gtk_window_set_decorated (GTK_WINDOW (window), FALSE);
+  //gdk_window_set_decorations (window->window, GDK_DECOR_BORDER);
   gtk_widget_show (window);
-  //gdk_window_set_decorations(window->window, GDK_DECOR_BORDER);
 
   /* Construct the user interface */
   layout = interface (window);
